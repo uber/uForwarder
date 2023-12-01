@@ -165,6 +165,7 @@ publishing {
             group = "com.uber.uforwarder"
             version = mavenVersion
             url = mavenUrl
+            allowInsecureProtocol = true
             credentials {
                 username = mavenUsername
                 password = mavenPassword
