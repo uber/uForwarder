@@ -12,3 +12,22 @@ plugins {
 
 rootProject.name = 'uforwarder'
 include('fievel-common', 'instrumentation', 'admin-client', 'idl', 'uforwarder-client', 'uforwarder-core', 'uforwarder', 'uforwarder-image', 'uforwarder-container')
+
+dependencyResolutionManagement {
+    repositories {
+        maven {
+            url "http://artifactory.uber.internal:4587/artifactory/repo/"
+            allowInsecureProtocol = true
+            metadataSources {
+                mavenPom()
+                artifact()
+            }
+        }
+        mavenLocal() {
+            metadataSources {
+                mavenPom()
+                artifact()
+            }
+        }
+    }
+}
