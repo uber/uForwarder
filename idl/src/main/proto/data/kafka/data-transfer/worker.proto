@@ -1,0 +1,48 @@
+syntax = "proto3";
+
+// These protos are in alpha stage and there is no guarantee of protocol compatbility at this time.
+
+import "google/protobuf/timestamp.proto";
+
+package uber.data.kafka.datatransfer;
+
+option go_package = "datatransferpb";
+option java_multiple_files = true;
+option java_outer_classname = "WorkerProto";
+option java_package = "com.uber.data.kafka.datatransfer";
+
+// Node identifies a member of a cluster.
+message Node {
+  // id is a UUID assigned to each node by the master.
+  int64 id = 1;
+  // host name for the node.
+  string host = 2;
+  // port for the node if it is reachable over the network.
+  // This may be 0 to indicate if it is unset.
+  int32 port = 3;
+  // zone where the node is located
+  string zone = 4;
+}
+
+// StoreWorker is the internal representation of a worker on the master within storage.
+// We choose to use protobuf encoded Worker so that schema evolution for data written to storage can be seamlessly
+// handled between master upgrades.
+// This shall only be used internally in the master's implementation and shall not be exposed to the worker.
+message StoredWorker {
+  // The last updated timestamp for this record.
+  google.protobuf.Timestamp last_updated = 1;
+  // The node information for this worker.
+  Node node = 2;
+  // The state of this worker.
+  WorkerState state = 3;
+}
+
+// WorkerState is the state of the worker.
+enum WorkerState {
+  // 0 enum must be invalid per t.uber.com/protobuf-style
+  WORKER_STATE_INVALID = 0;
+  // REGISTERING state represents the a worker node that has/is sending RegisterWorker, but has yet to send Heartbeat.
+  WORKER_STATE_REGISTERING = 1;
+  // WORKING state represents workers that has/is stably sending Heartbeat.
+  WORKER_STATE_WORKING = 2;
+}

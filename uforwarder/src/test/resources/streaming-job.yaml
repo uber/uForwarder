@@ -1,0 +1,14 @@
+service:
+  name: ${UDEPLOY_SERVICE_NAME:kafka-consumer-proxy}
+
+master:
+  rebalancer:
+    mode: StreamingRpcUriRebalancer
+    numWorkersPerUri: 1
+    messagesPerSecPerWorker: 1000
+    maxAssignmentHashValueRange: 10000
+    numberOfVirtualPartitions: 3
+    maxJobNumberPerWorker: 500
+    shouldRunShadowRebalancer: true
+  jobCreator: StreamingJobCreator
+  kafka.partition.expansion.watcher.interval: 60000

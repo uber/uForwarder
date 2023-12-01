@@ -1,0 +1,194 @@
+syntax = "proto3";
+
+// These protos are in alpha stage and there is no guarantee of protocol compatbility at this time.
+
+import "google/protobuf/timestamp.proto";
+import "data/kafka/data-transfer/job.proto";
+
+package uber.data.kafka.datatransfer;
+
+option go_package = "datatransferpb";
+option java_multiple_files = true;
+option java_outer_classname = "JobGroupProto";
+option java_package = "com.uber.data.kafka.datatransfer";
+
+message JobGroup {
+  // Job group id is a unique id for this job group.
+  // We use string b/c we want the znode to be /jobgroup/<string> in order to leverage
+  // zookeeper optimistic locking to ensure uniqueness of logical job group.
+  string job_group_id = 1;
+
+  // JobType is an enumeration for the type of job to be run.
+  // This allows the master-worker protocol to generalize to multiple types of workload that needs sharding.
+  // JobType shall be used to determine the set of valid tasks that contains specific information about the job.
+  // The mapping of JobType to Tasks is:
+  // - JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER: KafkaConsumerTask and RpcDispatcherTask.
+  JobType type = 2;
+
+  // Flow defines how the data should flow (msgs/s, bytes/s inflight_msgs).
+  FlowControl flow_control = 3;
+
+  // KafkaConsumerTaskGroup is populated for job that is involves Kafka Consumption.
+  // Specifically, this is non-null for:
+  //  - JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER
+  KafkaConsumerTaskGroup kafka_consumer_task_group = 4;
+
+  // RpcDispatcherTaskGroup is populated for job that is involves RPC dispatching.
+  // Specifically, this is non null for:
+  //  - JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER
+  RpcDispatcherTaskGroup rpc_dispatcher_task_group = 5;
+
+  // SecurityConfig is populated for job that intends to use message security feature.
+  // It contains service identity that will be used for authz check.
+  // It also stores the flag which decides if the job should be run securely.
+  SecurityConfig security_config = 6;
+
+  // RetryConfig is populated for job that involves one or more retry queues.
+  // It contains instructions on entry conditions for retry queues.
+  // It also stores the flag controlling if this feature is turned on or not,
+  // and how the retry count is calculated.
+  RetryConfig retry_config = 7;
+
+  // KafkaDispatcherTaskGroup is populated for job that involves Kafka produce
+  // Specifically, this is non-null for:
+  // - JOB_TYPE_KAFKA_REPLICATION and
+  // - JOB_TYPE_LOAD_GEN_PRODUCE
+  KafkaDispatcherTaskGroup kafka_dispatcher_task_group = 8;
+
+  // MiscConfig contains the miscellaneous configs of a jobGroup
+  MiscConfig misc_config = 9;
+
+  // Audit task is populated for job that involves auditing in Uatu SLA monitor.
+  // Whenever audit task is populated, the job type would be set to JOB_TYPE_KAFKA_AUDIT
+  AuditTaskGroup audit_task_group = 10;
+
+  // ResqConfig is populated for a job's resilience configuration
+  // It contains resilience queue configuration and a flag controlling if
+  // resilience queue should be enabled or not
+  ResqConfig resq_config = 11;
+
+  // AvailabilityTaskGroup is populated for jobs related to Kafka Availability service
+  // Its job type should be JOB_TYPE_KAFKA_AVAILABILITY when populated
+  AvailabilityTaskGroup availability_task_group = 12;
+}
+
+// KafkaConsumerTaskGroup is a specification for a Kafka Consumption Group task.
+message KafkaConsumerTaskGroup {
+  // cluster to read from.
+  string cluster = 1;
+  // topic to read from.
+  string topic = 2;
+  // consumer_group to read on behalf of and/or checkpoint for.
+  string consumer_group = 3;
+  // the auto offset reset policy.
+  AutoOffsetResetPolicy auto_offset_reset_policy = 4;
+  // start_timestamp to start at when reading.
+  // 1. When start_timestamp >= 0, the consumer tries to read from the earliest offset whose
+  // timestamp is greater than or equal to the start_timestamp. If it does not exist on the Kafka
+  // server, then use auto_offset_reset_policy to reset the starting offset.
+  // 2. When start_timestamp < 0, the consumer tries to read from last committed offset. If it does
+  // not exist on the Kafka server, then use auto_offset_reset_policy to reset the starting offset.
+  google.protobuf.Timestamp start_timestamp = 5;
+  // end_timestamp to stop at when reading.
+  // end_timestamp follows Kafka zero-offset semantics so actually refers to the first timestamp to
+  // **not** consume.
+  google.protobuf.Timestamp end_timestamp = 6;
+  // DEPRECATED, use the processing_delay_ms for each retry queue in RetryConfig instead
+  int32 processing_delay_ms = 7 [deprecated = true];
+  // isolation level could be read_uncommitted or read_committed, default read_uncommitted
+  IsolationLevel isolation_level = 8;
+  // Auditing related metadata. It will be set if the job type is `JOB_TYPE_KAFKA_AUDIT`
+  AuditMetaData audit_metadata = 9;
+}
+
+message RpcDispatcherTaskGroup {
+  // uri for resolving the destination service that will receive RPC push messages.
+  // We support a subset of standard Uber URI schemes from
+  // dev-platform/frameworks/jfx/library/grpc/client/src/main/java/com/uber/jfx/grpc/GrpcChannelBuilder.java#L56:
+  // 1. muttley://muttley-routing-key[@service-name] (this is a KCP internal format which is
+  // different from standard Muttley format)
+  string uri = 1;
+
+  // This indicates the procedure name that is used to identify the handler on the callee server.
+  // e.g., kafka.consumerproxy.consumer_group/topic.
+  string procedure = 2;
+
+  // when a rpc call take more than rpc_time_out_ms to finish, it is considered failed.
+  int32 rpc_timeout_ms = 3;
+
+  // DEPRECATED, use the retry_queue_topic for each retry queue in RetryConfig instead
+  string retry_queue_topic = 4 [deprecated = true];
+  // DEPRECATED, use the retry_cluster for each retry queue in RetryConfig instead
+  string retry_cluster = 5 [deprecated = true];
+
+  // dlq topic.
+  // when the recipient service indicates the consumer proxy to stash a message, the message should
+  // be produced to the dlq topic.
+  // an empty dlq topic indicates that it is disabled.
+  string dlq_topic = 6;
+  // the cluster to write the dlq_topic to.
+  string dlq_cluster = 7;
+
+  // when rpc timeout times exceeds the limit, send message to DLQ if configured
+  // the option should be disabled by default, only enable when consumer stuck with rpc timeout
+  int32 max_rpc_timeouts = 8;
+  // the max allowed timeout in backoff retry. Even with exponential backoff,
+  // the timeout value should not exceed rpc_timeout_limit_ms, if it is configured.
+  int32 rpc_timeout_limit_ms = 9;
+}
+
+message KafkaDispatcherTaskGroup {
+  // cluster to produce to
+  string cluster = 1;
+  // topic to produce to
+  string topic = 2;
+  // whether deduplication with uDeduplify is enabled or not.
+  bool dedup_enabled = 3;
+  // whether to produce securely
+  bool is_secure = 4;
+  // true when acks=1/lossy, false when acks=all/lossless
+  bool is_acks_one = 5;
+}
+
+// JobGroup is a grouping of jobs that represent a single logical resource.
+// In Kafka, JobGroup -> topic and Job -> topic-partition.
+message StoredJobGroup {
+  // The last updated timestamp for this record.
+  google.protobuf.Timestamp last_updated = 1;
+  // The grouped job provides the aggregate expected state for the job group.
+  // Note: the partition and job_id fields within the aggregate_job are unusued
+  // and must always be set to 0 to indicate unuse.
+  JobGroup job_group = 2;
+  // state of the job group.
+  JobState state = 3;
+  // The specific (partitioned) job for this job group.
+  // Implementations should guarantee uniqueness of jobs.
+  repeated StoredJob jobs = 4;
+
+  // scale status of job group for autoScaler
+  ScaleStatus scale_status = 5;
+}
+
+// scale status of job group for autoScaler
+message ScaleStatus {
+  // scale of the job group which indicates number of works needed
+  double scale = 1;
+}
+
+// AuditTaskGroup is a specification for audit tasks in Uatu
+message AuditTaskGroup {
+  // cluster to audit
+  string cluster = 1;
+  // topic to audit
+  string topic = 2;
+}
+
+// AvailabilityTaskGroup is a task group spec for Kafka Availability
+message AvailabilityTaskGroup {
+  // the type of job Kafka Availability to perform to monitor a service
+  AvailabilityJobType availability_job_type = 1;
+  // whether the availability task should be zone aware.
+  // should be set for proxy producer or proxy consumer with zone isolation
+  bool zone_isolated = 2;
+}
+

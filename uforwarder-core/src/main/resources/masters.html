@@ -1,0 +1,113 @@
+<html>
+<head>
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/dt-1.10.20/b-1.6.1/b-colvis-1.6.1/fh-3.1.6/r-2.2.3/sp-1.0.1/datatables.min.css"/>
+  <link href="https://d1a3f4spazzrp4.cloudfront.net/superfine/6.1.0/superfine.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://d1a3f4spazzrp4.cloudfront.net/uber-fonts/4.0.0/superfine.css">
+
+  <style>
+    td.details-control {
+      background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' height='50px' width='120px'><text x='0' y='20' fill='black' font-size='20'>></text></svg>") no-repeat;
+      cursor: pointer;
+    }
+    tr.shown td.details-control {
+      background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' height='50px' width='120px'><text x='0' y='20' fill='black' font-size='20'>></text></svg>") no-repeat;
+    }
+  </style>
+  <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.3.1.js"></script>
+  <script type="text/javascript" src="https://cdn.datatables.net/v/dt/dt-1.10.20/b-1.6.1/b-colvis-1.6.1/fh-3.1.6/r-2.2.3/sp-1.0.1/datatables.min.js"></script>
+
+  <script type="text/javascript" class="init">
+    /* This formats the more details expanded row */
+    function format ( d ) {
+      // `d` is the original data object for the row
+      return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">'+
+          '</table>';
+    }
+
+    /* This loads the table via ajax */
+    $(document).ready(function() {
+      var table = $('#data').DataTable( {
+        "ajax": "./mastersJson",
+        /* These are the columns are displayed
+         * Each count of columns here must match the column in HTML file.
+         */
+        "columns": [
+          { "data": "hostPort" },
+          { "data": "role" },
+        ],
+        "order": [[1, 'asc']],
+        "pageLength": 100
+      } );
+
+      // Add event listener for opening and closing details
+      $('#data tbody').on('click', 'td.details-control', function () {
+        var tr = $(this).closest('tr');
+        var row = table.row( tr );
+
+        if ( row.child.isShown() ) {
+          // This row is already open - close it
+          row.child.hide();
+          tr.removeClass('shown');
+        }
+        else {
+          // Open this row
+          row.child( format(row.data()) ).show();
+          tr.addClass('shown');
+        }
+      } );
+
+      $.ajax({
+        url: "./navJson",
+        success: function( result ) {
+          $( "#title" ).html( result.service + " " + result.role +  " on " + result.host );
+        }
+      })
+    } );
+  </script>
+</head>
+<body>
+<div class="wrapper">
+  <div class="wrapper__container" style="max-width:100%">
+    <div id="top-nav" class="top-nav-fixed push-huge--left push-huge--right">
+      <div class="docs-body">
+        <div class="layout">
+          <div class="layout__item one-whole">
+            <nav class="top-bar">
+              <span id="title" class="top-bar__title text-black">Kafka Consumer Proxy</span>
+              <ul id="nav" class="top-bar__nav portable-top-bar__nav--stacked push-tiny--left">
+                <li class="top-bar__item"><a href="./masters">Masters</a></li>
+                <li class="top-bar__item"><a href="./workers">Workers</a></li>
+                <li class="top-bar__item"><a href="./jobs">Jobs</a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div class="doc-body">
+        <div class="layout">
+          <div class="layout">
+            <div class="layout__item one-whole push-huge--ends">
+              <h5> Masters </h5>
+              <table id="data" class="table--bordered table--bordered-horizontal table--striped table--small" style="width:100%">
+                <thead>
+                <tr>
+                  <th>Host Port</th>
+                  <th>Role</th>
+                </tr>
+                </thead>
+                <tfoot>
+                <tr>
+                  <th>Host Port</th>
+                  <th>Role</th>
+                </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

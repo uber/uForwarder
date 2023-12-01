@@ -1,0 +1,373 @@
+.DS_Store
+*.swp
+
+# Intellij
+*.iml
+.idea
+.idea/checkstyle-idea.xml
+!.idea/METADATA
+!.idea/runConfigurations/Debug_remote.xml
+!.idea/uber/uberPluginConfig.properties
+!.idea/uber/uberPluginConfig.xml
+local.properties
+*.classpath
+*.settings
+.noai
+#folders used for storing indexes locally
+indexes/
+
+# folders for logging logs of local testing of services
+log/
+
+**/target/*
+
+# Directories where we do extraction work
+osm-snapshots
+gurafu-extracts
+
+# ignore scip-index file
+scip/*.scip
+
+# Symlink made to jar in udeploy build
+*.jar
+
+# symlink to service configs
+gurafu/gurafu-web/config/gurafu/test-burp-emr.yaml
+
+# symlink to service java_opts.sh
+/java_opts.sh
+
+# python
+dist/
+*.egg-info/
+submodulefail.log
+build/*
+_build/*
+.ipynb_checkpoints
+*.pickle
+*.pyc
+
+#pyenv
+.python-version
+
+# Python virtualenv
+run-speed-models/
+tesseract-historical-load/
+test-py/
+places_qc/
+places_accuracy/
+places_model_training/
+places_accuracy_evidence_ingestion/
+gurafuburpenv/
+env/
+
+# Folder created by the Python flux_emr test script
+tmp_ett_plots*/
+
+# Folder created by flux_emr
+.flux_emr_tmp/
+
+# cache
+.cache/*
+
+# edge-analytics
+/marketplace/edge-analytics/*.pyc
+/marketplace/edge-analytics/*.swp
+/marketplace/edge-analytics/*./pytest_cache
+/marketplace/edge-analytics/pyspark_utils.zip
+/marketplace/edge-analytics/**/metastore_db/
+/marketplace/edge-analytics/**/*.db
+/marketplace/edge-analytics/test_files/*/
+/marketplace/edge-analytics/derby.log
+/marketplace/edge-analytics/*.log
+/marketplace/edge-analytics/edge-analytics.version
+/marketplace/edge-analytics/venv
+
+# uneuver access point database cache for local dev
+access-point-db-cache
+
+#edge-analytics-streaming
+/marketplace/edge-analytics-streaming/config/examplejob/local/local/JobGraph.bin
+/marketplace/edge-analytics-streaming/config/examplejob/local/local/log4j-cli.properties
+/marketplace/edge-analytics-streaming/config/examplejob/local/local/log4j.properties
+/marketplace/edge-analytics-streaming/config/examplejob/local/local/logback.xml
+
+# streaming surge
+/marketplace/surge/flink-bacchus/config/job-surge-active-0/local/local/JobGraph.bin
+/marketplace/surge/flink-bacchus/config/job-surge-active-0/local/local/log4j-cli.properties
+/marketplace/surge/flink-bacchus/config/job-surge-active-0/local/local/log4j.properties
+/marketplace/surge/flink-bacchus/config/job-surge-active-0/local/local/logback.xml
+
+# big data files we sync in with maven
+/gurafu/gurafu-matching-regression-tests/src/test/resources/com/uber/gurafu/matching/map-data
+/gurafu/gurafu-matching-regression-tests/src/test/resources/com/uber/gurafu/matching/regression/trips/cdfa/input
+/gurafu/gurafu-matching-regression-tests/src/test/resources/com/uber/gurafu/matching/regression/trips/sf/input
+/gurafu/gurafu-matching-regression-tests/src/test/resources/com/uber/gurafu/matching/regression/trips/ny/input
+/gurafu/gurafu-matching-regression-tests/src/test/resources/com/uber/gurafu/matching/regression/trips/tunnel/input
+/gurafu/gurafu-matching-regression-tests/src/test/resources/com/uber/gurafu/matching/regression/trips/obd/input
+/gurafu/gurafu-shared-resources/src/main/resources/com/uber/gurafu/sample-data
+/build-test
+/metis
+/gurafu/gurafu-routing-regression-tests/src/test/resources/com/uber/gurafu/routing
+/gurafu/gurafu-routing-regression-tests/data
+gurafu-web-latest.tar
+generated_manifest
+sorted_build_manifest
+
+
+# graphhopper
+/graphhopper/target/
+*~
+TODO.txt
+*-gh/
+*.osm
+nbactions-*.xml
+config.properties
+build.xml
+queries.sh
+maven/
+measurement*.properties
+# gen/
+bin/
+!geocache/bin
+*.map
+android/libs/graphhopper-*-android.jar
+*/nbactions.xml
+*iml
+debug.sh
+*.dem
+*.log
+# log/
+/graphhopper/core/TODO*.txt
+srtmprovider/
+/graphhopper/core/docs/
+.*#
+cgiarprovider/
+/graphhopper/nbactions.xml
+/graphhopper/tools/nb-configuration.xml
+*.versionsBackup
+.project
+
+# spark metadata
+metastore_db/
+spark-warehouse/
+access-points/test-data/tmp-spark-data
+
+# data/security
+data/security/parquettest/parquetdata/
+
+# geocache flipr
+geocache/config/flipr-config
+geocache/config/geocache_flipr_bootstrap.json
+
+# top-offline-places
+top-offline-places/scheduler/scheduler/files/logs/*
+top-offline-places/scheduler/scheduler/files/output/*
+
+# flux-places-web
+flux/flux-places-web/secrets.json
+
+# places trained models
+flux/flux-places-science/py/AccuracyModels/Resources/models/*
+
+# Buck
+.buckconfig.local
+.buckd
+.buckjavaargs.local
+.bucklogging.local.properties
+buck-out
+build-ij
+.buckjavaargs
+.jdk.buckconfig
+.ci.buckconfig
+.dynamic.buckconfig
+.ubuild.buckconfig
+
+# Gradle
+.gradle
+build-gradle
+!gradle/wrapper/gradle-wrapper.jar
+!gradle/wrapper/gradle-wrapper.properties
+gradlew.bat
+
+# OkBuck
+/.okbuck
+# Ensure everything inside 3rdparty/jvm is unignored since it is generated
+!/3rdparty/jvm/**
+
+# Tooling:
+__init.analyzer
+!tooling/intellij/plugin-updater/
+!tooling/intellij/plugin-updater/test/sources/*.jar
+!tooling/intellij/uber-intellij-plugin-core/**/log/
+!tooling/pinocchio-utils/jdk-migrator/test/resources/test_executable.jar
+!tooling/intellij/uber-error-parser/src/test/resources/build/log-analysis/
+
+# Proto lint
+protoc-gen-uber-lint
+
+# 3rdpaty idl:
+!idl/3rdparty/build
+
+# Gurafu generated test resources
+gurafu/gurafu-matching-core/src/test/resources/com/uber/gurafu/matching/-*
+
+# address-parser logspam
+fievel_py/com/uber/flux/ptolemy/address-parser/logs/**
+out/
+# ML address-parser config file
+fievel_py/com/uber/flux/ptolemy/address-parser/python/crf/config.py
+
+# Phabricator
+.phabricator-lint
+.phabricator-comment
+
+# uToll
+gurafu/gurafu-tolls-web/utoll-web-tool/utoll_web_tool/files/data/logs/*
+gurafu/gurafu-tolls-web/utoll-web-tool/utoll_web_tool/files/data/temp/*
+
+# Roadrunner
+metis-5.1.0/*
+/roadrunner/scripts/capacity_estimation/routing_engine_config/temp_data/*
+
+# java heap dumps
+*.hprof
+
+# copied over thrift files for docker (deleted after docker push)
+maps/mc-metrics/miraService/opuspro/*.thrift
+
+# terraform
+*.terraform*
+*.tfstate*
+
+# Generated file
+custom_demangle
+
+# Lessman cache files
+.lessman_cache
+
+# Lessman config files
+host_config.json
+
+# submitqueue bin
+!dev-platform/cicd/submitqueue/bin
+
+# devexp/rfc
+devexp/rfc/schema/sql/local_mysql.cnf
+
+# dearjohn
+security/privacy/dearjohn/home
+.java-version
+
+# multileg
+!marketplace/matching/multileg/audit-log-publish/src/main/java/com/uber/multileg/audit/log
+!marketplace/matching/multileg/audit-log-publish/src/test/java/com/uber/multileg/audit/log
+!marketplace/matching/multileg/common/src/main/java/com/uber/multileg/common/core/runtime/config/multileg/audit/log
+!marketplace/matching/multileg/common/src/main/java/com/uber/multileg/experiment/inclusion/log
+!marketplace/matching/multileg/common/src/test/java/com/uber/multileg/common/core/runtime/config/multileg/audit/log
+!marketplace/matching/multileg/entities/src/main/java/com/uber/multileg/entities/core/audit/log
+!marketplace/matching/multileg/entities/src/main/java/com/uber/multileg/entities/eats/audit/log
+!marketplace/matching/multileg/entities/src/test/java/com/uber/multileg/entities/core/audit/log
+
+# gurafu local jar
+!gurafu/gurafu-closure-core/libs/datex2.jar
+
+# Gulfstream Maven Plugin
+!money/gulfstream-schema/gulfstream-schema-build/src/main/java/com/uber/money/schema/build
+!money/gulfstream-schema/gulfstream-schema-build/src/test/java/com/uber/money/schema/build
+
+#data-athena
+data/athena/athena-yarn-queue-manager/tool/output/updated.xml
+
+#forecasting-flink
+marketplace/forecasting/futureflow/forecasting-flink/config/**/JobGraph.bin
+marketplace/forecasting/futureflow/forecasting-flink/config/**/log4j-cli.properties
+marketplace/forecasting/futureflow/forecasting-flink/config/**/log4j.properties
+marketplace/forecasting/futureflow/forecasting-flink/config/**/logback.xml
+
+#vagrant config
+iteng/corp-integration/medley-service/.vagrant
+
+# maps/app/mapstore-streaming
+maps/app/mapstore-streaming/config/**/JobGraph.bin
+maps/app/mapstore-streaming/config/**/log4j-cli.properties
+maps/app/mapstore-streaming/config/**/log4j.properties
+maps/app/mapstore-streaming/config/**/logback.xml
+
+# maps deploy
+maps/mapdeploy/dataorc/backend/config/fake_secrets.yaml
+
+# money streaming flink
+money/orderscrubber-completeness-validator/config/**/JobGraph.bin
+money/orderscrubber-completeness-validator/config/**/log4j-cli.properties
+money/orderscrubber-completeness-validator/config/**/log4j.properties
+money/orderscrubber-completeness-validator/config/**/logback.xml
+
+# safety config files for local testing
+safety/uverify/config/local.yaml
+
+# EngDocs
+**/docs/_build/*
+**/env_docs/*
+
+# search
+vmtouch
+sia-data
+**/local/local/JobGraph.bin
+*.kapture
+
+# vscode config files
+.vscode/
+
+# usso
+.netrc
+.usso.buckconfig
+.usso.properties
+.usso.gradle
+
+# ucd
+tooling/ucd/ALL_ALIASES
+
+# tooling integration tests
+!tooling/shell/tests/integration-targets/**
+
+# Test recording and replaying directory
+/record_replay
+
+# buck dependency simulations
+.buck_simulator_output/**
+
+# direnv - i.e. to set JAVA_HOME on entry
+.envrc
+
+# Bazel
+/bazel-*
+.ijwb
+
+# ITEA
+.itea
+
+# Dynamic config
+tooling/defs/bazel/config/dynamic_config.bzl
+tooling/defs/common/config/dynamic_config.bzl
+
+# JFx migrator backup folder
+**/*-jfx-backup/**
+/data/kafka/offset-manager/config/development.*.yaml
+
+# node js
+node_modules/
+package-lock.json
+
+# snapshots
+snapshot_*.thrift
+
+# Store service secrets in local for development and testing
+/security/engsec/accesshealth-core/src/main/resources/secrets.yaml
+/security/engsec/accesshealth-core/src/main/resources/config/secrets.yaml
+
+# Generated bazelrc file
+.remotecache.bazelrc
+
+# depw
+dependencies.yaml.tmp

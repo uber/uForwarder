@@ -1,0 +1,88 @@
+service:
+  name: ${UDEPLOY_SERVICE_NAME:kafka-consumer-proxy}
+
+grpc:
+  port: 8087
+
+system:
+  port: 8881
+
+logging:
+  pattern:
+    level: "%X"
+
+uber:
+  region: phx
+
+management:
+  worker:
+    workerUdg: udg://test-worker-udg
+  server:
+    debugUrlFormat: "http://%s:8080"
+
+master:
+  rebalancer: default
+  jobCreator: default
+  numWorkerPerUri: 1
+  manager:
+    job:
+      metricsInterval: 60000 # 1 min in ms
+      rebalanceInterval: 10000 # 10s in ms
+    worker:
+      metricsInterval: 60000 # 1 min in ms
+  store:
+    mode: ZK
+    serializerType: JSON
+    worker:
+      bufferedWriteInterval: 30s
+      ttl: 2m
+    jobStatus:
+      bufferedWriteInterval: 20s
+      ttl: 5m
+  zookeeper:
+    # This sets the zkConnection
+    # Coordinator uses zkConnection for leader election
+    # If store.mode is ZK, it will read connection string from zkConnection
+    zkConnection: localhost:2181/kafka-consumer-proxy
+  autoscalar:
+    upScaleWindowDuration: 6m
+    downScaleWindowDuration: 10m
+    hibernateWindowDuration: 20m
+    upScalePercentile: 0.1
+    downScalePercentile: 0.08
+    upScaleMinFactor: 1.07
+    downScaleMinFactor: 0.06
+    upScaleMaxFactor: 1.05
+    downScaleMaxFactor: 0.04
+    throughputTTL: 10s
+    jobStatusTTL: 5m
+    sampleInterval: 5000
+    dryRun: true
+    hibernatingEnabled: true
+    messagesPerSecPerWorker: 100
+    bytesPerSecPerWorker: 1000
+# These are configurations for the worker.
+worker:
+  controller:
+    type: default
+    grpc:
+      masterHostPort: 'localhost:9000'
+      masterUdgPath: 'udg://master'
+      heartbeatInterval: 1m
+      heartbeatTimeout: 2m
+      workerLease: 3m
+      commandExecutorPoolSize: 4
+  dispatcher:
+    kafka:
+      resolverClass: com.uber.data.kafka.datatransfer.common.KafkaClusterResolver
+      bootstrapServers: "localhost:9093"
+      keySerializerClass: "org.apache.kafka.common.serialization.ByteArraySerializer"
+      ValueSerializerClass: "org.apache.kafka.common.serialization.ByteArraySerializer"
+      compressionType: "zstd"
+  # These are configurations for the pipeline
+  pipeline:
+    manager:
+      # This is the interval for the pipeline manager to garbage collect unused pipelines
+      gcInterval: 60000 # 1 min in ms
+      # This is the interval for the pipeline manager to log and report metrics
+      metricsInterval: 60000 # 1 min in ms

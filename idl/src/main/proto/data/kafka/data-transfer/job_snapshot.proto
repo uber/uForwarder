@@ -1,0 +1,21 @@
+syntax = "proto3";
+
+// These protos are in alpha stage and there is no guarantee of protocol compatbility at this time.
+
+import "data/kafka/data-transfer/job.proto";
+import "data/kafka/data-transfer/job_status.proto";
+
+package uber.data.kafka.datatransfer;
+
+option go_package = "datatransferpb";
+option java_multiple_files = true;
+option java_outer_classname = "JobSnapshotProto";
+option java_package = "com.uber.data.kafka.datatransfer";
+
+// JobSnapshot is an aggregated view of the job from both the master and worker's perspective.
+message JobSnapshot {
+  // Job is the expected definition/configuration for this job from the master's perspective.
+  StoredJob expected_job = 1;
+  // JobStatus is the last reported configuration of the job from the worker's perspective.
+  StoredJobStatus actual_job_status = 2;
+}

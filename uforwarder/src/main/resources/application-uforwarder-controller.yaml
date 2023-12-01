@@ -1,0 +1,219 @@
+# Service name is used in a wide variety of ways across libraries.
+service:
+  name: ${UDEPLOY_SERVICE_NAME:kafka-consumer-proxy}
+
+# Logging configurations
+logging:
+  pattern:
+    # Log jaeger trace id
+    level: "%X"
+
+# GRPC Server configurations
+grpc:
+  # Port for GRPC Server
+  port: 8087
+
+# Jetty configurations
+server:
+  # Port for jetty
+  port: 8086
+
+metrics:
+  # host tag is excluded by default to avoid hitting m3 cardinality limits and having metrics blacklisted.
+  # we add host tags manually to only metrics that require it.
+  # The majority of host level information should leverage the debug pages.
+  includeHostTag: false
+
+# Enable async-profiler debug pages.
+jvm:
+  profiler:
+    async-profiler:
+      enable: true
+
+# These are the configurations for the system debug pages.
+management:
+  # These configurations manage the jobs.html debug pages
+  job:
+    enabled: true
+  # These configurations manage the workers.html debug pages
+  worker:
+    enabled: true
+    # workerUdg sets the udg path for the worker to link to worker debug page from master debug page.
+    workerUdg: "udg://kafka-consumer-proxy-worker"
+  server:
+    debugUrlFormat: "https://system.uberinternal.com/%s:5328/debug/peers/watchkeys"
+
+
+# These are the configurations for the master
+master:
+  rebalancer:
+    # Determines which rebalancer is used.
+    mode: default
+    # If rebalancer == RpcURriAssigner, this sets the number of workers allocated to a single rpcUri.
+    # Effectively, this controls resource isolation per target service.
+    numWorkersPerUri: 2
+  # Determines the job creator to be used.
+  # A special job creator is necessary for DLQ jobs which will snapshot the highwatermark for
+  # bounded consumption.
+  jobCreator: default
+  # These are configurations that control Kafka related operations
+  kafka:
+    # Determines the frequency of checking kafka topic partition expansion or shrink.
+    # When partition expansion or shrink happens, the master will create new jobs or destroy old
+    # jobs.
+    partition.expansion.watcher.interval: 60000 # 1 min in ms
+    # These are the configurations for the Kafka AdminClient.
+    admin:
+      # This determines how we will resolve the kafka brokers.
+      resolverClass: com.uber.data.kafka.datatransfer.common.KafkaClusterResolver
+      # According to Kafka, the client ID should be unique in a Kafka consumer proxy instance.
+      clientId: kafka-consumer-proxy-admin-${UBER_RUNTIME_ENVIRONMENT:default}
+      # This is the bootstrap server that is used if resovlerMode = STATIC.
+      bootstrapServers: 127.0.0.1:9092
+      # This determines whether or not to load secure configuration for kafka admin client
+      enableSecure: false
+    # These are the configurations for the KafkaConsumer used to commit offsets for all
+    # topic-partitions.
+    offsetCommitter:
+      # This determines how we will resolve the kafka brokers.
+      resolverClass: com.uber.data.kafka.datatransfer.common.KafkaClusterResolver
+      # This is the bootstrap server that is used if resovlerMode = STATIC.
+      bootstrapServers: 127.0.0.1:9092
+  # These are configurations that control the managers.
+  # Managers are responsible for maintain the state of the system, but defer persistent to the store.
+  manager:
+    job:
+      # Determines the frequency of emitting metrics on job state.
+      metricsInterval: 60000 # 1 min in ms
+      # Determines the frequency that the rebalance loop is run.
+      # Reducing this value means that system will detect unassigned jobs faster
+      # but at the cost of additional store calls.
+      rebalanceInterval: 10000 # 10s in ms
+    worker:
+      # Determines the frequency of emitting metrics on worker state.
+      metricsInterval: 60000 # 1 min in ms
+  # These configurations control the store.
+  store:
+    mode: ZK
+    worker:
+      # This configures the frequency of buffered writes if putThrough is not invoked.
+      # This reduces the number of writes to ZK.
+      bufferedWriteInterval: 60s
+      # This sets the worker TTL.
+      # If a worker misses heartbeats for this amount of time, the work will be reassigned to another worker.
+      ttl: 10s
+    jobStatus:
+      # This sets the interval for async/batched writes to underlying storage.
+      # Internally, this class maintains an in-memory WAL that is periodically written to ZK in a batch.
+      bufferedWriteInterval: 10s
+      # This is the ttl for job status updates.
+      # A job status update should be provided at every heartbeat
+      # so if it is not set for 1 hour, we assume the job is no longer active.
+      ttl: 1h
+  zookeeper:
+    # This sets the zkConnection
+    # Coordinator uses zkConnection for leader election
+    # If store.mode is ZK, it will read connection string from zkConnection
+    # Use dev ZK b/c we must specify zkConnection override per application to avoid metadata inconsistency.
+    zkConnection: 127.0.0.1:2181/uforwarder
+  coordinator:
+    leaderSelector:
+      # Determines the frequency of emitting metrics on leader selector state.
+      metricsInterval: 10000 # 10s in ms
+  autoscalar:
+    sampleInterval: 5000 # 5s in ms
+# These are configurations for the worker.
+worker:
+  # These are configurations for the controller
+  controller:
+    grpc:
+      # This is the UDG path that the worker uses to resolve master nodes.
+      masterUdgPath: ""
+      # This is the host:port that the worker will use to contact the master.
+      # If masterUdgPath != "", it will be preferred.
+      masterHostPort: 127.0.0.1:8087
+      # This is the frequency of heartbeat requests are sent from the worker to the master.
+      heartbeatInterval: 1s
+      # This is the timeout for the heartbeats.
+      heartbeatTimeout: 2s
+      # This is the worker lease.
+      # If a worker does not successfully heartbeat within the worker lease window,
+      # it will assume that it no longer has a valid lease and cancelAll jobs locally.
+      #
+      # Make this value to be "worker TTL (used on master side) + group rebalance interval (used on
+      # master side) + heartbeat interval" so that even when the connection between master and
+      # worker is down, no jobs will have downtime. That's because jobs running on the unreachable
+      # worker will not terminated by the unreachable worker before those jobs are picked up by new
+      # workers. One problem is that there will be message duplications, which might not be a big
+      # problem.
+      workerLease: 21s
+  # These are configurations for the dispatchers.
+  dispatcher:
+    grpc:
+      # This sets the minimum RPC timeout value so that we don't automatically timeout on all rpc calls.
+      minRpcTimeoutMs: 1
+      # This sets the maximum RPC timeout value so that we don't automatically block for rpc calls.
+      maxRpcTimeoutMs: 1800000 # 30 mins
+      # This sets the number of gRPC channels that is used in the gRPC channel pool to increase the max
+      # number of concurrent requests.
+      # At Uber, the max concurrent connections per pipeline will be bounded by 400 * grpcChannelPoolSize.
+      # 400 limit is imposed by Muttley (D3909281).
+      # Consumer Proxy exposes an additional per job concurrency limit that can be fine tuned at runtime
+      # in the JobGroup. This configuration should be thought of as the hard upper bound for the system,
+      # instead of a per-user tunable parameter.
+      # Note: gRPC channel pool is specific to a pipeline.
+      grpcChannelPoolSize: 5 # 400 * 5 = 2000 concurrent connections per pipeline
+    # These are configurations for kafka retryQ/DLQ dispatchers.
+    kafka:
+      enabled: true
+      # This determines how we will resolve the kafka brokers.
+      resolverClass: com.uber.data.kafka.datatransfer.common.KafkaClusterResolver
+      # This is the bootstrap server that is used if resovlerMode = STATIC.
+      bootstrapServers: 127.0.0.1:9092
+      # The acks setting that we pass to Apache Kafka Producer.
+      acks: all
+      # This metrics reporting interval for Kafka Producer metrics in ms.
+      metricsInterval: 60000
+      # The maximum size of a request in bytes. This setting will limit the number of record batches the producer
+      # will send in a single request to avoid sending huge requests. This is also effectively a cap on the maximum
+      # uncompressed record batch size. Note that the server has its own cap on the record batch size (after compression
+      # if compression is enabled) which may be different from this.
+      maxRequestSize: 31457280
+      # This decides if KCP will have compression enabled when producing messages into the retry
+      # queues and DLQs. It also specifies the compression algorithm
+      compressionType: snappy
+  # These are the configurations for the processors.
+  processor:
+    # The thread pool size for each processor
+    # As those threads process message, its workload is usually high. If there are CPU
+    # throttling problems, please (1) increase the # of CPU cores (2) increase this number
+    threadPoolSize: 4
+    # The max number of unprocessed inbound messages cached for each topic-partition.
+    maxInboundCacheCount: 1000
+    # The max number of unprocessed outbound messages cached for each topic-partition.
+    # This number can be override by user-defined JobConfiguration.
+    maxOutboundCacheCount: 400
+    # The max difference between an ACKed offset and the largest committed offset for each
+    # topic-partition.
+    maxAckCommitSkew: 10000
+    # This filters out messages that was not originally produced to the cluster that it is being read from.
+    clusterFilterEnabled: false
+  # These are the configurations for the fetchers.
+  fetcher:
+    # These are the configurations for the kafka fetcher.
+    kafka:
+      # Enable the kafka spring auto configuration.
+      # Setting this to true will automatically inject the kafka fetcher into the spring container.
+      enabled: true
+      # This determines how we will resolve the kafka brokers.
+      resolverClass: com.uber.data.kafka.datatransfer.common.KafkaClusterResolver
+      # This is the bootstrap server that is used if resolverClass = STATIC.
+      bootstrapServers: 127.0.0.1:9092
+  # These are configurations for the pipeline
+  pipeline:
+    manager:
+      # This is the interval for the pipeline manager to garbage collect unused pipelines
+      gcInterval: 60000 # 1 min in ms
+      # This is the interval for the pipeline manager to log and report metrics
+      metricsInterval: 10000 # 10s
+

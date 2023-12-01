@@ -1,0 +1,56 @@
+syntax = "proto3";
+
+// These protos are in alpha stage and there is no guarantee of protocol compatbility at this time.
+
+import "google/protobuf/timestamp.proto";
+import "data/kafka/data-transfer/job.proto";
+
+package uber.data.kafka.datatransfer;
+
+option go_package = "datatransferpb";
+option java_multiple_files = true;
+option java_outer_classname = "JobStatusProto";
+option java_package = "com.uber.data.kafka.datatransfer";
+
+// JobStatus is used by the worker to report the current status of job it was assigned.
+message JobStatus {
+  // Job that is registered.
+  Job job = 1;
+
+  // JobState is the current state of the job.
+  // See comments above each enumeration for the description of each JobState.
+  JobState state = 2;
+
+  // Consumer Task Status contains task state when job_type = JOB_TYPE_KAFKA_CONSUMER*.
+  KafkaConsumerTaskStatus kafka_consumer_task_status = 3;
+
+  // Dispatcher Task Status contains task state when job_type = JOB_TYPE_LOAD_GEN_PRODUCE
+  KafkaDispatcherTaskStatus kafka_dispatcher_task_status = 4;
+}
+
+// KafkaConsumerTaskStatus represents the state of a consumer task.
+message KafkaConsumerTaskStatus {
+  // Read offset, following Kafka conventions, is the next offset to be read.
+  int64 read_offset = 1;
+  // Commit offset, following Kafka convention, is the next offset to be committed.
+  int64 commit_offset = 2;
+  // number of messages per second delivered.
+  double messages_per_sec = 3;
+  // number of bytes per second delivered.
+  double bytes_per_sec = 4;
+}
+
+// KafkaDispatcherTaskStatus represents the state of the dispatcher task.
+message KafkaDispatcherTaskStatus {
+  int64 num_records_produced = 1;
+}
+
+// StoredJobStatus is the internal representation of JobStatus report from worker
+message StoredJobStatus {
+  // The last updated timestamp for this record.
+  google.protobuf.Timestamp last_updated = 1;
+  // The status of the job as reported by the worker in the last heartbeat.
+  JobStatus job_status = 2;
+  // The id for the worker current working on this job.
+  int64 worker_id = 3;
+}

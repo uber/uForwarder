@@ -1,0 +1,300 @@
+package com.uber.data.kafka.datatransfer.controller.autoscalar;
+
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Ticker;
+import com.google.common.cache.Cache;
+import com.google.common.cache.CacheBuilder;
+import com.uber.data.kafka.datatransfer.FlowControl;
+import com.uber.data.kafka.datatransfer.JobGroup;
+import com.uber.data.kafka.datatransfer.JobState;
+import com.uber.data.kafka.datatransfer.common.StructuredLogging;
+import com.uber.data.kafka.datatransfer.common.StructuredTags;
+import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
+import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
+import com.uber.m3.tally.Scope;
+import com.uber.m3.tally.Stopwatch;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.scheduling.annotation.Scheduled;
+
+/**
+ * AutoScalar 1. Aggregates job throughout into JobGroup throughput 2. Records job Group throughput
+ * in timed bounded window 3. When window matured, use the information to update {@link
+ * com.uber.data.kafka.datatransfer.ScaleStatus} of jobGroup Internal status cleanup automatically
+ * after ttl since last access
+ */
+public class AutoScalar implements Scalar {
+  private static final Logger logger = LoggerFactory.getLogger(AutoScalar.class);
+  // in-memory auto-scalar status store
+  private final Cache<JobGroupKey, JobGroupScaleStatus> autoScalarStatusStore;
+  private final AutoScalarConfiguration config;
+  private final JobThroughputMonitor jobThroughputMonitor;
+  private final ScaleState.Builder stateBuilder;
+  private final Scope scope;
+  private final LeaderSelector leaderSelector;
+
+  /**
+   * Instantiates a new Auto scalar.
+   *
+   * @param config the config
+   * @param jobThroughputMonitor the job throughput monitor
+   * @param ticker the ticker
+   * @param scope the scope
+   * @param leaderSelector the leader selector
+   */
+  public AutoScalar(
+      AutoScalarConfiguration config,
+      JobThroughputMonitor jobThroughputMonitor,
+      Ticker ticker,
+      Scope scope,
+      LeaderSelector leaderSelector) {
+    this.autoScalarStatusStore =
+        CacheBuilder.newBuilder()
+            .expireAfterAccess(config.getJobStatusTTL().toMillis(), TimeUnit.MILLISECONDS)
+            .ticker(ticker)
+            .build();
+    this.jobThroughputMonitor = jobThroughputMonitor;
+    this.config = config;
+    this.scope = scope;
+    this.leaderSelector = leaderSelector;
+    this.stateBuilder = ScaleState.newBuilder().withConfig(config).withTicker(ticker);
+  }
+
+  /** Update sample of throughput to window */
+  @Scheduled(fixedDelayString = "${master.autoscalar.sampleInterval}")
+  public void runSample() {
+    if (!leaderSelector.isLeader()) {
+      logger.debug("skipped runSample because current instance is not leader");
+      return;
+    }
+
+    Stopwatch timer = scope.timer(MetricNames.AUTOSCALAR_RUN_SAMPLE_LATENCY).start();
+
+    // according to
+    // https://guava.dev/releases/19.0/api/docs/com/google/common/cache/CacheBuilder.html#expireAfterAccess(long,%20java.util.concurrent.TimeUnit)
+    // enumeration over entries doesn't reset access time, so expired entries can still be
+    // evict by the cache
+    for (Map.Entry<JobGroupKey, JobGroupScaleStatus> entry :
+        autoScalarStatusStore.asMap().entrySet()) {
+      jobThroughputMonitor
+          .get(entry.getKey())
+          .ifPresent(
+              t -> {
+                double sampleScale = throughputToScale(t);
+                entry.getValue().sampleScale(sampleScale);
+                scope
+                    .tagged(
+                        StructuredTags.builder()
+                            .setKafkaGroup(entry.getKey().getGroup())
+                            .setKafkaTopic(entry.getKey().getTopic())
+                            .build())
+                    .gauge(MetricNames.AUTOSCALAR_SAMPLED_SCALE)
+                    .update(sampleScale);
+              });
+    }
+    timer.stop();
+  }
+
+  /**
+   * Applies auto scale result to job group - Skips non-running jobs When quota changed, update job
+   * group scale status
+   *
+   * @param rebalancingJobGroup the rebalancing job group
+   * @param defaultScale the default scale, apply if it's in dryRun Mode
+   */
+  @Override
+  public void apply(RebalancingJobGroup rebalancingJobGroup, double defaultScale) {
+    if (!leaderSelector.isLeader()) {
+      logger.debug("skipped apply because current instance is not leader");
+      throw new IllegalArgumentException("Not Leader");
+    }
+
+    JobState state = rebalancingJobGroup.getJobGroupState();
+    JobGroup jobGroup = rebalancingJobGroup.getJobGroup();
+    if (state != JobState.JOB_STATE_RUNNING) {
+      logger.debug(
+          "skipped apply because jobGroup is not running",
+          StructuredLogging.jobGroupId(jobGroup.getJobGroupId()),
+          StructuredLogging.kafkaTopic(jobGroup.getKafkaConsumerTaskGroup().getTopic()),
+          StructuredLogging.kafkaCluster(jobGroup.getKafkaConsumerTaskGroup().getCluster()),
+          StructuredLogging.kafkaGroup(jobGroup.getKafkaConsumerTaskGroup().getConsumerGroup()));
+      return;
+    }
+
+    JobGroupKey jobGroupKey = JobGroupKey.of(jobGroup);
+    final SignatureAndScale quota = new SignatureAndScale(jobGroup.getFlowControl());
+    final Optional<Double> scale = rebalancingJobGroup.getScale();
+    double newScale =
+        autoScalarStatusStore
+            .asMap()
+            .computeIfAbsent(
+                jobGroupKey,
+                key ->
+                    new JobGroupScaleStatus(scale.isPresent() ? quota.build(scale.get()) : quota))
+            .getScale(quota);
+
+    scope
+        .tagged(
+            StructuredTags.builder()
+                .setKafkaGroup(jobGroup.getKafkaConsumerTaskGroup().getConsumerGroup())
+                .setKafkaTopic(jobGroup.getKafkaConsumerTaskGroup().getTopic())
+                .build())
+        .gauge(MetricNames.AUTOSCALAR_COMPUTED_SCALE)
+        .update(newScale);
+
+    // use default scale in dryRun mode
+    // TODO: remove hardcoded topic group after root cause fixed see KAFEP-2386
+    if (config.isDryRun()
+        || (jobGroupKey.getGroup().equals("fulfillment-indexing-gateway")
+            && jobGroupKey
+                .getTopic()
+                .equals("fulfillment-raw-transport-provider-session-state-changes"))) {
+      newScale = defaultScale;
+    }
+
+    scope
+        .tagged(
+            StructuredTags.builder()
+                .setKafkaGroup(jobGroup.getKafkaConsumerTaskGroup().getConsumerGroup())
+                .setKafkaTopic(jobGroup.getKafkaConsumerTaskGroup().getTopic())
+                .build())
+        .gauge(MetricNames.AUTOSCALAR_APPLIED_SCALE)
+        .update(newScale);
+
+    if (rebalancingJobGroup.updateScale(newScale)) {
+      logger.info(
+          String.format("update jobGroup scale to %.2f", newScale),
+          StructuredLogging.jobGroupId(jobGroup.getJobGroupId()),
+          StructuredLogging.kafkaTopic(jobGroup.getKafkaConsumerTaskGroup().getTopic()),
+          StructuredLogging.kafkaCluster(jobGroup.getKafkaConsumerTaskGroup().getCluster()),
+          StructuredLogging.kafkaGroup(jobGroup.getKafkaConsumerTaskGroup().getConsumerGroup()));
+    }
+  }
+
+  /**
+   * Coverts observed throughput to scale
+   *
+   * @param throughput
+   * @return
+   */
+  private double throughputToScale(Throughput throughput) {
+    return Math.max(
+        throughput.getMessagesPerSecond() / config.getMessagesPerSecPerWorker(),
+        throughput.getBytesPerSecond() / config.getBytesPerSecPerWorker());
+  }
+
+  @VisibleForTesting
+  protected Map<JobGroupKey, JobGroupScaleStatus> getStatusStore() {
+    return autoScalarStatusStore.asMap();
+  }
+
+  @VisibleForTesting
+  protected void cleanUp() {
+    autoScalarStatusStore.cleanUp();
+  }
+
+  /**
+   * Converts quota to scale.
+   *
+   * @param flowControl
+   * @return
+   */
+  private double quotaToScale(FlowControl flowControl) {
+    return Math.max(
+        flowControl.getMessagesPerSec() / config.getMessagesPerSecPerWorker(),
+        flowControl.getBytesPerSec() / config.getBytesPerSecPerWorker());
+  }
+
+  /**
+   * calculate hash value of quota
+   *
+   * @param flowControl
+   * @return
+   */
+  private int quotaToHash(FlowControl flowControl) {
+    return Objects.hash(flowControl.getMessagesPerSec(), flowControl.getBytesPerSec());
+  }
+
+  @VisibleForTesting
+  protected class JobGroupScaleStatus {
+    private ScaleState state;
+    private long signature;
+
+    JobGroupScaleStatus(SignatureAndScale scale) {
+      reset(scale);
+    }
+
+    private void reset(SignatureAndScale scale) {
+      signature = scale.signature;
+      state = stateBuilder.build(scale.scale);
+    }
+
+    /**
+     * Gets proposed scale of a job group
+     *
+     * @param quota the quota of a job group
+     * @return the scale
+     */
+    private double getScale(SignatureAndScale quota) {
+      // reset scale when flow control updated
+      // TODO: stop rest scale if autoscalar matured enough in production
+      if (signature != quota.signature) {
+        synchronized (this) {
+          if (signature != quota.signature) {
+            reset(quota);
+          }
+        }
+      }
+
+      return state.getScale();
+    }
+
+    /**
+     * Take a sample of scale.
+     *
+     * @param sampleScale current observed sampleScale of a job group
+     */
+    synchronized void sampleScale(double sampleScale) {
+      state = state.onSample(sampleScale);
+    }
+  }
+
+  /**
+   * SignatureAndScale represent scale with signature generated from flowControl setting. so that
+   * flowControl update can invalidate and reset scale
+   */
+  private class SignatureAndScale {
+    private final double scale;
+    private final long signature;
+
+    private SignatureAndScale(FlowControl flowControl) {
+      this(quotaToScale(flowControl), quotaToHash(flowControl));
+    }
+
+    private SignatureAndScale(double scale, long signature) {
+      this.scale = scale;
+      this.signature = signature;
+    }
+
+    /**
+     * build new instance with new scale value
+     *
+     * @param newScale
+     * @return
+     */
+    private SignatureAndScale build(double newScale) {
+      return new SignatureAndScale(newScale, signature);
+    }
+  }
+
+  private static class MetricNames {
+    private static final String AUTOSCALAR_RUN_SAMPLE_LATENCY = "autoscalar.run.sample.latency";
+    private static final String AUTOSCALAR_COMPUTED_SCALE = "autoscalar.computed.scale";
+    private static final String AUTOSCALAR_APPLIED_SCALE = "autoscalar.applied.scale";
+    private static final String AUTOSCALAR_SAMPLED_SCALE = "autoscalar.sampled.scale";
+  }
+}

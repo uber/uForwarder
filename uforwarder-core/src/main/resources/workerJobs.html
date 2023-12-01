@@ -1,0 +1,235 @@
+<html>
+<head>
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/dt-1.10.20/b-1.6.1/b-colvis-1.6.1/fh-3.1.6/r-2.2.3/sp-1.0.1/datatables.min.css"/>
+  <link href="https://d1a3f4spazzrp4.cloudfront.net/superfine/6.1.0/superfine.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://d1a3f4spazzrp4.cloudfront.net/uber-fonts/4.0.0/superfine.css">
+
+  <style>
+    td.details-control {
+      background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' height='50px' width='120px'><text x='0' y='20' fill='black' font-size='20'>></text></svg>") no-repeat;
+      cursor: pointer;
+    }
+    tr.shown td.details-control {
+      background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' height='50px' width='120px'><text x='0' y='20' fill='black' font-size='20'>></text></svg>") no-repeat;
+    }
+    #data_wrapper {
+      height: 100%;
+    }
+    div.dt-button-collection {
+      max-height: 800px;
+      overflow-y: scroll;
+    }
+  </style>
+  <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.3.1.js"></script>
+  <script type="text/javascript" src="https://cdn.datatables.net/v/dt/dt-1.10.20/b-1.6.1/b-colvis-1.6.1/fh-3.1.6/r-2.2.3/sp-1.0.1/datatables.min.js"></script>
+
+  <script type="text/javascript" class="init">
+    /* This formats the more details expanded row */
+    function format ( d ) {
+      // `d` is the original data object for the row
+      return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">'+
+          '</table>';
+    }
+
+    /* This loads the table via ajax */
+    $(document).ready(function() {
+      var table = $('#data').DataTable( {
+        "ajax": "./jobsJson",
+        "scrollX": true,
+        "dom": 'Bfrtip',
+        "buttons": ['colvis'],
+        /* These are the columns are displayed
+         * Each count of columns here must match the column in HTML file.
+         */
+        "columns": [
+          { "data": "pipelineId" },
+          { "data": "jobPartition" },
+          { "data": "job.job.jobId" },
+          { "data": "job.job.type" },
+          { "data": "job.job.flowControl.messagesPerSec" },
+          { "data": "job.job.flowControl.bytesPerSec" },
+          { "data": "job.job.flowControl.maxInflightMessages" },
+          { "data": "job.job.kafkaConsumerTask.cluster" },
+          { "data": "job.job.kafkaConsumerTask.topic" },
+          { "data": "job.job.kafkaConsumerTask.partition" },
+          { "data": "job.job.kafkaConsumerTask.consumerGroup" },
+          { "data": "job.job.kafkaConsumerTask.autoOffsetResetPolicy" },
+          { "data": "job.job.kafkaConsumerTask.isolationLevel" },
+          { "data": "job.job.kafkaConsumerTask.startOffset" },
+          { "data": "job.job.kafkaConsumerTask.endOffset" },
+          { "data": "job.job.rpcDispatcherTask.uri",
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              $(nTd).html("<a href=" + oData.rpcDebugUrl + ">" + oData.job.job.rpcDispatcherTask.uri + "</a>");
+            }
+          },
+          { "data": "job.job.rpcDispatcherTask.procedure" },
+          { "data": "job.job.rpcDispatcherTask.rpcTimeoutMs" },
+          { "data": "job.job.rpcDispatcherTask.maxRpcTimeouts" },
+          { "data": "job.job.retryConfig.retryEnabled" },
+          { "data": "job.job",
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              var retryTopic = oData.job.job.rpcDispatcherTask.retryQueueTopic;
+              if (oData.job.job.retryConfig.retryQueues.length > 0) {
+                retryTopic = oData.job.job.retryConfig.retryQueues.map(r => r.retryQueueTopic).join(
+                    ',\n');
+              }
+
+              $(nTd).html(retryTopic);
+            }
+          },
+          { "data": "job.job",
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              var retryCluster = oData.job.job.rpcDispatcherTask.retryCluster;
+              if (oData.job.job.retryConfig.retryQueues.length > 0) {
+                retryCluster = oData.job.job.retryConfig.retryQueues.map(r => r.retryCluster).join(
+                    ',\n');
+              }
+              $(nTd).html(retryCluster);
+            }
+          },
+          { "data": "job.job",
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              var processingDelay = oData.job.job.kafkaConsumerTask.processingDelayMs;
+              if (oData.job.job.retryConfig.retryQueues.length > 0) {
+                processingDelay = oData.job.job.retryConfig.retryQueues.map(
+                    r => r.processingDelayMs).join(',\n');
+              }
+              $(nTd).html(processingDelay);
+            }
+          },
+          { "data": "job.job",
+            "fnCreatedCell": function (nTd, sData, oData, iRow, iCol) {
+              var maxRetryCount = '';
+              if (oData.job.job.retryConfig.retryQueues.length > 0) {
+                maxRetryCount = oData.job.job.retryConfig.retryQueues.map(
+                    r => r.maxRetryCount).join(',\n');
+              }
+              $(nTd).html(maxRetryCount);
+            }
+          },
+          { "data": "job.job.rpcDispatcherTask.dlqTopic" },
+          { "data": "job.job.rpcDispatcherTask.dlqCluster" },
+        ],
+        "order": [[1, 'asc']],
+        "pageLength": 100
+      } );
+
+      // Add event listener for opening and closing details
+      $('#data tbody').on('click', 'td.details-control', function () {
+        var tr = $(this).closest('tr');
+        var row = table.row( tr );
+
+        if ( row.child.isShown() ) {
+          // This row is already open - close it
+          row.child.hide();
+          tr.removeClass('shown');
+        }
+        else {
+          // Open this row
+          row.child( format(row.data()) ).show();
+          tr.addClass('shown');
+        }
+      } );
+
+      $.ajax({
+        url: "./navJson",
+        success: function( result ) {
+          $( "#title" ).html( result.service + " " + result.role +  " on " + result.host );
+        }
+      })
+    } );
+  </script>
+</head>
+<body>
+<div class="wrapper">
+  <div class="wrapper__container" style="max-width:100% ">
+    <div id="top-nav" class="top-nav-fixed push-huge--left push-huge--right">
+      <div class="docs-body">
+        <div class="layout">
+          <div class="layout__item one-whole">
+            <nav class="top-bar">
+              <span id="title" class="top-bar__title text-black">Kafka Consumer Proxy</span>
+              <ul id="nav" class="top-bar__nav portable-top-bar__nav--stacked push-tiny--left">
+                <li class="top-bar__item"><a href="./jobs">Expected Jobs</a></li>
+                <li class="top-bar__item"><a href="./jobStatus">Actual Job Status</a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div class="doc-body">
+        <div class="layout">
+          <div class="layout">
+            <div class="layout__item one-whole">
+              <h5> Jobs </h5>
+              <table id="data" class="table--bordered table--bordered-horizontal table--striped table--small" style="width:100%">
+                <thead>
+                <tr>
+                  <th>Pipeline Id</th>
+                  <th>Job Partition</th>
+                  <th>Job Id</th>
+                  <th>Type</th>
+                  <th>Msg/Sec</th>
+                  <th>Bytes/Sec</th>
+                  <th>Max Inflight</th>
+                  <th>Cluster</th>
+                  <th>Topic</th>
+                  <th>Partition</th>
+                  <th>Group</th>
+                  <th>Offset Policy</th>
+                  <th>Isolation Level</th>
+                  <th>Start Offset</th>
+                  <th>End Offset</th>
+                  <th>Rpc Uri</th>
+                  <th>Grpc Procedure</th>
+                  <th>Rpc Timeout Ms</th>
+                  <th>Max Rpc Timeouts</th>
+                  <th>Retry Enabled</th>
+                  <th>Retry Topic</th>
+                  <th>Retry Cluster</th>
+                  <th>Delay Ms</th>
+                  <th>Max Retry Count</th>
+                  <th>Dlq Topic</th>
+                  <th>Dlq Cluster</th>
+                </tr>
+                </thead>
+                <tfoot>
+                <tr>
+                  <th>Pipeline Id</th>
+                  <th>Job Partition</th>
+                  <th>Job Id</th>
+                  <th>Type</th>
+                  <th>Msg/Sec</th>
+                  <th>Bytes/Sec</th>
+                  <th>Max Inflight</th>
+                  <th>Cluster</th>
+                  <th>Topic</th>
+                  <th>Partition</th>
+                  <th>Group</th>
+                  <th>Offset Policy</th>
+                  <th>Isolation Level</th>
+                  <th>Start Offset</th>
+                  <th>End Offset</th>
+                  <th>Rpc Uri</th>
+                  <th>Grpc Procedure</th>
+                  <th>Rpc Timeout Ms</th>
+                  <th>Max Rpc Timeouts</th>
+                  <th>Retry Enabled</th>
+                  <th>Retry Topic</th>
+                  <th>Retry Cluster</th>
+                  <th>Delay Ms</th>
+                  <th>Max Retry Count</th>
+                  <th>Dlq Topic</th>
+                  <th>Dlq Cluster</th>
+                </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

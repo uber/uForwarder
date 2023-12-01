@@ -1,0 +1,62 @@
+syntax = "proto3";
+
+package uber.data.kafka.consumer;
+
+option go_package = "consumerpb";
+option java_multiple_files = true;
+option java_outer_classname = "OffsetsProto";
+option java_package = "com.uber.data.kafka.consumer";
+
+// OffsetInfo contains information about offsets.
+message OffsetInfo {
+    // cluster is the kafka cluster.
+    string cluster = 1;
+    // topic is the kafka topic.
+    string topic = 2;
+    // partition is the kafka partition.
+    int32 partition = 3;
+    // low_watermark is the offset of the first message that is
+    // currently available on the broker.
+    int64 low_watermark = 4;
+    // high_watermark is the offset of the next message produced to the broker.
+    // note: the offset of the latest mesage available on the broker is highwatermark - 1.
+    int64 high_watermark = 5;
+}
+
+// ConsumerOffsetInfo contains information about consumer offsets.
+message ConsumerOffsetInfo {
+    // offset_info contains information about the offsets for a given topic.
+    OffsetInfo offset_info = 1;
+    // consumer_group is the consumer group name that this ConsumerGroupInfo is being reported for.
+    string consumer_group = 2;
+    // committedOffset is the last committed offset for this consumer group.
+    // This may be -1 if there are no consumer offsets checkpointed.
+    int64 committed_offset = 3;
+    // uncommitted_count is the number of messages for this topic-partition that has yet to be committed.
+    // On worker rebalance or restart, this is the number of message that will be received.
+    // This is calculated as highwatermark - committedOffset - 1.
+    int64 uncommitted_count = 4;
+}
+
+// ConsumerOffsetStore is an enum for place where consumer offsets are stored.
+enum ConsumerOffsetStore {
+    CONSUMER_OFFSET_STORE_INVALID = 0;
+    CONSUMER_OFFSET_STORE_KAFKA_8 = 1;
+    CONSUMER_OFFSET_STORE_KAFKA_10 = 2;
+    // consumer self manage their kafka offset store
+    CONSUMER_OFFSET_STORE_SELF_MANAGE = 3;
+}
+
+// Request and Response objects.
+// ConsumerOffsetInfoRequest is the request that will be made to POST /getConsumerOffsetInfo in aakafkaoffsetmgmt.
+message ConsumerOffsetInfoRequest {
+    string cluster_name = 1;
+    string group_name = 2;
+    string topic_name = 3;
+    ConsumerOffsetStore offset_store = 4;
+}
+
+// ConsumerOffsetInfoResponse is the response that will be returned on POST /getConsumerOffsetInfo in aakafkaoffsetmgmt.
+message ConsumerOffsetInfoResponse {
+    repeated ConsumerOffsetInfo consumer_offset_info = 1;
+}

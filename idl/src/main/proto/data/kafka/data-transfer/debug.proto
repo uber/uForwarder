@@ -1,0 +1,74 @@
+syntax = "proto3";
+
+// These protos are in alpha stage and there is no guarantee of protocol compatbility at this time.
+
+package uber.data.kafka.datatransfer;
+
+import "data/kafka/data-transfer/worker.proto";
+import "data/kafka/data-transfer/job.proto";
+import "data/kafka/data-transfer/job_status.proto";
+
+option go_package = "datatransferpb";
+option java_multiple_files = true;
+option java_outer_classname = "DebugProto";
+option java_package = "com.uber.data.kafka.datatransfer";
+
+message DebugWorkerRow {
+  StoredWorker worker = 1;
+  int64 expected_job_count = 2;
+  string url = 3;
+  string routing_destination =4;
+  double total_message_per_sec = 5;
+  double total_load = 6;
+}
+
+message DebugWorkersTable {
+  repeated DebugWorkerRow data = 1;
+}
+
+message DebugJobRow {
+  StoredJob job = 1;
+  string job_group_id = 2;
+  string pipeline_id = 3;
+  string rpc_debug_url = 4;
+  string job_partition = 5;
+}
+
+message DebugJobsTable {
+  repeated DebugJobRow data = 1;
+}
+
+message DebugJobStatusTable {
+  repeated DebugJobStatusRow data = 1;
+}
+
+message DebugJobStatusRow {
+  string pipeline_id = 1;
+  JobStatus job_status = 2;
+}
+
+message DebugMasterRow {
+  string host_port = 1;
+  string role = 2;
+}
+
+message DebugMasterTable {
+  repeated DebugMasterRow data = 1;
+}
+
+message DebugNav {
+  string host = 1;
+  string role = 2;
+  string service = 3;
+}
+
+message DebugMessageStubRow {
+  string pipeline_id = 1;
+  int32 partition = 2;
+  int64 offset = 3;
+  repeated string events = 4;
+}
+
+message DebugMessageStubTable {
+  repeated DebugMessageStubRow data = 1;
+}
