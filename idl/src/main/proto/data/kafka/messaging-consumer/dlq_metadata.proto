@@ -1,0 +1,38 @@
+syntax = "proto3";
+
+package uber.data.kafka.consumer;
+
+option go_package = "consumerpb";
+option java_multiple_files = true;
+option java_outer_classname = "DlqMetadataProto";
+option java_package = "com.uber.data.kafka.consumer";
+
+// DLQMetadata contains metadata from the original kafka message used in
+// messaging-consumer-go lib and /data/messaging/clients:consumer
+// The metadata will be encoded and decoded when sending or receiving
+// messages from the DLQ cluster in order to present the library
+//user a seamless logical topic.
+message DLQMetadata {
+    // retry_count is an incrementing value denoting the number
+    // of times a message has been redelivered.
+    // It will be 0 on first delivery.
+    int64 retry_count = 1;
+    // topic is the original kafka topic the message was received on.
+    // This is analogous to the logical topic name.
+    string topic = 2;
+    // partition is the original kafka partition the message was received on.
+    int32 partition = 3;
+    // offset is the record offset of the original message in the original topic-partition.
+    int64 offset = 4;
+    // timestamp_ns is the original record timestamp of the original message.
+    int64 timestamp_ns = 5;
+    // data is a byte buffer for storing arbitrary information.
+    // This is useful if the Kafka Broker version used is < 0.11
+    // and hence Kafka native record headers (KAFKA-4208) are unavailable
+    // so the DLQ metadata must be stored in the record Key or Value.
+    bytes data = 6;
+    // timeout_count is an incrementing value denoting the number
+    // of times a message has been redelivered due to timeout.
+    // It will be 0 on first delivery.
+    int64 timeout_count = 7;
+}

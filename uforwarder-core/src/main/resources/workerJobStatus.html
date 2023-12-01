@@ -1,0 +1,198 @@
+<html>
+<head>
+  <link rel="stylesheet" type="text/css" href="https://cdn.datatables.net/v/dt/dt-1.10.20/b-1.6.1/b-colvis-1.6.1/fh-3.1.6/r-2.2.3/sp-1.0.1/datatables.min.css"/>
+  <link href="https://d1a3f4spazzrp4.cloudfront.net/superfine/6.1.0/superfine.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://d1a3f4spazzrp4.cloudfront.net/uber-fonts/4.0.0/superfine.css">
+
+  <style>
+    td.details-control {
+      background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' height='50px' width='120px'><text x='0' y='20' fill='black' font-size='20'>></text></svg>") no-repeat;
+      cursor: pointer;
+    }
+    tr.shown td.details-control {
+      background: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' version='1.1' height='50px' width='120px'><text x='0' y='20' fill='black' font-size='20'>></text></svg>") no-repeat;
+    }
+    #data_wrapper {
+      height: 100%;
+    }
+    div.dt-button-collection {
+      max-height: 800px;
+      overflow-y: scroll;
+    }
+  </style>
+  <script type="text/javascript" language="javascript" src="https://code.jquery.com/jquery-3.3.1.js"></script>
+  <script type="text/javascript" src="https://cdn.datatables.net/v/dt/dt-1.10.20/b-1.6.1/b-colvis-1.6.1/fh-3.1.6/r-2.2.3/sp-1.0.1/datatables.min.js"></script>
+
+  <script type="text/javascript" class="init">
+    /* This formats the more details expanded row */
+    function format ( d ) {
+      // `d` is the original data object for the row
+      return '<table cellpadding="5" cellspacing="0" border="0" style="padding-left:50px;">'+
+          '</table>';
+    }
+
+    /* This loads the table via ajax */
+    $(document).ready(function() {
+      var table = $('#data').DataTable( {
+        "ajax": "./jobStatusJson",
+        "scrollX": true,
+        "dom": 'Bfrtip',
+        "buttons": ['colvis'],
+        /* These are the columns are displayed
+         * Each count of columns here must match the column in HTML file.
+         */
+        "columns": [
+          { "data": "pipelineId" },
+          { "data": "jobStatus.job.jobId" },
+          { "data": "jobStatus.job.type" },
+          { "data": "jobStatus.state" },
+          { "data": "jobStatus.kafkaConsumerTaskStatus.readOffset" },
+          { "data": "jobStatus.kafkaConsumerTaskStatus.commitOffset" },
+          { "data": "jobStatus.kafkaConsumerTaskStatus.messagesPerSec" },
+          { "data": "jobStatus.kafkaConsumerTaskStatus.bytesPerSec" },
+          { "data": "jobStatus.job.flowControl.messagesPerSec" },
+          { "data": "jobStatus.job.flowControl.bytesPerSec" },
+          { "data": "jobStatus.job.flowControl.maxInflightMessages" },
+          { "data": "jobStatus.job.kafkaConsumerTask.cluster" },
+          { "data": "jobStatus.job.kafkaConsumerTask.topic" },
+          { "data": "jobStatus.job.kafkaConsumerTask.partition" },
+          { "data": "jobStatus.job.kafkaConsumerTask.consumerGroup" },
+          { "data": "jobStatus.job.kafkaConsumerTask.autoOffsetResetPolicy" },
+          { "data": "jobStatus.job.kafkaConsumerTask.isolationLevel" },
+          { "data": "jobStatus.job.kafkaConsumerTask.startOffset" },
+          { "data": "jobStatus.job.kafkaConsumerTask.endOffset" },
+          { "data": "jobStatus.job.kafkaConsumerTask.processingDelayMs" },
+          { "data": "jobStatus.job.rpcDispatcherTask.uri" },
+          { "data": "jobStatus.job.rpcDispatcherTask.procedure" },
+          { "data": "jobStatus.job.rpcDispatcherTask.rpcTimeoutMs" },
+          { "data": "jobStatus.job.rpcDispatcherTask.maxRpcTimeouts" },
+          { "data": "jobStatus.job.rpcDispatcherTask.retryQueueTopic" },
+          { "data": "jobStatus.job.rpcDispatcherTask.retryCluster" },
+          { "data": "jobStatus.job.rpcDispatcherTask.dlqTopic" },
+          { "data": "jobStatus.job.rpcDispatcherTask.dlqCluster" },
+        ],
+        "order": [[1, 'asc']],
+        "pageLength": 100
+      } );
+
+      $('a.toggle-vis').on( 'click', function (e) {
+        e.preventDefault();
+
+        // Get the column API object
+        var column = table.column( $(this).attr('data-column') );
+
+        // Toggle the visibility
+        column.visible( ! column.visible() );
+      });
+      //
+      // $('div.dt-button-collection').css({
+      //   "height": "500px",
+      //   "overflow-y": "scroll",
+      // });
+
+      $.ajax({
+        url: "./navJson",
+        success: function( result ) {
+          $( "#title" ).html( result.service + " " + result.role +  " on " + result.host );
+        }
+      })
+    } );
+  </script>
+</head>
+<body>
+<div class="wrapper">
+  <div class="wrapper__container" style="max-width:100%">
+    <div id="top-nav" class="top-nav-fixed push-huge--left push-huge--right">
+      <div class="docs-body">
+        <div class="layout">
+          <div class="layout__item one-whole">
+            <nav class="top-bar">
+              <span id="title" class="top-bar__title text-black">Kafka Consumer Proxy</span>
+              <ul id="nav" class="top-bar__nav portable-top-bar__nav--stacked push-tiny--left">
+                <li class="top-bar__item"><a href="./jobs">Expected Jobs</a></li>
+                <li class="top-bar__item"><a href="./jobStatus">Actual Job Status</a></li>
+              </ul>
+            </nav>
+          </div>
+        </div>
+      </div>
+      <div class="doc-body">
+        <div class="layout">
+          <div class="layout">
+            <div class="layout__item one-whole">
+              <h5> Jobs </h5>
+              <table id="data" class="table--bordered table--bordered-horizontal table--striped table--small" style="width:100%">
+                <thead>
+                <tr>
+                  <th>Pipeline Id</th>
+                  <th>Job Id</th>
+                  <th>Type</th>
+                  <th>State</th>
+                  <th>Read Offset</th>
+                  <th>Commit Offset</th>
+                  <th>Actual Msg/Sec</th>
+                  <th>Actual Bytes/Sec</th>
+                  <th>Msg/Sec</th>
+                  <th>Bytes/Sec</th>
+                  <th>Max Inflight</th>
+                  <th>Cluster</th>
+                  <th>Topic</th>
+                  <th>Partition</th>
+                  <th>Group</th>
+                  <th>Offset Policy</th>
+                  <th>Isolation Level</th>
+                  <th>Start Offset</th>
+                  <th>End Offset</th>
+                  <th>Delay Ms</th>
+                  <th>Rpc Uri</th>
+                  <th>Grpc Procedure</th>
+                  <th>Rpc Timeout Ms</th>
+                  <th>Max Rpc Timeouts</th>
+                  <th>Retry Topic</th>
+                  <th>Retry Cluster</th>
+                  <th>Dlq Topic</th>
+                  <th>Dlq Cluster</th>
+                </tr>
+                </thead>
+                <tfoot>
+                <tr>
+                  <th>Pipeline Id</th>
+                  <th>Job Id</th>
+                  <th>Type</th>
+                  <th>State</th>
+                  <th>Read Offset</th>
+                  <th>Commit Offset</th>
+                  <th>Actual Msg/Sec</th>
+                  <th>Actual Bytes/Sec</th>
+                  <th>Msg/Sec</th>
+                  <th>Bytes/Sec</th>
+                  <th>Max Inflight</th>
+                  <th>Cluster</th>
+                  <th>Topic</th>
+                  <th>Partition</th>
+                  <th>Group</th>
+                  <th>Offset Policy</th>
+                  <th>Isolation Level</th>
+                  <th>Start Offset</th>
+                  <th>End Offset</th>
+                  <th>Delay Ms</th>
+                  <th>Rpc Uri</th>
+                  <th>Grpc Procedure</th>
+                  <th>Rpc Timeout Ms</th>
+                  <th>Max Rpc Timeouts</th>
+                  <th>Retry Topic</th>
+                  <th>Retry Cluster</th>
+                  <th>Dlq Topic</th>
+                  <th>Dlq Cluster</th>
+                </tr>
+                </tfoot>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

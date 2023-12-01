@@ -1,0 +1,8 @@
+service:
+  name: ${UDEPLOY_SERVICE_NAME:kafka-consumer-proxy}
+
+master:
+  kafka:
+    offsetCommitter:
+      resolverClass: com.uber.data.kafka.datatransfer.common.KafkaClusterResolver
+      bootstrapServers: 127.0.0.1:9093

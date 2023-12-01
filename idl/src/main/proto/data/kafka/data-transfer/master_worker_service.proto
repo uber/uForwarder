@@ -1,0 +1,109 @@
+syntax = "proto3";
+
+// These protos are in alpha stage and there is no guarantee of protocol compatbility at this time.
+
+import "data/kafka/data-transfer/worker.proto";
+import "data/kafka/data-transfer/job.proto";
+import "data/kafka/data-transfer/job_status.proto";
+
+package uber.data.kafka.datatransfer;
+
+option go_package = "datatransferpb";
+option java_multiple_files = true;
+option java_outer_classname = "MasterWorkerServiceProto";
+option java_package = "com.uber.data.kafka.datatransfer";
+
+
+// MasterWorkerService is the GRPC service exposed by the master for the worker to contact.
+// Each worker is required to register itself and maintain an active heartbeat for liveness
+// and to receive work assignment.
+service MasterWorkerService {
+  // RegisterWorker is used by a new worker to register itself to receive work.
+  rpc RegisterWorker(RegisterWorkerRequest) returns (RegisterWorkerResponse);
+  // Heartbeat must be sent by a worker regularly to maintain liveness and lease.
+  rpc Heartbeat(HeartbeatRequest) returns (HeartbeatResponse);
+}
+
+// RegisterWorkerRequest is sent by the worker when it believes that it is not an active member of the cluster.
+// A worker should set the Participants set as it best understands them.
+// The master will validate that the Participants set is in a valid state when responding.
+message RegisterWorkerRequest {
+  Participants participants = 1;
+}
+
+// RegisterWorkerResponse is sent by the master to the worker to acknowledge that it is successfully registered as a worker in a cluster
+// The participants set may have modified data (specifically the node id).
+// The worker is required to update its internal participants information to match the updated one provided by the master.
+// The correct participants set must be sent in all subsequent requests.
+message RegisterWorkerResponse {
+  Participants participants = 1;
+}
+
+// HeartbeatRequest is sent by the worker to the master to indicate liveness.
+// If the master does not receive a successful heartbeat request in a configurable amount of time, it should
+// consider the worker dead and rebalance the job to other workers as necessary.
+// The HeartbeatRequest also contains a progress report on all running job that the worker has previously received.
+// The master may use this information to rebalance the workload as it sees fit.
+message HeartbeatRequest {
+  Participants participants = 1;
+  repeated JobStatus job_status = 2;
+}
+
+// HeartbeatRequest is sent by the worker to the master to indicate liveness.
+// If the master does not receive a successful heartbeat request in a configurable amount of time, it should
+// consider the worker dead and rebalance the job to other workers as necessary.
+// The HeartbeatRequest also contains a progress report on all running job that the worker has previously received.
+// The master may use this information to rebalance the workload as it sees fit.
+message HeartbeatResponse {
+  uber.data.kafka.datatransfer.Participants participants = 1;
+  repeated Command commands = 2;
+}
+
+// Participants is a master-worker pair of participants.
+// Participants is included in all master-worker requests so that both parties are clear about
+// who they are communicating and the Node id can be used to as a fencing mechanism.
+message Participants {
+  uber.data.kafka.datatransfer.Node master = 1;
+  uber.data.kafka.datatransfer.Node worker = 2;
+}
+
+// Command is an instruction that is sent from master to worker to change the worker behavior.
+message Command {
+  // The type of command that is being issued.
+  CommandType type = 1;
+  // Details for the job to run.
+  Job job = 2;
+}
+
+// CommandType of the command that is being issued.
+// The matrix of commands is:
+// +---------------+----------------+----------------+----------------+----------------+----------------+----------------+----------------------------------------+
+// | -             | Expected State | null           | INVALID        | UNIMPLEMENTED  | FAILED         | CANCELED       | RUNNING                                |
+// +---------------+----------------+----------------+----------------+----------------+----------------+----------------+----------------------------------------+
+// | Actual State  | -              | -              | -              | -              | -              | -              | -                                      |
+// +---------------+----------------+----------------+----------------+----------------+----------------+----------------+----------------------------------------+
+// | null          | -              | N/A            | N/A            | N/A            | N/A            | N/A            | COMMAND_RUN                            |
+// +---------------+----------------+----------------+----------------+----------------+----------------+----------------+----------------------------------------+
+// | INVALID       | -              | N/A            | N/A            | N/A            | N/A            | N/A            | COMMAND_RUN                            |
+// +---------------+----------------+----------------+----------------+----------------+----------------+----------------+----------------------------------------+
+// | UNIMPLEMENTED | -              | N/A            | N/A            | N/A            | N/A            | N/A            | COMMAND_RUN                            |
+// +---------------+----------------+----------------+----------------+----------------+----------------+----------------+----------------------------------------+
+// | FAILED        | -              | N/A            | N/A            | N/A            | N/A            | N/A            | COMMAND_RUN                            |
+// +---------------+----------------+----------------+----------------+----------------+----------------+----------------+----------------------------------------+
+// | CANCELED      | -              | N/A            | N/A            | N/A            | N/A            | N/A            | COMMAND_RUN                            |
+// +---------------+----------------+----------------+----------------+----------------+----------------+----------------+----------------------------------------+
+// | RUNNING       | -              | COMMAND_CANCEL | COMMAND_CANCEL | COMMAND_CANCEL | COMMAND_CANCEL | COMMAND_CANCEL | COMMAND_UPDATE                         |
+// |               |                |                |                |                |                |                | if configuration change                |
+// +---------------+----------------+----------------+----------------+----------------+----------------+----------------+----------------------------------------+
+enum CommandType {
+  // 0 enum must be invalid per t.uber.com/protobuf-style
+  COMMAND_TYPE_INVALID = 0;
+  // This is a command to run a job.
+  COMMAND_TYPE_RUN_JOB = 1;
+  // This command cancels a job.
+  // A CANCELED job cannot be restarted.
+  COMMAND_TYPE_CANCEL_JOB = 2;
+  // This command updates a job.
+  COMMAND_TYPE_UPDATE_JOB = 3;
+}
+

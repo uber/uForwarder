@@ -1,0 +1,7 @@
+service:
+  name: kafka-consumer-proxy
+master:
+  rebalancer:
+    mode: StreamingRpcUriRebalancer
+    numWorkersPerUri: 2
+  jobCreator: StreamingJobCreator

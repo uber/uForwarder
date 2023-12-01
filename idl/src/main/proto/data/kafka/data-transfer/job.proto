@@ -1,0 +1,415 @@
+syntax = "proto3";
+
+// These protos are in alpha stage and there is no guarantee of protocol compatibility at this time.
+
+import "google/protobuf/timestamp.proto";
+
+package uber.data.kafka.datatransfer;
+
+option go_package = "datatransferpb";
+option java_multiple_files = true;
+option java_outer_classname = "JobProto";
+option java_package = "com.uber.data.kafka.datatransfer";
+
+// The Job is the unit of work that needs to be done.
+message Job {
+  // job_id is a globally unique id for the job item.
+  // This is set by the master when job is created.
+  int64 job_id = 1;
+  // JobType is an enumeration for the type of job to be run.
+  // This allows the master-worker protocol to generalize to multiple types of workload that needs sharding.
+  // JobType shall be used to determine the set of valid tasks that contains specific information about the job.
+  // The mapping of JobType to Tasks is:
+  // - JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER: KafkaConsumerTask and RpcDispatcherTask.
+  JobType type = 2;
+  // FlowControl defines how the data should flow (msgs/s, bytes/s inflight_msgs).
+  FlowControl flow_control = 3;
+  // KafkaConsumerTask is populated for job that is involves Kafka Consumption.
+  // Specifically, this is non-null for:
+  //  - JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER
+  KafkaConsumerTask kafka_consumer_task = 4;
+  // RpcDispatcherTask is populated for job that is involves RPC dispatching.
+  // Specifically, this is non null for:
+  //  - JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER
+  RpcDispatcherTask rpc_dispatcher_task = 5;
+  // SecurityConfig is populated for job that intends to use message security feature
+  // It contains service identity that will be used for authz check.
+  // It also stores the flag which decides if the job should be run securely.
+  SecurityConfig security_config = 6;
+  // RetryConfig is populated for job that involves one or more retry queues.
+  // It contains instructions on entry conditions for retry queues.
+  // It also stores the flag controlling if this feature is turned on or not,
+  // and how the retry count is calculated.
+  RetryConfig retry_config = 7;
+  // KafkaDispatcherTask is populated for job that involves Kafka replication.
+  // Specifically, this is non-null for:
+  //  - JOB_TYPE_KAFKA_REPLICATION and
+  //  - JOB_TYPE_LOAD_GEN_PRODUCE
+  KafkaDispatcherTask kafka_dispatcher_task = 8;
+  // MiscConfig contains the non-work-related, miscellaneous configs of a job
+  MiscConfig misc_config = 9;
+  // Audit task is populated for job that involves auditing in Uatu SLA monitor.
+  // Whenever audit task is populated, the job type would be set to JOB_TYPE_KAFKA_AUDIT
+  AuditTask audit_task = 10;
+  // ResqConfig is populated for a job's resilience configuration
+  // It contains resilience queue configuration and a flag controlling if
+  // resilience queue should be enabled or not
+  ResqConfig resq_config = 11;
+
+  // AvailabilityTask should be populated for Kafka Availability jobs
+  AvailabilityTask availability_task = 12;
+}
+
+
+
+// KafkaConsumerTask is a specification for a Kafka Consumption task.
+message KafkaConsumerTask {
+  // cluster to read from.
+  string cluster = 1;
+  // topic to read from.
+  string topic = 2;
+  // partition to read from.
+  int32 partition = 3;
+  // consumer_group to read on behalf of and/or checkpoint for.
+  string consumer_group = 4;
+  // the auto offset reset policy.
+  AutoOffsetResetPolicy auto_offset_reset_policy = 5;
+  // start_offset to start at when reading.
+  // 1. When start_offset >= 0, the consumer tries to read from this offset. If iet does not exist on
+  // the Kafka server, then use auto_offset_reset_policy to reset the starting offset.
+  // 2. When start_offset < 0, the consumer tries to read from last committed offset. If it does not
+  // exist on the Kafka server, then use auto_offset_reset_policy to reset the starting offset.
+  int64 start_offset = 6;
+  // end_offset to stop at when reading.
+  // end_offset follows Kafka zero-offset semantics so actually refers to the first offset to **not** consume.
+  // For example, if end_offset = 100, then the last offset to read and process is 99.
+  // 0 for unbounded consumption.
+  int64 end_offset = 7;
+  // DEPRECATED. Use processing_delay_ms in RetryConfig instead.
+  int32 processing_delay_ms = 8 [deprecated = true];
+  // isolation level could be read_uncommitted or read_committed, default read_uncommitted
+  IsolationLevel isolation_level = 9;
+  // Auditing related metadata. It will be set if the job type is `JOB_TYPE_KAFKA_AUDIT`
+  AuditMetaData audit_metadata = 10;
+  // committed_offset is the committed offset of a consumer group to a topic
+  int64 committed_offset = 11;
+}
+
+
+// RpcDispatcherTask is a specification for a Rpc Dispatcher task.
+message RpcDispatcherTask {
+  // uri for resolving the destination service that will receive RPC push messages.
+  // We support a subset of standard Uber URI schemes from
+  // dev-platform/frameworks/jfx/library/grpc/client/src/main/java/com/uber/jfx/grpc/GrpcChannelBuilder.java#L56:
+  // 1. muttley://muttley-routing-key[@service-name] (this is a KCP internal format which is
+  // different from standard Muttley format)
+  string uri = 1;
+
+  // This indicates the procedure name that is used to identify the handler on the callee server.
+  // e.g., kafka.consumerproxy.consumer_group/topic.
+  string procedure = 2;
+
+  // when a rpc call take more than rpc_time_out_ms to finish, it is considered failed.
+  int32 rpc_timeout_ms = 3;
+
+  // DEPRECATED. Use retry_queue_topic in RetryConfig instead.
+  string retry_queue_topic = 4 [deprecated = true];
+  // DEPRECATED. Use retry_cluster in RetryConfig instead.
+  string retry_cluster = 5 [deprecated = true];
+
+  // dlq topic.
+  // when the recipient service indicates the consumer proxy to stash a message, the message should
+  // be produced to the dlq topic.
+  // an empty dlq topic indicates that it is disabled.
+  string dlq_topic = 6;
+  // the cluster to write the dlq_topic to.
+  string dlq_cluster = 7;
+
+  // when rpc timeout times exceeds the limit, send message to DLQ if configured
+  // the option should be disabled by default, only enable when consumer stuck with rpc timeout
+  int32 max_rpc_timeouts = 8;
+  // the max allowed timeout in backoff retry. Even with exponential backoff,
+  // the timeout value should not exceed rpc_timeout_limit_ms, if it is configured.
+  int32 rpc_timeout_limit_ms = 9;
+}
+
+// KafkaDispatcherTask is a specification for a Kafka dispatcher task.
+message KafkaDispatcherTask {
+  // cluster to produce to.
+  string cluster = 1;
+  // topic to produce to.
+  string topic = 2;
+  // whether deduplication with uDeduplify is enabled or not.
+  bool dedup_enabled = 3;
+  // partition to produce to.
+  int32 partition = 4;
+  // whether to produce securely
+  bool is_secure = 5;
+  // true when acks=1/lossy, false when acks=all/lossless
+  bool is_acks_one = 6;
+}
+
+// RetryConfig configures the retry policy for retriable errors.
+// It's the updated version of RetryConfig(see below).
+message RetryConfig {
+  // a list of retry queues
+  repeated RetryQueue retry_queues = 1;
+  // whether the whole policy is enabled or not;
+  bool retry_enabled = 2;
+}
+
+// RetryQueue configures one retry queue in a set of retry queues
+message RetryQueue {
+  // retry queue topic.
+  // when the recipient service indicates the consumer proxy to retry a message, the message should
+  // be produced to the retry queue topic.
+  // an empty retry queue topic indicates that it is disabled.
+  string retry_queue_topic = 1;
+  // the cluster to write the retry_queue_topic to.
+  string retry_cluster = 2;
+  // a user configurable delay that is applied to redelivering of retried requests.
+  // when retry topic is enabled, the retry delay must fail into [0, 86400000].
+  // i.e, 0ms ~ 1day.
+  int32 processing_delay_ms = 3;
+  // The max retry of the retry queue
+  int32 max_retry_count = 4;
+}
+
+// AuditTask is a specification for audit tasks in Uatu
+message AuditTask {
+  // cluster to audit
+  string cluster = 1;
+  // topic to audit
+  string topic = 2;
+  // partition to audit
+  int32 partition = 3;
+  // Auditing related metadata
+  AuditMetaData audit_metadata = 4;
+}
+
+// Audit metadata contains the configurations for the different types of auditing to be performed
+message AuditMetaData {
+  // a list of audit configs
+  repeated AuditConfig audit_configs = 1;
+}
+
+// Audit configuration contains the configurations for individual audit tasks
+message AuditConfig {
+  // Type of audit to be executed as part of the task
+  AuditType audit_type = 1;
+  // Frequency of the audit in seconds
+  int32 audit_interval_in_seconds = 2;
+  // Config that will be populated based on the audit type
+  oneof config {
+    // Configurations for cross DC auditing
+    CrossDCAuditConfig cross_dc_audit_config = 3;
+    // Configurations for auditing replication pipelines
+    ReplicationAuditConfig replication_audit_config = 4;
+    // Configurations for retention auditing
+    RetentionAuditConfig retention_audit_config = 5;
+  }
+}
+
+// Represents specific audit configurations for cross DC auditing
+message CrossDCAuditConfig {
+  TopicsToCompare cross_dc_checks = 1;
+  bool send_to_udq = 2;
+  double failure_threshold = 3;
+  string udq_test_name = 4;
+}
+
+// Represents specific audit configurations for auditing replication pipeline
+message ReplicationAuditConfig {
+  repeated TopicsToCompare replication_checks = 1;
+}
+
+message RetentionAuditConfig {
+  int32 partition_count = 1;
+}
+
+// TopicsToCompare represents the source(LHS) and the destination(RHS) topics that must be compared against
+message TopicsToCompare {
+  // List of source topics / clusters - LHS
+  repeated TopicInfo source = 1;
+  // List of destination topics / clusters - RHS
+  repeated TopicInfo destination = 2;
+}
+
+// TopicInfo represents information about a topic
+message TopicInfo {
+  // Cluster name
+  string cluster = 1;
+  // Topic name
+  string topic = 2;
+}
+
+// ResqConfig configures the underlying resilience queue for a topic in the consumer
+message ResqConfig {
+  // the resilience queue topic name.
+  // an empty resq_topic indicates that the resilience queue feature is disabled.
+  string resq_topic = 1;
+  // the cluster to find the resilience queue topic on.
+  string resq_cluster = 2;
+  // Optional to specify flow control for resilience queue topic
+  // If left unspecified, resilience queue will inherit flow control from main topic
+  FlowControl flow_control = 3;
+  // whether the resilience queue is enabled or not
+  bool resq_enabled = 4;
+  // whether the resilience queue uses acks=1 producer or not
+  bool acks_one_producer = 5;
+}
+
+message AvailabilityTask {
+  // the type of job Kafka Availability to perform to monitor a service
+  AvailabilityJobType availability_job_type = 1;
+  // whether the availability task should be zone aware.
+  // should be set for proxy producer or proxy consumer with zone isolation
+  bool zone_isolated = 2;
+}
+
+enum AvailabilityJobType {
+  // 0 enum must be invalid per t.uber.com/protobuf-style
+  AVAILABILITY_JOB_TYPE_INVALID = 0;
+  // the type of job to monitor by producing natively
+  AVAILABILITY_JOB_TYPE_NATIVE_PRODUCER = 1;
+  // the type of job to monitor by consuming natively
+  AVAILABILITY_JOB_TYPE_NATIVE_CONSUMER = 2;
+  // the type of job to monitor by producing via proxy
+  AVAILABILITY_JOB_TYPE_PROXY_PRODUCER = 3;
+  // the type of job to monitor by consuming via proxy
+  AVAILABILITY_JOB_TYPE_PROXY_CONSUMER = 4;
+}
+
+// Represents the different types of audit that can be done in KafkaAuditTask
+enum AuditType {
+  // 0 enum must be invalid per t.uber.com/protobuf-style
+  AUDIT_TYPE_INVALID = 0;
+  // Type of audit where Kafka message count and latency are computed for a given duration.
+  // In addition, unique message count is calculated precisely by de-duping the messages
+  AUDIT_TYPE_EXACT_UNIQ = 1;
+  // Type of audit where Kafka message count and latency are computed for a given duration.
+  // In addition, unique message count is calculated approximately
+  AUDIT_TYPE_APPROX_UNIQ = 2;
+  // Type of audit where the topic retention is audited for any violations
+  AUDIT_TYPE_RETENTION = 3;
+  // Type of audit where topic availability is monitored. e.g offline partitions
+  AUDIT_TYPE_AVAILABILITY = 4;
+  // Audit type for aggregating service local audits
+  AUDIT_TYPE_SERVICE_AUDIT_AGGREGATION = 5;
+  // Audit type for aggregating KRP local audits
+  AUDIT_TYPE_KRP_AUDIT_AGGREGATION = 6;
+  // Audit type for comparing cross dc message count
+  AUDIT_TYPE_XDC = 7;
+  // Audit type for monitoring replication pipelines - e.g regional to agg
+  AUDIT_TYPE_REPLICATION = 8;
+}
+
+
+// JobType is an enumeration for the type of job to be run.
+// This allows the master-worker protocol to generalize to multiple types of workload that needs sharding.
+enum JobType {
+  // 0 enum must be invalid per t.uber.com/protobuf-style
+  JOB_TYPE_INVALID = 0;
+  // KAFKA_CONSUMER_TO_RPC_DISPATHCER is a job item that should consume from Kafka and dispatch to RPC.
+  // This is used by Consumer Proxy.
+  JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER = 1;
+  // KAFKA_AUDIT is a job that consumes messages or other metadata from Kafka for auditing
+  JOB_TYPE_KAFKA_AUDIT = 2;
+  // KAFKA_REPLICATION is a job item that should consume from one Kafka queue and produce to another queue.
+  // This is used by the Replication Service.
+  JOB_TYPE_KAFKA_REPLICATION = 3;
+  // Load generator producer job to produce records to the broker for stress/spike test
+  JOB_TYPE_LOAD_GEN_PRODUCE = 4;
+  // Load generator consumer job to consume records from the broker for stress/spike test
+  JOB_TYPE_LOAD_GEN_CONSUME = 5;
+  // Indicates a Kafka Availability job
+  JOB_TYPE_KAFKA_AVAILABILITY = 6;
+}
+
+// Flow describes how the data should flow.
+message FlowControl {
+  // messages_per_sec constraint.
+  double messages_per_sec = 1;
+  // bytes_per_sec constraint.
+  double bytes_per_sec = 2;
+  // max_inflight_messages constraint.
+  double max_inflight_messages = 3;
+}
+
+// SecurityConfig stores details of the user service identities.
+// It also holds the flag which is used to decide if a job will be run securely.
+message SecurityConfig {
+  // service_identities will store the SPIFFE Id(principal name) of the user service
+  // this will be used to check if the user has the necessary permissions to consume from a topic
+  repeated string service_identities = 1;
+  // is_secure flag will be used to decide if the job should be run securely
+  // the job will still be run unsecured(normal flow) if identity is provided but this flag is set to false
+  bool is_secure = 2;
+}
+
+// AutoOffsetResetPolicy defines which offset to start to read when
+// 1. the specified start_offset does not exist on the Kafka server, or
+// 2. start_offset is not specified and there is no previously-committed offset on the Kafka server.
+enum AutoOffsetResetPolicy {
+  // 0 enum must be invalid per t.uber.com/protobuf-style
+  AUTO_OFFSET_RESET_POLICY_INVALID = 0;
+  // automatically reset the offset to the earliest offset.
+  AUTO_OFFSET_RESET_POLICY_EARLIEST = 1;
+  // automatically reset the offset to the latest offset.
+  AUTO_OFFSET_RESET_POLICY_LATEST = 2;
+}
+
+// To do exactly-once delivery in multiple partitions, Kafka guarantees atomic transactions.
+// 1. read uncommitted messages
+// 2. only read committed messages
+enum IsolationLevel {
+  // 0 enum must be invalid per t.uber.com/protobuf-style
+  ISOLATION_LEVEL_INVALID = 0;
+  // no value present
+  ISOLATION_LEVEL_UNSET = 1;
+  // read all messages including uncommitted
+  ISOLATION_LEVEL_READ_UNCOMMITTED = 2;
+  // read only transaction committed messages
+  ISOLATION_LEVEL_READ_COMMITTED = 3;
+}
+
+// JobState is the current state of the worker.
+// If you add or remove any state, please update the matrix in master_worker_service.proto and CommandListBuilder.java.
+enum JobState {
+  // 0 enum must be invalid per t.uber.com/protobuf-style
+  JOB_STATE_INVALID = 0;
+  // UNIMPLEMENTED signals that the command or job type is not supported by this worker.
+  JOB_STATE_UNIMPLEMENTED = 1;
+  // FAILED signals a worker side failure of the job.
+  // A worker may determine that a job is failed independent of any command issued by the master.
+  // This is the ONLY JobState the worker may determine independently of a COMMAND from the master.
+  // All other JobStates must be in response to a COMMAND from the master.
+  // This is a terminal state.
+  JOB_STATE_FAILED = 2;
+  // RUNNING is used for jobs that actively running in a stable state.
+  JOB_STATE_RUNNING = 3;
+  // CANCELED is used for jobs for which COMMAND_TYPE_CANCEL was received by master.
+  // This is a terminal state.
+  // A canceled job does not necessarily imply cancelation due to failure.
+  JOB_STATE_CANCELED = 4;
+}
+
+// StoredJob is the internal representation of job within storage.
+message StoredJob {
+  // The last updated timestamp for this record.
+  google.protobuf.Timestamp last_updated = 1;
+  // Job information.
+  Job job = 2;
+  // The expected state of the job.
+  JobState state = 3;
+  // The exepcted worker id for this job.
+  int64 worker_id = 4;
+  // scale of the job
+  double scale = 5;
+}
+
+// MiscConfig contains the miscellaneous configs of a jobGroup/job
+message MiscConfig {
+  // enables extra logging for debugging purpose
+  bool enable_debug = 1;
+}

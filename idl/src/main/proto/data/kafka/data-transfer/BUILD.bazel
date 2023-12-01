@@ -1,0 +1,20 @@
+load("//tooling/codegen/proto:proto.bzl", "uber_grpc_java_library", "uber_proto_java_library")
+
+PROTO_SRCS = glob(["**/*.proto"])
+
+uber_proto_java_library(
+    name = "proto_main",
+    srcs = PROTO_SRCS,
+    visibility = [
+        "//data/kafka/...",
+    ],
+)
+
+uber_grpc_java_library(
+    name = "grpc_main",
+    srcs = PROTO_SRCS,
+    proto_library = ":proto_main",
+    visibility = [
+        "//data/kafka/...",
+    ],
+)

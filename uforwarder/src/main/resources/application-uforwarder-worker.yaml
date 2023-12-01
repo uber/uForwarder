@@ -1,0 +1,124 @@
+# Service name is used in a wide variety of ways across libraries.
+service:
+  name: ${UDEPLOY_SERVICE_NAME:kafka-consumer-proxy}
+
+# Logging configurations
+logging:
+  pattern:
+    # Log jaeger trace id
+    level: "%X"
+
+# Jetty configurations
+server:
+  # Port for jetty
+  port: 8089
+
+system:
+  port: 8090
+
+metrics:
+  # host tag is excluded by default to avoid hitting m3 cardinality limits and having metrics blacklisted.
+  # we add host tags manually to only metrics that require it.
+  # The majority of host level information should leverage the debug pages.
+  includeHostTag: false
+
+# Enable async-profiler debug pages.
+jvm:
+  profiler:
+    async-profiler:
+      enable: true
+# These are configurations for the worker.
+worker:
+  # These are configurations for the controller
+  controller:
+    # This is the HostResolver and ManagedChannelFactory type to load
+    type: default
+    grpc:
+      # This is the host:port that the worker will use to contact the master.
+      # If masterUdgPath != "", it will be preferred.
+      masterHostPort: 127.0.0.1:8087
+      # This is the frequency of heartbeat requests are sent from the worker to the master.
+      heartbeatInterval: 1s
+      # This is the timeout for the heartbeats.
+      heartbeatTimeout: 2s
+      # This is the worker lease.
+      # If a worker does not successfully heartbeat within the worker lease window,
+      # it will assume that it no longer has a valid lease and cancelAll jobs locally.
+      #
+      # Make this value to be "worker TTL (used on master side) + group rebalance interval (used on
+      # master side) + heartbeat interval" so that even when the connection between master and
+      # worker is down, no jobs will have downtime. That's because jobs running on the unreachable
+      # worker will not terminated by the unreachable worker before those jobs are picked up by new
+      # workers. One problem is that there will be message duplications, which might not be a big
+      # problem.
+      workerLease: 21s
+  # These are configurations for the dispatchers.
+  dispatcher:
+    grpc:
+      # This sets the minimum RPC timeout value so that we don't automatically timeout on all rpc calls.
+      minRpcTimeoutMs: 1
+      # This sets the maximum RPC timeout value so that we don't automatically block for rpc calls.
+      maxRpcTimeoutMs: 1800000 # 30 mins
+      # This sets the number of gRPC channels that is used in the gRPC channel pool to increase the max
+      # number of concurrent requests.
+      # At Uber, the max concurrent connections per pipeline will be bounded by 400 * grpcChannelPoolSize.
+      # 400 limit is imposed by Muttley (D3909281).
+      # Consumer Proxy exposes an additional per job concurrency limit that can be fine tuned at runtime
+      # in the JobGroup. This configuration should be thought of as the hard upper bound for the system,
+      # instead of a per-user tunable parameter.
+      # Note: gRPC channel pool is specific to a pipeline.
+      grpcChannelPoolSize: 5 # 400 * 5 = 2000 concurrent connections per pipeline
+    # These are configurations for kafka retryQ/DLQ dispatchers.
+    kafka:
+      enabled: true
+      # This determines how we will resolve the kafka brokers.
+      resolverClass: com.uber.data.kafka.datatransfer.common.KafkaClusterResolver
+      # This is the bootstrap server that is used if resovlerMode = STATIC.
+      bootstrapServers: 127.0.0.1:9092
+      # The acks setting that we pass to Apache Kafka Producer.
+      acks: all
+      # This metrics reporting interval for Kafka Producer metrics in ms.
+      metricsInterval: 60000
+      # The maximum size of a request in bytes. This setting will limit the number of record batches the producer
+      # will send in a single request to avoid sending huge requests. This is also effectively a cap on the maximum
+      # uncompressed record batch size. Note that the server has its own cap on the record batch size (after compression
+      # if compression is enabled) which may be different from this.
+      maxRequestSize: 31457280
+      # This decides if KCP will have compression enabled when producing messages into the retry
+      # queues and DLQs. It also specifies the compression algorithm
+      compressionType: snappy
+  # These are the configurations for the processors.
+  processor:
+    # The thread pool size for each processor
+    # As those threads process message, its workload is usually high. If there are CPU
+    # throttling problems, please (1) increase the # of CPU cores (2) increase this number
+    threadPoolSize: 4
+    # The max number of unprocessed inbound messages cached for each topic-partition.
+    maxInboundCacheCount: 1000
+    # The max number of unprocessed outbound messages cached for each topic-partition.
+    # This number can be override by user-defined JobConfiguration.
+    maxOutboundCacheCount: 400
+    # The max difference between an ACKed offset and the largest committed offset for each
+    # topic-partition.
+    maxAckCommitSkew: 10000
+    # This filters out messages that was not originally produced to the cluster that it is being read from.
+    clusterFilterEnabled: false
+  # These are the configurations for the fetchers.
+  fetcher:
+    # These are the configurations for the kafka fetcher.
+    kafka:
+      # Enable the kafka spring auto configuration.
+      # Setting this to true will automatically inject the kafka fetcher into the spring container.
+      enabled: true
+      # This determines how we will resolve the kafka brokers.
+      resolverClass: com.uber.data.kafka.datatransfer.common.KafkaClusterResolver
+      # This is the bootstrap server that is used if resolverClass = STATIC.
+      bootstrapServers: 127.0.0.1:9092
+  # These are configurations for the pipeline
+  pipeline:
+    manager:
+      # This is the interval for the pipeline manager to garbage collect unused pipelines
+      gcInterval: 60000 # 1 min in ms
+      # This is the interval for the pipeline manager to log and report metrics
+      metricsInterval: 10000 # 10s
+

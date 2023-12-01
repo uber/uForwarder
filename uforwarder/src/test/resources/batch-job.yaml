@@ -1,0 +1,10 @@
+service:
+  name: ${UDEPLOY_SERVICE_NAME:kafka-consumer-proxy}
+
+master:
+  rebalancer:
+    mode: BatchRpcUriRebalancer
+    numWorkersPerUri: 1
+    messagesPerSecPerWorker: 1000
+  jobCreator: BatchJobCreator
+  kafka.partition.expansion.watcher.interval: 60000

@@ -1,0 +1,98 @@
+syntax = "proto3";
+
+// These protos are in alpha stage and there is no guarantee of protocol compatbility at this time.
+
+import "data/kafka/data-transfer/job.proto";
+import "data/kafka/data-transfer/job_group.proto";
+
+package uber.data.kafka.datatransfer;
+
+option go_package = "datatransferpb";
+option java_multiple_files = true;
+option java_outer_classname = "MasterAdminServiceProto";
+option java_package = "com.uber.data.kafka.datatransfer";
+
+// MasterAdminService is implemented by the Master for managing the cluster.
+// This allows an external service to control the state of the system.
+service MasterAdminService {
+  // AddJobGroup creates a new JobGroup.
+  // An error is thrown if this job group already exist.
+  rpc AddJobGroup(AddJobGroupRequest) returns (AddJobGroupResponse);
+  // UpdateJobGroupConfiguration updates the mutable JobConfiguration for a JobGroup.
+  rpc UpdateJobGroup(UpdateJobGroupRequest) returns (UpdateJobGroupResponse);
+  // UpdateJobGroupState updates the expected state for the JobGroup.
+  rpc UpdateJobGroupState(UpdateJobGroupStateRequest) returns (UpdateJobGroupStateResponse);
+  // DeleteJobGroup deletes the JobGroup from storage.
+  // This differs from updating state to CANCEL which stops the job but retains the job group information in storage.
+  // Deleted Job Groups are not recoverable!
+  rpc DeleteJobGroup(DeleteJobGroupRequest) returns (DeleteJobGroupResponse);
+  // GetJobGroup returns the JobGroup for the specified id.
+  rpc GetJobGroup(GetJobGroupRequest) returns (GetJobGroupResponse);
+  // GetAllJobGroups is a server stream that returns all job groups.
+  // We use streams b/c gRPC has a 1MB single payload limit for large clusters a unary request may not work.
+  rpc GetAllJobGroups(GetAllJobGroupsRequest) returns (stream GetAllJobGroupsResponse);
+}
+
+// AddJobGroupRequest runs a new job group with job group definition and configuration provided in the request.
+// A JobGroup is a group of Jobs. e.g., for Kafka, JobGroup = Topic, Job = Partition.
+message AddJobGroupRequest {
+  uber.data.kafka.datatransfer.JobGroup job_group = 1;
+  uber.data.kafka.datatransfer.JobState job_group_state = 2;
+}
+
+// The JobGroup that is registered to the system.
+message AddJobGroupResponse {
+  uber.data.kafka.datatransfer.StoredJobGroup group = 1;
+}
+
+// UpdateJobGroupRequest updates the (mutable) Job configuration for the specified JobGroup.
+message UpdateJobGroupRequest {
+  uber.data.kafka.datatransfer.JobGroup job_group = 1;
+}
+
+// UpdateJobGroupConfigurationResponse contains the update JobGroup.
+message UpdateJobGroupResponse {
+  uber.data.kafka.datatransfer.StoredJobGroup group = 1;
+}
+
+// UpdateJobGroupStateRequest changes the expected state for the specified job group.
+// Note: this updates the expected state but does not necessarily block until the distributed workers
+// pick up the jobs.
+message UpdateJobGroupStateRequest {
+  string id = 1;
+  uber.data.kafka.datatransfer.JobState state = 2;
+}
+
+// UpdateJobGroupStateResponse is the job group after the expected state has been changed.
+message UpdateJobGroupStateResponse {
+  uber.data.kafka.datatransfer.StoredJobGroup group = 1;
+}
+
+// DeleteJobGroupRequest is sent to delete job group from storage.
+message DeleteJobGroupRequest {
+  string id = 1;
+}
+
+// DeleteJobGroupResponse is sent back in response to a delete request.
+// Any non-error GRPC response is considered success.
+message DeleteJobGroupResponse {}
+
+// GetJobGroupRequest is sent to get a job group from storage.
+message GetJobGroupRequest {
+  string id = 1;
+}
+
+// GetJobGroupResponse is sent back in response to a get request.
+message GetJobGroupResponse {
+  uber.data.kafka.datatransfer.StoredJobGroup group = 1;
+}
+
+// GetAllJobGroupsRequest is sent to request all job groups.
+message GetAllJobGroupsRequest {
+}
+
+// GetAllJobGroupsResponse is sent back with the job groups.
+message GetAllJobGroupsResponse {
+  JobGroup job_group = 1;
+  JobState job_group_state = 2;
+}

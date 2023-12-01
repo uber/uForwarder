@@ -1,0 +1,30 @@
+syntax = "proto3";
+
+package uber.data.kafka.consumer;
+
+option go_package = "consumerpb";
+option java_multiple_files = true;
+option java_outer_classname = "ListGroupProto";
+option java_package = "com.uber.data.kafka.consumer";
+
+import "data/kafka/messaging-consumer/offsets.proto";
+
+message GroupInfo {
+    // group_name is the consumer group id
+    string group_name = 1;
+    string cluster_name = 2;
+    // the offset store (KAFAK10, KAFKA8) that the group is shown
+    ConsumerOffsetStore offset_store = 3;
+}
+
+// ListGroupResponse contains listGroup response object returned by rest endpoint of offset management.
+message ListGroupResponse {
+    // an array of groupAndOffsetStore instances
+    repeated GroupInfo group_list = 1;
+}
+
+// ListGroupRequest contains the parameters for making a listGroup curl call to offset management
+message ListGroupRequest {
+    // cluster is the kafka cluster.
+    string cluster_name = 1;
+}

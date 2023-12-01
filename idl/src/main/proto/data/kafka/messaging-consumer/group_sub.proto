@@ -1,0 +1,29 @@
+syntax = "proto3";
+
+package uber.data.kafka.consumer;
+
+option go_package = "consumerpb";
+option java_multiple_files = true;
+option java_outer_classname = "GroupSubProto";
+option java_package = "com.uber.data.kafka.consumer";
+
+import "data/kafka/messaging-consumer/offsets.proto";
+
+// GroupSubscriptionResponse contains the group subscription response object returned by rest endpoint of offset management.
+message GroupSubscriptionResponse {
+    // cluster is the kafka cluster.
+    string cluster_name = 1;
+    // group is the consumer group
+    string group_name = 2;
+    // topics is an array of topics subscribed by the group
+    repeated string topics = 3;
+}
+
+// GroupSubscriptionRequest contains the parameters for making a group subscription curl call to offset management
+message GroupSubscriptionRequest {
+    // cluster is the kafka cluster.
+    string cluster_name = 1;
+    // group is the consumer group
+    string group_name = 2;
+    ConsumerOffsetStore offset_store = 3;
+}

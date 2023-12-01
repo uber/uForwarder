@@ -1,0 +1,10 @@
+service:
+  name: ${UDEPLOY_SERVICE_NAME:kafka-consumer-proxy}
+
+master:
+  kafka:
+    offsetFetcher:
+      resolverClass: com.uber.data.kafka.datatransfer.common.KafkaClusterResolver
+      clientId: kafka-consumer-proxy-offset-fetcher-test
+      consumerGroup: kafka-consumer-proxy-offset-fetcher-test
+      bootstrapServers: 127.0.0.1:9093

@@ -1,0 +1,79 @@
+syntax = "proto3";
+
+package uber.data.kafka.consumer;
+
+option go_package = "consumerpb";
+option java_multiple_files = true;
+option java_outer_classname = "OffsetMappingProto";
+option java_package = "com.uber.data.kafka.consumer";
+
+import "data/kafka/messaging-consumer/offsets.proto";
+
+// partition and its associated offset info
+message PartitionOffsetInfo {
+    // by default UNSET commit offset value is -1.
+    // should be explictly set in the builder since proto default value is 0
+    int64 offset = 1;
+    // partition beginning offset
+    int64 low_watermark = 2;
+    // partition ending offset
+    int64 high_watermark = 3;
+    // message lags between offset and highWatermark
+    int64 lag = 4;
+}
+
+enum MappingState {
+    MAPPING_STATE_INVALID = 0;
+    // low watermark = high watermark or offset not in [lowwatermark, highwatermark] for all partition
+    MAPPING_STATE_STALE_SRC = 1;
+    // no offset snapshots to utilize for mapping
+    MAPPING_STATE_NO_SNAPSHOT_MAPPING = 2;
+    // existing dst offsets > src mapped offsets for all partitions
+    MAPPING_STATE_SMART_MERGE = 3;
+    // no error
+    MAPPING_STATE_NO_ERROR = 4;
+}
+
+// OffsetSyncResponse contains the offset sync response returned by rest endpoint of offset management.
+// the purpose is to make the user aware of what offset values are being used at src and dst cluster respectively.
+message OffsetSyncResponse {
+    string src_cluster_name = 1;
+    string dst_cluster_name = 2;
+    // consumer group name from the srcCluster
+    string src_group_name = 3;
+    // consumer group name from the dstCluster
+    string dst_group_name = 4;
+    // topic to sync
+    string topic_name = 5;
+    // consumer kafka version from the srcCluster
+    ConsumerOffsetStore src_offset_store = 6;
+    // consumer kafka version from the dstCluster
+    ConsumerOffsetStore dst_offset_store = 7;
+    // mapping status indicates the offset state from the src cluster and snapshots
+    MappingState status = 8;
+    // partition offset_infos from the src cluster
+    map<int32, PartitionOffsetInfo> src_offset_infos = 9;
+    // partition offsets from the dst cluster
+    map<int32, PartitionOffsetInfo> dst_offset_infos = 10;
+}
+
+message OffsetSyncRequest {
+    // src kloak cluster
+    string src_cluster_name = 1;
+    // dst kloak cluster
+    string dst_cluster_name = 2;
+    // consumer group name on the src cluster
+    string src_group_name = 3;
+    // consumer group name on the dst cluster
+    string dst_group_name = 4;
+    // offset store from the src cluster
+    ConsumerOffsetStore src_offset_store = 5;
+    // offset store from the dst cluster
+    ConsumerOffsetStore dst_offset_store = 6;
+    // the topic to migrate.
+    string topic_name = 7;
+    // user provided partition offsets from the src cluster.
+    repeated PartitionOffsetInfo src_offsets = 8;
+    // disable checking existing offsets on the dst cluster and simply use the translated values from offset snapshot
+    bool disable_smart_merge = 9;
+}

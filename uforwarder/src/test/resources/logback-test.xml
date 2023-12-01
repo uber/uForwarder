@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+  <contextListener class="ch.qos.logback.classic.jul.LevelChangePropagator"/>
+  <!-- console based appender -->
+  <appender name="stdout-json" class="ch.qos.logback.core.ConsoleAppender">
+    <!-- buffered with potential chances of loosing log in case of abnormal shutdown -->
+    <immediateFlush>false</immediateFlush>
+
+    <!-- logstash based encoder -->
+    <encoder class="net.logstash.logback.encoder.LogstashEncoder">
+      <!-- custom field for filebeat markers -->
+      <customFields>{"filebeat_topic":"${serviceName}"}</customFields>
+
+      <!-- tuning exception stacktrace in log -->
+      <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
+        <maxDepthPerThrowable>20</maxDepthPerThrowable>
+        <maxLength>10000</maxLength>
+        <shortenedClassNameLength>30</shortenedClassNameLength>
+        <rootCauseFirst>true</rootCauseFirst>
+      </throwableConverter>
+
+      <!-- enables KeyValue... 's substitution -->
+      <provider class="net.logstash.logback.composite.loggingevent.ArgumentsJsonProvider"/>
+    </encoder>
+  </appender>
+
+  <root level="DEBUG">
+    <appender-ref ref="stdout-json"/>
+  </root>
+</configuration>
+

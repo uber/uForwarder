@@ -1,0 +1,8 @@
+com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancerAutoConfiguration
+com.uber.data.kafka.datatransfer.controller.creator.JobCreatorAutoConfiguration
+com.uber.data.kafka.datatransfer.controller.manager.ManagerAutoConfiguration
+com.uber.data.kafka.datatransfer.controller.storage.StoreAutoConfiguration
+com.uber.data.kafka.datatransfer.controller.rpc.RpcAutoConfiguration
+com.uber.data.kafka.datatransfer.worker.controller.ControllerAutoConfiguration
+com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManagerAutoConfiguration
+com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcherFactoryAutoConfiguration
