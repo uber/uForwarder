@@ -33,6 +33,16 @@ public class ConsumerResponseTest extends FievelTestBase {
   }
 
   @Test
+  public void testRetriableExceptionWithoutStatus() {
+    ConsumerResponse.retriableException(streamObserver);
+    ArgumentCaptor<StatusRuntimeException> captor =
+        ArgumentCaptor.forClass(StatusRuntimeException.class);
+    Mockito.verify(streamObserver, Mockito.times(1)).onError(captor.capture());
+    StatusRuntimeException exception = captor.getValue();
+    Assert.assertEquals(Status.RESOURCE_EXHAUSTED.getCode(), exception.getStatus().getCode());
+  }
+
+  @Test
   public void testNonRetriableException() {
     ConsumerResponse.nonRetriableException(streamObserver, Status.DATA_LOSS);
     ArgumentCaptor<StatusRuntimeException> captor =
@@ -43,6 +53,17 @@ public class ConsumerResponseTest extends FievelTestBase {
     Metadata metadata = exception.getTrailers();
     Assert.assertEquals(
         "Stash", metadata.get(Metadata.Key.of("kafka-action", Metadata.ASCII_STRING_MARSHALLER)));
+  }
+
+  @Test
+  public void testNonRetriableExceptionWithoutStatus() {
+    ConsumerResponse.nonRetriableException(streamObserver);
+    ArgumentCaptor<StatusRuntimeException> captor =
+        ArgumentCaptor.forClass(StatusRuntimeException.class);
+    Mockito.verify(streamObserver, Mockito.times(1)).onError(captor.capture());
+    StatusRuntimeException exception = captor.getValue();
+    Assert.assertEquals(Status.FAILED_PRECONDITION.getCode(), exception.getStatus().getCode());
+    Metadata metadata = exception.getTrailers();
   }
 
   @Test
@@ -82,5 +103,11 @@ public class ConsumerResponseTest extends FievelTestBase {
     Metadata metadata = exception.getTrailers();
     Assert.assertEquals(
         "Skip", metadata.get(Metadata.Key.of("kafka-action", Metadata.ASCII_STRING_MARSHALLER)));
+  }
+
+  @Test
+  public void testCommit() {
+    ConsumerResponse.commit(streamObserver);
+    Mockito.verify(streamObserver, Mockito.times(1)).onCompleted();
   }
 }

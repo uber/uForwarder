@@ -17,10 +17,14 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import org.apache.commons.lang3.tuple.Pair;
 
 /** Rebalancer utility functions */
 class RebalancerCommon {
+
+  // this is the unit number to round up when calculating the expecetd worker number for the cluster
+  static final int TARGET_UNIT_NUMBER = 5;
   /**
    * Creates a Guava {@code Table<Long, Long, RebalancingJob>} contains the assignment.
    *
@@ -100,6 +104,15 @@ class RebalancerCommon {
           jobCountByPartitionList.get(partitionIdx) + jobGroup.getJobs().values().size());
     }
 
+    // round the workload per parittion to nearliest multiple of 0.5, so that we don't readjust the
+    // worker frequently.
+    // TODO: cache the worker->partition mapping to maintain
+    // stickiness(https://t3.uberinternal.com/browse/KAFEP-4627)
+    workloadByPartitionList =
+        workloadByPartitionList
+            .stream()
+            .map(workload -> roundHalf(workload))
+            .collect(Collectors.toList());
     double totalWorkload = workloadByPartitionList.stream().mapToDouble(Double::doubleValue).sum();
 
     // calculate how many workers are needed per partition based on workload
@@ -121,7 +134,6 @@ class RebalancerCommon {
       } else {
         sumNeededNumberOfWorker += neededNumberOfWorker;
       }
-
       workersNeededPerPartition.add(neededNumberOfWorker);
     }
 
@@ -152,5 +164,23 @@ class RebalancerCommon {
     }
 
     return rebalancingWorkerTable;
+  }
+
+  // round up to a nearest target number to
+  //    1) avoid frequent rescale
+  //    2) use worker number with pattern instead of random number
+  static int roundUpToNearestNumber(int number, int targetNumber) {
+    return ((number + targetNumber - 1) / targetNumber) * targetNumber;
+  }
+
+  private static double roundHalf(double number) {
+    double diff = number - (int) number;
+    if (diff < 0.25) {
+      return (int) number;
+    } else if (diff < 0.75) {
+      return (int) number + 0.5;
+    } else {
+      return (int) number + 1;
+    }
   }
 }

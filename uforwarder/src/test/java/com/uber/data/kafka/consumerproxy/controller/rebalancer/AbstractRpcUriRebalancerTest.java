@@ -1,5 +1,7 @@
 package com.uber.data.kafka.consumerproxy.controller.rebalancer;
 
+import static com.uber.data.kafka.consumerproxy.controller.rebalancer.RebalancerCommon.roundUpToNearestNumber;
+
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.protobuf.util.JsonFormat;
@@ -991,10 +993,10 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
     AbstractRpcUriRebalancer rebalancer = new SimpleRpcUriAssigner(new NoopScope(), config, scalar);
-    Assert.assertEquals(0, rebalancer.roundUpToNearestNumber(0, 5));
-    Assert.assertEquals(10, rebalancer.roundUpToNearestNumber(9, 5));
-    Assert.assertEquals(10, rebalancer.roundUpToNearestNumber(10, 5));
-    Assert.assertEquals(15, rebalancer.roundUpToNearestNumber(11, 5));
+    Assert.assertEquals(0, roundUpToNearestNumber(0, 5));
+    Assert.assertEquals(10, roundUpToNearestNumber(9, 5));
+    Assert.assertEquals(10, roundUpToNearestNumber(10, 5));
+    Assert.assertEquals(15, roundUpToNearestNumber(11, 5));
   }
 
   private class SimpleRpcUriAssigner extends AbstractRpcUriRebalancer {

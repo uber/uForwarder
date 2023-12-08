@@ -25,6 +25,7 @@ import org.apache.kafka.clients.producer.MockProducer;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
+import org.apache.kafka.common.serialization.Serdes;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -52,7 +53,8 @@ public class KafkaDispatcherTest extends FievelTestBase {
     when(mockScope.gauge(any())).thenReturn(mockGauge);
     when(mockScope.timer(any())).thenReturn(mockTimer);
     when(mockTimer.start()).thenReturn(mockStopwatch);
-    mockKafkaProducer = new MockProducer();
+    mockKafkaProducer =
+        new MockProducer(false, Serdes.ByteArray().serializer(), Serdes.ByteArray().serializer());
     CoreInfra infra = CoreInfra.builder().withScope(mockScope).build();
     kafkaDispatcher =
         new KafkaDispatcher(infra, new KafkaDispatcherConfiguration(), mockKafkaProducer);
@@ -64,7 +66,8 @@ public class KafkaDispatcherTest extends FievelTestBase {
         kafkaDispatcher
             .submit(
                 ItemAndJob.of(
-                    new ProducerRecord("test-topic", "test-data"), Job.newBuilder().build()))
+                    new ProducerRecord("test-topic", "test-data".getBytes()),
+                    Job.newBuilder().build()))
             .toCompletableFuture();
     mockKafkaProducer.completeNext();
     Assert.assertEquals(1, mockKafkaProducer.history().size());
@@ -77,7 +80,8 @@ public class KafkaDispatcherTest extends FievelTestBase {
         kafkaDispatcher
             .submit(
                 ItemAndJob.of(
-                    new ProducerRecord("test-topic", "test-data"), Job.newBuilder().build()))
+                    new ProducerRecord("test-topic", "test-data".getBytes()),
+                    Job.newBuilder().build()))
             .toCompletableFuture();
     mockKafkaProducer.errorNext(new IllegalStateException());
     Assert.assertEquals(1, mockKafkaProducer.history().size());

@@ -30,8 +30,8 @@ dependencies {
     implementation 'org.apache.commons:commons-lang3'
     implementation 'org.apache.curator:curator-x-async'
     //TODO: remove kafka version overrides if CoordinatorAutoConfigurationTest doesn't hang
-    implementation 'org.apache.kafka:kafka-clients:2.4.1.4-2.12-uber'
-    implementation 'org.apache.kafka:kafka_2.12:2.4.1.4-2.12-uber'
+    implementation 'org.apache.kafka:kafka-clients:2.9.52-2.12-uber'
+    implementation 'org.apache.kafka:kafka_2.12:2.9.52-2.12-uber'
     implementation 'org.apache.logging.log4j:log4j-core'
     implementation 'org.slf4j:slf4j-api'
     implementation 'org.springframework:spring-core'
@@ -62,9 +62,17 @@ dependencies {
     integrationTestImplementation project
 }
 
+tasks.named("bootJar") {
+    archiveBaseName = 'uforwarder-boot'
+}
+
+tasks.named("jar") {
+    archiveClassifier = ''
+}
+
 tasks.register('testJar', Jar) {
     dependsOn classes
-    archiveClassifier = 'test'
+    archiveBaseName = 'uforwarder-test'
     from sourceSets.integrationTest.output
 }
 
@@ -78,8 +86,12 @@ artifacts {
 
 publishing {
     publications {
+        mavenTestJava(MavenPublication) {
+            artifactId 'uforwarder-test'
+            artifact testJar
+        }
         mavenBootJava(MavenPublication) {
-            //from components.java
+            artifactId 'uforwarder-boot'
             artifact bootJar
         }
     }

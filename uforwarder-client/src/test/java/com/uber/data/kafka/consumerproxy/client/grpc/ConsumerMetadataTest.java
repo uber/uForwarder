@@ -14,6 +14,7 @@ public class ConsumerMetadataTest extends FievelTestBase {
   private static final String TENANCY_HEADER_KEY = "x-uber-tenancy";
   private static final String TENANCY_HEADER_VALUE = "uber/testing/kafka";
   private static final String TEST_TOPIC = "test-topic";
+  private static final String TEST_GROUP = "test-group";
   private final Metadata metadata = Mockito.mock(Metadata.class);
   private ServerCallHandler<ByteString, Void> serverCallHandler =
       new ServerCallHandler<>() {
@@ -23,31 +24,31 @@ public class ConsumerMetadataTest extends FievelTestBase {
           return new ServerCall.Listener<>() {
             @Override
             public void onMessage(ByteString message) {
-              Assert.assertEquals(TEST_TOPIC, ConsumerMetadata.getTopic());
+              verifyMetadata();
               super.onMessage(message);
             }
 
             @Override
             public void onHalfClose() {
-              Assert.assertEquals(TEST_TOPIC, ConsumerMetadata.getTopic());
+              verifyMetadata();
               super.onHalfClose();
             }
 
             @Override
             public void onCancel() {
-              Assert.assertEquals(TEST_TOPIC, ConsumerMetadata.getTopic());
+              verifyMetadata();
               super.onCancel();
             }
 
             @Override
             public void onComplete() {
-              Assert.assertEquals(TEST_TOPIC, ConsumerMetadata.getTopic());
+              verifyMetadata();
               super.onComplete();
             }
 
             @Override
             public void onReady() {
-              Assert.assertEquals(TEST_TOPIC, ConsumerMetadata.getTopic());
+              verifyMetadata();
               super.onReady();
             }
           };
@@ -93,6 +94,9 @@ public class ConsumerMetadataTest extends FievelTestBase {
   public void testInterceptCall() {
     Mockito.when(metadata.get(Metadata.Key.of("kafka-topic", Metadata.ASCII_STRING_MARSHALLER)))
         .thenReturn(TEST_TOPIC);
+    Mockito.when(
+            metadata.get(Metadata.Key.of("kafka-consumergroup", Metadata.ASCII_STRING_MARSHALLER)))
+        .thenReturn(TEST_GROUP);
     ServerCall.Listener<ByteString> intercepted =
         ConsumerMetadata.serverInterceptor()
             .interceptCall(Mockito.mock(ServerCall.class), metadata, serverCallHandler);
@@ -101,5 +105,12 @@ public class ConsumerMetadataTest extends FievelTestBase {
     intercepted.onHalfClose();
     intercepted.onCancel();
     intercepted.onReady();
+  }
+
+  private void verifyMetadata() {
+    Assert.assertEquals(TEST_TOPIC, ConsumerMetadata.getTopic());
+    Assert.assertEquals(TEST_GROUP, ConsumerMetadata.getConsumerGroup());
+    Assert.assertEquals(-1, ConsumerMetadata.getPartition());
+    Assert.assertEquals(-1L, ConsumerMetadata.getRetryCount());
   }
 }

@@ -1,5 +1,8 @@
 package com.uber.data.kafka.consumerproxy.controller.rebalancer;
 
+import static com.uber.data.kafka.consumerproxy.controller.rebalancer.RebalancerCommon.TARGET_UNIT_NUMBER;
+import static com.uber.data.kafka.consumerproxy.controller.rebalancer.RebalancerCommon.roundUpToNearestNumber;
+
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -325,7 +328,18 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
           .update(standardDeviation / usedWorkers);
     }
 
-    int totalRequestedNumberOfWorker = numberOfDedicatedWorker + (int) Math.ceil(totalWorkload);
+    int totalRequestedNumberOfWorker =
+        numberOfDedicatedWorker
+            +
+            // leave some spare to handle traffic increase
+            (int)
+                Math.ceil(
+                    totalWorkload
+                        * (1
+                            + (double) rebalancerConfiguration.getTargetSpareWorkerPercentage()
+                                / 100));
+    totalRequestedNumberOfWorker =
+        roundUpToNearestNumber(totalRequestedNumberOfWorker, TARGET_UNIT_NUMBER);
 
     if (shadowRun) {
       // if it's shadow, still emit metric for comparison

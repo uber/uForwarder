@@ -64,7 +64,7 @@ public final class KafkaFetcherConfiguration {
     if (isolationLevel == IsolationLevel.ISOLATION_LEVEL_READ_COMMITTED) {
       properties.setProperty(
           ConsumerConfig.ISOLATION_LEVEL_CONFIG,
-          org.apache.kafka.common.requests.IsolationLevel.READ_COMMITTED
+          org.apache.kafka.common.IsolationLevel.READ_COMMITTED
               .toString()
               .toLowerCase(Locale.ROOT));
     }

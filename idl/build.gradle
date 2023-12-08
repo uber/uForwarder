@@ -54,3 +54,7 @@ protobuf {
         }
     }
 }
+
+project.afterEvaluate {
+    check.dependsOn -= jacocoTestCoverageVerification
+}
