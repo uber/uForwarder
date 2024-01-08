@@ -19,7 +19,7 @@ tasks.register('createDockerFile', Dockerfile) {
     dependsOn('prepareDockerFile')
     from('openjdk:11-jre-slim')
     copyFile('entrypoint.sh','/opt/uforwarder/')
-    copyFile('uforwarder.jar','/opt/uforwarder/bin_main.jar')
+    copyFile("uforwarder-boot-${mavenVersion}.jar",'/opt/uforwarder/bin_main.jar')
     runCommand('chmod +x /opt/uforwarder/entrypoint.sh')
     environmentVariable('UFORWARDER_PROFILE', 'uforwarder-controller')
     environmentVariable('UFORWARDER_CONTROLLER_CONNECT', 'controller:8087')

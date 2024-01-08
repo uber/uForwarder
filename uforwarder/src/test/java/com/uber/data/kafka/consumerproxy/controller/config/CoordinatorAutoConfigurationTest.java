@@ -26,15 +26,15 @@ public class CoordinatorAutoConfigurationTest extends FievelTestBase {
 
   @Before
   public void setup() throws Exception {
-    zkServer = new TestingServer(0, false);
-    zkServer.start();
+    zkServer = new TestingServer(-1, true);
     int port = zkServer.getPort();
 
     node = Node.newBuilder().setHost("localhost").setPort(8000).build();
     scope = new NoopScope();
     tracer = new MockTracer();
     config = new ZookeeperConfiguration();
-    config.setZkConnection("localhost:" + port);
+    config.setZkConnection("localhost:" + port + "/uforwarder");
+    config.setAutoCreateRootNode(true);
     autoConfiguration = new CoordinatorAutoConfiguration();
   }
 

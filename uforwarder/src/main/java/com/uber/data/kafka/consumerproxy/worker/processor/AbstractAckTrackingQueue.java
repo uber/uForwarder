@@ -1,5 +1,6 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.m3.tally.Scope;
@@ -7,7 +8,6 @@ import com.uber.m3.tally.Stopwatch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
@@ -33,7 +33,7 @@ public abstract class AbstractAckTrackingQueue implements AckTrackingQueue {
 
   protected final RuntimeStats runtimeStats;
 
-  protected final Map<String, RuntimeStats> keyRuntimeStatsMap;
+  protected final Map<AttributeKey, Map<Attribute, RuntimeStats>> attributeRuntimeStatsMap;
 
   protected final TopicPartition topicPartition;
 
@@ -63,7 +63,7 @@ public abstract class AbstractAckTrackingQueue implements AckTrackingQueue {
     this.scope = jobScope;
     this.logger = logger;
     this.runtimeStats = new RuntimeStats();
-    this.keyRuntimeStatsMap = new ConcurrentHashMap<>();
+    this.attributeRuntimeStatsMap = new ConcurrentHashMap<>();
     // initialize those non-changeable variables
     this.lock = new ReentrantLock(false);
     this.notFull = this.lock.newCondition();
@@ -74,13 +74,8 @@ public abstract class AbstractAckTrackingQueue implements AckTrackingQueue {
   }
 
   @Override
-  public void receive(long offset, String key) throws InterruptedException {
-    receive(offset, Optional.of(key));
-  }
-
-  @Override
   public void receive(long offset) throws InterruptedException {
-    receive(offset, Optional.empty());
+    receive(offset, ImmutableMap.of());
   }
 
   /**
@@ -130,7 +125,8 @@ public abstract class AbstractAckTrackingQueue implements AckTrackingQueue {
     reactors.add(reactor);
   }
 
-  protected abstract void receive(long offset, Optional<String> key) throws InterruptedException;
+  public abstract void receive(long offset, Map<AttributeKey, Attribute> attributes)
+      throws InterruptedException;
 
   /**
    * tests if AckTrackingQueue is full
@@ -196,29 +192,36 @@ public abstract class AbstractAckTrackingQueue implements AckTrackingQueue {
     }
   }
 
-  protected void onStatusUpdate(AckStatus preAckStatus, AckStatus ackStatus, Optional<String> key) {
+  protected void onStatusUpdate(
+      AckStatus preAckStatus, AckStatus ackStatus, Map<AttributeKey, Attribute> key) {
     runtimeStats.onUpdate(preAckStatus, ackStatus);
-    if (key.isPresent()) {
-      RuntimeStats keyRuntimeStats = keyRuntimeStatsMap.get(key.get());
-      if (keyRuntimeStats != null) {
-        keyRuntimeStats.onUpdate(preAckStatus, ackStatus);
+    for (Map.Entry<AttributeKey, Attribute> entry : key.entrySet()) {
+      RuntimeStats attributeRuntimeStats =
+          attributeRuntimeStatsMap
+              .getOrDefault(entry.getKey(), ImmutableMap.of())
+              .get(entry.getValue());
+      if (attributeRuntimeStats != null) {
+        attributeRuntimeStats.onUpdate(preAckStatus, ackStatus);
       } else {
         throw new RuntimeException(
-            "keyRuntimeStats should have already been initialized when receive");
+            "attributeRuntimeStats should have already been initialized when receive");
       }
     }
   }
 
-  protected void onReceive(Optional<String> key) {
+  protected void onReceive(Map<AttributeKey, Attribute> attributes) {
     runtimeStats.onReceive();
-    if (key.isPresent()) {
-      keyRuntimeStatsMap.computeIfAbsent(key.get(), k -> new RuntimeStats()).onReceive();
+    for (Map.Entry<AttributeKey, Attribute> entry : attributes.entrySet()) {
+      attributeRuntimeStatsMap
+          .computeIfAbsent(entry.getKey(), k -> new ConcurrentHashMap<>())
+          .computeIfAbsent(entry.getValue(), k -> new RuntimeStats())
+          .onReceive();
     }
   }
 
   protected void resetRuntimeStats() {
     runtimeStats.reset();
-    keyRuntimeStatsMap.clear();
+    attributeRuntimeStatsMap.clear();
   }
 
   /** Mutable statistics */
@@ -269,7 +272,7 @@ public abstract class AbstractAckTrackingQueue implements AckTrackingQueue {
     private final long tailOffset;
     private final long lowestCancelableOffset;
     private final long highestAckedOffset;
-    private final Map<String, Stats> keyStats;
+    private final Map<AttributeKey, Map<Attribute, Stats>> attributeStats;
 
     StateImpl(int capacity, long highestAckedOffset) {
       this(capacity, 0, INITIAL_OFFSET, INITIAL_OFFSET, INITIAL_OFFSET, highestAckedOffset);
@@ -288,18 +291,26 @@ public abstract class AbstractAckTrackingQueue implements AckTrackingQueue {
       this.tailOffset = tailOffset;
       this.lowestCancelableOffset = lowestCancelableOffset;
       this.highestAckedOffset = highestAckedOffset;
-      this.keyStats =
-          keyRuntimeStatsMap
+      this.attributeStats =
+          attributeRuntimeStatsMap
               .entrySet()
               .stream()
               .collect(
                   Collectors.toMap(
                       Map.Entry::getKey,
-                      entry -> {
-                        RuntimeStats keyRuntimeStats = entry.getValue();
-                        return new StatsImpl(
-                            keyRuntimeStats.size, keyRuntimeStats.acked, keyRuntimeStats.canceled);
-                      }));
+                      entry ->
+                          entry
+                              .getValue()
+                              .entrySet()
+                              .stream()
+                              .collect(
+                                  Collectors.toMap(
+                                      Map.Entry::getKey,
+                                      e ->
+                                          new StatsImpl(
+                                              e.getValue().size,
+                                              e.getValue().acked,
+                                              e.getValue().canceled)))));
     }
 
     @Override
@@ -333,8 +344,8 @@ public abstract class AbstractAckTrackingQueue implements AckTrackingQueue {
     }
 
     @Override
-    public Map<String, Stats> keyStats() {
-      return keyStats;
+    public Map<AttributeKey, Map<Attribute, Stats>> attributesStats() {
+      return attributeStats;
     }
 
     @Override
@@ -362,8 +373,8 @@ public abstract class AbstractAckTrackingQueue implements AckTrackingQueue {
           + lowestCancelableOffset
           + ", highestAckedOffset="
           + highestAckedOffset
-          + ", keyStats="
-          + keyStats
+          + ", attributesStats="
+          + attributeStats
           + '}';
     }
   }

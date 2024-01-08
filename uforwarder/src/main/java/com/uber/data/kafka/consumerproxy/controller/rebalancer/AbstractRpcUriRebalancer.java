@@ -1,5 +1,8 @@
 package com.uber.data.kafka.consumerproxy.controller.rebalancer;
 
+import static com.uber.data.kafka.consumerproxy.controller.rebalancer.RebalancerCommon.TARGET_UNIT_NUMBER;
+import static com.uber.data.kafka.consumerproxy.controller.rebalancer.RebalancerCommon.roundUpToNearestNumber;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
@@ -51,7 +54,6 @@ import org.slf4j.LoggerFactory;
 abstract class AbstractRpcUriRebalancer implements Rebalancer {
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractRpcUriRebalancer.class);
-  private static final int TARGET_NUMBER = 5;
   private static final double CAPACITY_PER_WORKER = 1.0;
   protected RebalancerConfiguration config;
   private final Scalar scalar;
@@ -605,14 +607,7 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
         .update(
             Math.max(
                 config.getMinimumWorkerCount(),
-                roundUpToNearestNumber(targetWorkerCount, TARGET_NUMBER)));
-  }
-
-  // round up to a nearest target number to
-  //    1) avoid frequent rescale
-  //    2) use worker number with pattern instead of random number
-  int roundUpToNearestNumber(int number, int targetNumber) {
-    return ((number + targetNumber - 1) / targetNumber) * targetNumber;
+                roundUpToNearestNumber(targetWorkerCount, TARGET_UNIT_NUMBER)));
   }
 
   @VisibleForTesting

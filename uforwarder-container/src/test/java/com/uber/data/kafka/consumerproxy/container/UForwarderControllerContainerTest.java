@@ -30,8 +30,10 @@ public class UForwarderControllerContainerTest extends FievelTestBase {
     Assert.assertEquals("1024", controllerContainer.getEnvMap().get("UFORWARDER_MEMORY_LIMIT_MB"));
   }
 
-  @Test(expected = IllegalStateException.class)
-  public void testGetAddress() {
-    controllerContainer.getAddress();
+  @Test
+  public void testwithKafkaBootstrapString() {
+    controllerContainer.withKafkaBootstrapString("localhost:9001");
+    Assert.assertEquals(
+        "localhost:9001", controllerContainer.getEnvMap().get("UFORWARDER_KAFKA_CONNECT"));
   }
 }

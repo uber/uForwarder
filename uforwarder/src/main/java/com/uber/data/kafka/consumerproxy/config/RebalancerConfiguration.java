@@ -40,6 +40,9 @@ public class RebalancerConfiguration {
   // Whether to enable shadow rebalancer
   private boolean shouldRunShadowRebalancer = false;
 
+  // The ratio of worker to remove in a batch when workload reduces
+  private double workerToReduceRatio = 0.1;
+
   public int getNumWorkersPerUri() {
     return numWorkersPerUri;
   }
@@ -203,5 +206,19 @@ public class RebalancerConfiguration {
    */
   public void setShouldRunShadowRebalancer(boolean shouldRunShadowRebalancer) {
     this.shouldRunShadowRebalancer = shouldRunShadowRebalancer;
+  }
+
+  /**
+   * Sets the worker to reduce ratio
+   *
+   * @param workerToReduceRatio The intended number of worker
+   */
+  public void setWorkerToReduceRatio(double workerToReduceRatio) {
+    this.workerToReduceRatio = workerToReduceRatio;
+  }
+
+  /** Gets the worker to reduce ratio */
+  public double getWorkerToReduceRatio() {
+    return this.workerToReduceRatio;
   }
 }

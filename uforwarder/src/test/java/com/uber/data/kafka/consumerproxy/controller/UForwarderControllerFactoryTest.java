@@ -1,11 +1,12 @@
 package com.uber.data.kafka.consumerproxy.controller;
 
-import com.uber.data.kafka.clients.admin.MultiClusterAdmin;
 import com.uber.data.kafka.consumerproxy.utils.UForwarderSpringJUnit4ClassRunner;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
 import com.uber.data.kafka.datatransfer.StoredWorker;
+import com.uber.data.kafka.datatransfer.common.AdminClient;
+import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
 import com.uber.data.kafka.datatransfer.common.KafkaPartitionExpansionWatcher;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
@@ -45,13 +46,15 @@ public class UForwarderControllerFactoryTest extends FievelTestBase {
 
   @Autowired private JobCreator jobCreator;
 
-  @Autowired private MultiClusterAdmin multiClusterAdmin;
+  @Autowired private AdminClient.Builder adminBuilder;
 
   @Autowired private KafkaPartitionExpansionWatcher kafkaPartitionExpansionWatcher;
 
   @Autowired private Node node;
 
   @Autowired private ShadowRebalancerDelegate shadowRebalancerDelegate;
+
+  @Autowired private CoreInfra coreInfra;
 
   @Test
   public void testDynamicConfiguration() {
@@ -69,8 +72,8 @@ public class UForwarderControllerFactoryTest extends FievelTestBase {
   }
 
   @Test
-  public void testMultiClusterAdmin() {
-    Assert.assertNotNull(this.multiClusterAdmin);
+  public void testAdminBuilder() {
+    Assert.assertNotNull(this.adminBuilder);
   }
 
   @Test
@@ -87,5 +90,12 @@ public class UForwarderControllerFactoryTest extends FievelTestBase {
   @Test
   public void testShadowRebalancerDelegate() {
     Assert.assertNotNull(this.shadowRebalancerDelegate);
+  }
+
+  @Test
+  public void testCreateBatchJob() {
+    JobCreator batchCreator =
+        new UForwarderControllerFactory().jobCreator("BatchJobCreator", adminBuilder, coreInfra);
+    Assert.assertNotNull(batchCreator);
   }
 }

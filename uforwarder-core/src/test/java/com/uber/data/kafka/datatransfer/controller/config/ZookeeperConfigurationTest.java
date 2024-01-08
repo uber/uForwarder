@@ -21,5 +21,6 @@ public class ZookeeperConfigurationTest extends FievelTestBase {
   public void test() {
     Assert.assertEquals(
         "localhost:2181/kafka-consumer-proxy", zookeeperConfiguration.getZkConnection());
+    Assert.assertTrue(zookeeperConfiguration.isAutoCreateRootNode());
   }
 }

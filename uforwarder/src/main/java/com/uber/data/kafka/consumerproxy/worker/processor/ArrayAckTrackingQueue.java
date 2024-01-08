@@ -1,11 +1,12 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
-import com.uber.data.kafka.clients.admin.VisibleForTesting;
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.m3.tally.Scope;
 import java.util.Arrays;
-import java.util.Optional;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,7 +67,8 @@ final class ArrayAckTrackingQueue extends AbstractAckTrackingQueue {
    * @param offset the offset of a newly-received message
    */
   @Override
-  public synchronized void receive(long offset, Optional<String> key) throws InterruptedException {
+  public synchronized void receive(long offset, Map<AttributeKey, Attribute> attributes)
+      throws InterruptedException {
     lock.lock();
     try {
       if (highestReceivedOffset != INITIAL_OFFSET) {
@@ -103,13 +105,10 @@ final class ArrayAckTrackingQueue extends AbstractAckTrackingQueue {
         // use
         // anymore (then return)
         if (waitForNotFull(offset + 1)) {
-          // update offset key;
-          if (key.isPresent()) {
-            OffsetStatus status =
-                items[(int) (offset - offsetMappingHeadIndex + headIndex) % capacity];
-            status.key = key;
-          }
-          onReceive(key);
+          OffsetStatus status =
+              items[(int) (offset - offsetMappingHeadIndex + headIndex) % capacity];
+          status.attributes = attributes;
+          onReceive(attributes);
           highestReceivedOffset = offset;
         }
         updateState();
@@ -337,14 +336,14 @@ final class ArrayAckTrackingQueue extends AbstractAckTrackingQueue {
     /** ack status */
     AckStatus ackStatus = AckStatus.UNSET;
 
-    private Optional<String> key = Optional.empty();
+    private Map<AttributeKey, Attribute> attributes = ImmutableMap.of();
 
     protected AckStatus setStatus(AckStatus ackStatus) {
       AckStatus curStatus = this.ackStatus;
-      onStatusUpdate(curStatus, ackStatus, key);
+      onStatusUpdate(curStatus, ackStatus, attributes);
       if (ackStatus == AckStatus.UNSET) {
         // reset key
-        key = Optional.empty();
+        attributes = ImmutableMap.of();
       }
       this.ackStatus = ackStatus;
       return curStatus;

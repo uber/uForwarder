@@ -1,14 +1,12 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
-import com.google.common.collect.ImmutableMap;
-import com.uber.data.kafka.clients.admin.VisibleForTesting;
+import com.google.common.annotations.VisibleForTesting;
+import com.uber.data.kafka.consumerproxy.common.MetricsUtils;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.common.StructuredTags;
 import com.uber.data.kafka.datatransfer.IsolationLevel;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
-import com.uber.data.kafka.datatransfer.common.RoutingUtils;
-import com.uber.data.kafka.datatransfer.common.StructuredFields;
 import com.uber.data.kafka.datatransfer.worker.common.MetricSource;
 import com.uber.m3.tally.Scope;
 import java.util.Optional;
@@ -222,24 +220,7 @@ public class MessageAckStatusManager implements MetricSource, BlockingQueue {
     protected final Scope jobScope;
 
     QueueAndScope(Job job) {
-      final String group = job.getKafkaConsumerTask().getConsumerGroup();
-      final String cluster = job.getKafkaConsumerTask().getCluster();
-      final String topic = job.getKafkaConsumerTask().getTopic();
-      final String partition = Integer.toString(job.getKafkaConsumerTask().getPartition());
-      final String routingKey = RoutingUtils.extractAddress(job.getRpcDispatcherTask().getUri());
-      this.jobScope =
-          scope.tagged(
-              ImmutableMap.of(
-                  StructuredFields.KAFKA_GROUP,
-                  group,
-                  StructuredFields.KAFKA_CLUSTER,
-                  cluster,
-                  StructuredFields.KAFKA_TOPIC,
-                  topic,
-                  StructuredFields.KAFKA_PARTITION,
-                  partition,
-                  StructuredFields.URI,
-                  routingKey));
+      this.jobScope = MetricsUtils.jobScope(scope, job);
       // create LinkedAckTrackingQueue when isolation level is read_committed to prevent data
       // loss caused by offset gaps
       // TODO: replace ArrayAckTrackingQueue with LinkedAckTrackingQueue to reduce maintenance

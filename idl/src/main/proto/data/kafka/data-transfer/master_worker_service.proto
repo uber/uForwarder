@@ -49,11 +49,9 @@ message HeartbeatRequest {
   repeated JobStatus job_status = 2;
 }
 
-// HeartbeatRequest is sent by the worker to the master to indicate liveness.
-// If the master does not receive a successful heartbeat request in a configurable amount of time, it should
-// consider the worker dead and rebalance the job to other workers as necessary.
-// The HeartbeatRequest also contains a progress report on all running job that the worker has previously received.
-// The master may use this information to rebalance the workload as it sees fit.
+// HeartbeatResponse is sent by the controller to the worker to tell how it should command the jobs running at the worker.
+// The controller compares how it expects the jobs on the worker to run and how they actually run, and derives the commands
+// for the jobs according to the matrix of CommandType.
 message HeartbeatResponse {
   uber.data.kafka.datatransfer.Participants participants = 1;
   repeated Command commands = 2;

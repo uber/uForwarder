@@ -49,13 +49,13 @@ public interface AckTrackingQueue extends MetricSource {
   long IN_MEMORY_ACK_ONLY = -3;
 
   /**
-   * marks an offset received by AckTrackingQueue with key
+   * marks an offset received by AckTrackingQueue with attributes
    *
    * @param offset the offset
-   * @param key the key
+   * @param attributes the attributes
    * @throws InterruptedException the interrupted exception
    */
-  void receive(long offset, String key) throws InterruptedException;
+  void receive(long offset, Map<AttributeKey, Attribute> attributes) throws InterruptedException;
 
   /**
    * marks an offset received by AckTrackingQueue
@@ -195,11 +195,11 @@ public interface AckTrackingQueue extends MetricSource {
     long highestAckedOffset();
 
     /**
-     * Gets statistics by key
+     * Gets statistics by attribute
      *
      * @return
      */
-    Map<String, Stats> keyStats();
+    Map<AttributeKey, Map<Attribute, Stats>> attributesStats();
 
     /**
      * Gets load or usage of the queue. usage is defined by percentage of queue used of its total

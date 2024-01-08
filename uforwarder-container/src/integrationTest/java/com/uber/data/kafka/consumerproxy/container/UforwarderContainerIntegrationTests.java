@@ -1,5 +1,6 @@
 package com.uber.data.kafka.consumerproxy.container;
 
+import static com.uber.data.kafka.consumerproxy.container.UForwarderContainer.CONTROLLER_GRPC_PORT;
 import static com.uber.data.kafka.consumerproxy.testutils.Constants.JOB_GROUP_ID_DELIMITER;
 import static com.uber.data.kafka.consumerproxy.testutils.Constants.MAX_AWAIT_TIME_IN_SEC;
 import static org.awaitility.Awaitility.await;
@@ -117,7 +118,7 @@ public class UforwarderContainerIntegrationTests extends FievelTestBase {
     controller =
         new UForwarderControllerContainer(TEST_IMAGE_UFORWARDER)
             .withImagePullPolicy(PullPolicy.defaultPolicy())
-            .withExposedPorts(UForwarderContainer.CONTROLLER_GRPC_PORT)
+            .withExposedPorts(CONTROLLER_GRPC_PORT)
             .withZookeeperConnect(
                 NetworkUtils.getIpAddress(zkServer, network) + ":" + Constants.ZOOKEEPER_PORT)
             .withKafkaBootstrapString(kafkaBootstrap);
@@ -128,9 +129,7 @@ public class UforwarderContainerIntegrationTests extends FievelTestBase {
         new UForwarderWorkerContainer(TEST_IMAGE_UFORWARDER)
             .withImagePullPolicy(PullPolicy.defaultPolicy())
             .withController(
-                NetworkUtils.getIpAddress(controller, network)
-                    + ":"
-                    + UForwarderContainer.CONTROLLER_GRPC_PORT)
+                NetworkUtils.getIpAddress(controller, network) + ":" + CONTROLLER_GRPC_PORT)
             .withKafkaBootstrapString(kafkaBootstrap);
     worker.setNetwork(network);
     worker.start();
@@ -154,7 +153,8 @@ public class UforwarderContainerIntegrationTests extends FievelTestBase {
             MockConsumerServiceStarter.METHOD_NAME_FORMAT, TEST_GROUP_NAME, TEST_TOPIC_NAME);
 
     UForwarderUtils.createJob(
-        controller.getAddress(),
+        String.format(
+            "%s:%d", controller.getHost(), controller.getMappedPort(CONTROLLER_GRPC_PORT)),
         getAddJobGroupRequest(TEST_TOPIC_NAME, TEST_GROUP_NAME, procedure, "", ImmutableList.of()));
 
     // Normal case

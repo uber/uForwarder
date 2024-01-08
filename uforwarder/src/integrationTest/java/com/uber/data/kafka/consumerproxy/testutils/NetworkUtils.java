@@ -57,7 +57,7 @@ public class NetworkUtils {
   public static void assertPortIsFree(int port) {
     try (ServerSocket socket = new ServerSocket(port)) {
     } catch (IOException ioe) {
-      Assert.fail(ioe.getMessage());
+      Assert.fail(ioe.getMessage() + " port=" + port);
     }
   }
 

@@ -8,8 +8,6 @@ import static org.mockito.Mockito.when;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.uber.data.kafka.clients.admin.Admin;
-import com.uber.data.kafka.clients.admin.MultiClusterAdmin;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobType;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
@@ -51,8 +49,8 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
   private static final String TEST_TOPIC = "test-topic";
   private CoreInfra infra;
   private Store<String, StoredJobGroup> jobGroupStore;
-  private Admin adminClient;
-  private MultiClusterAdmin multiClusterAdmin;
+  private AdminClient adminClient;
+  private AdminClient.Builder adminBuilder;
   private KafkaPartitionExpansionWatcher kafkaPartitionExpansionWatcher;
   private IdProvider<Long, StoredJob> jobIdProvider;
   private JobCreator jobCreator;
@@ -64,12 +62,12 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
     Tracer tracer = new MockTracer();
     infra = CoreInfra.builder().withScope(scope).withTracer(tracer).build();
     jobGroupStore = mock(Store.class);
-    adminClient = mock(Admin.class);
-    multiClusterAdmin = mock(MultiClusterAdmin.class);
+    adminClient = mock(AdminClient.class);
+    adminBuilder = mock(AdminClient.Builder.class);
     jobIdProvider = new LocalSequencer<>();
     jobCreator = new JobCreator() {};
     leaderSelector = Mockito.mock(LeaderSelector.class);
-    when(multiClusterAdmin.getAdmin(Mockito.anyString())).thenReturn(adminClient);
+    when(adminBuilder.build(Mockito.anyString())).thenReturn(adminClient);
     when(leaderSelector.isLeader()).thenReturn(true);
     Timer timer = Mockito.mock(Timer.class);
     Stopwatch stopwatch = Mockito.mock(Stopwatch.class);
@@ -85,7 +83,7 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
     Mockito.when(timer.start()).thenReturn(stopwatch);
     kafkaPartitionExpansionWatcher =
         new KafkaPartitionExpansionWatcher(
-            infra, jobGroupStore, jobIdProvider, jobCreator, multiClusterAdmin, leaderSelector);
+            infra, jobGroupStore, jobIdProvider, jobCreator, adminBuilder, leaderSelector);
 
     // mock describeTopics call returning a topic with 2 partitions
     TopicDescription topicDescription =
@@ -160,7 +158,7 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
   @Test
   public void testPartitionExpansionAdminClientFactoryException() throws Exception {
     // partition expansion watcher should gracefully handle factory exceptions.
-    when(multiClusterAdmin.getAdmin(Mockito.anyString())).thenThrow(new RuntimeException());
+    when(adminBuilder.build(Mockito.anyString())).thenThrow(new RuntimeException());
 
     kafkaPartitionExpansionWatcher.watchPartitionExpansion();
 
@@ -188,7 +186,7 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
     when(jobGroupStore.getAll()).thenReturn(ImmutableMap.of("group1", createJobGroup(4)));
 
     // partition expansion watcher should gracefully handle factory exceptions.
-    when(multiClusterAdmin.getAdmin(Mockito.anyString())).thenThrow(new RuntimeException());
+    when(adminBuilder.build(Mockito.anyString())).thenThrow(new RuntimeException());
 
     kafkaPartitionExpansionWatcher.watchPartitionExpansion();
 

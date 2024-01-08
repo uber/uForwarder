@@ -258,7 +258,7 @@ public final class JobManager {
     } catch (Throwable t) {
       rebalanceJobGroupsFailure = true;
       scope.counter(MetricsNames.REBALANCE_JOB_GROUPS_FAILURE).inc(1);
-      logger.info(MetricsNames.REBALANCE_JOB_GROUPS_FAILURE, t);
+      logger.error(MetricsNames.REBALANCE_JOB_GROUPS_FAILURE, t);
     } finally {
       rebalanceJobGroupsTimer.stop();
       if (!rebalanceJobGroupsFailure) {

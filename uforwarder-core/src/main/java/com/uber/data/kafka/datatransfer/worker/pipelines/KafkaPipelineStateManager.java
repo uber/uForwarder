@@ -32,11 +32,16 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(KafkaPipelineStateManager.class);
   private static final double MINIMUM_VALID_RATE = 1.0;
+
+  private static final double DEFAULT_BYTE_RATE = Double.MAX_VALUE;
   private static final double MINIMUM_VALID_INFLIGHT_MESSAGES = 1.0;
   private static final FlowControl MINIMUM_VALID_FLOW =
       FlowControl.newBuilder()
           .setMessagesPerSec(MINIMUM_VALID_RATE)
-          .setBytesPerSec(MINIMUM_VALID_RATE)
+          // we need to set the default byteRate to Double.MAX so that
+          // stale jobs being processed will not be blocked when messages are submitted to
+          // rateLimiter
+          .setBytesPerSec(DEFAULT_BYTE_RATE)
           .setMaxInflightMessages(MINIMUM_VALID_INFLIGHT_MESSAGES)
           .build();
 
@@ -341,7 +346,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
       flowControlBuilder.setMessagesPerSec(messagesPerSecTotal);
     }
     if (bytesPerSecTotal == 0) {
-      flowControlBuilder.setBytesPerSec(MINIMUM_VALID_RATE);
+      flowControlBuilder.setBytesPerSec(DEFAULT_BYTE_RATE);
     } else {
       flowControlBuilder.setBytesPerSec(bytesPerSecTotal);
     }

@@ -1,0 +1,6 @@
+kafkaConnect: "localhost:9093"
+controllerConnect: "localhost:8087"
+group: "sample_group"
+topic: "sample_topic"
+grpc_port: 57988
+
