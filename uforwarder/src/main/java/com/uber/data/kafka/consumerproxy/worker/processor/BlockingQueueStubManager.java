@@ -1,8 +1,8 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.uber.data.kafka.clients.admin.VisibleForTesting;
 import com.uber.data.kafka.consumerproxy.utils.RetryUtils;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
 import com.uber.data.kafka.datatransfer.Job;

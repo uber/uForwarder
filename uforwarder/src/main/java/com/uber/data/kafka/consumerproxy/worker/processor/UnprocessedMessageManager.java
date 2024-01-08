@@ -1,8 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
+import com.uber.data.kafka.consumerproxy.common.MetricsUtils;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.common.StructuredTags;
 import com.uber.data.kafka.consumerproxy.worker.limiter.BootstrapLongFixedInflightLimiter;
@@ -10,11 +9,8 @@ import com.uber.data.kafka.consumerproxy.worker.limiter.InflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.LongFixedInflightLimiter;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
-import com.uber.data.kafka.datatransfer.common.RoutingUtils;
-import com.uber.data.kafka.datatransfer.common.StructuredFields;
 import com.uber.data.kafka.datatransfer.worker.common.MetricSource;
 import com.uber.m3.tally.Scope;
-import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
@@ -210,51 +206,6 @@ public class UnprocessedMessageManager implements BlockingQueue, MetricSource {
     return false;
   }
 
-  protected static Scope jobScope(Scope scope, Job job) {
-    final String group = job.getKafkaConsumerTask().getConsumerGroup();
-    final String cluster = job.getKafkaConsumerTask().getCluster();
-    final String topic = job.getKafkaConsumerTask().getTopic();
-    final String partition = Integer.toString(job.getKafkaConsumerTask().getPartition());
-    final String routingKey = RoutingUtils.extractAddress(job.getRpcDispatcherTask().getUri());
-    return scope.tagged(
-        ImmutableMap.of(
-            StructuredFields.KAFKA_GROUP,
-            group,
-            StructuredFields.KAFKA_CLUSTER,
-            cluster,
-            StructuredFields.KAFKA_TOPIC,
-            topic,
-            StructuredFields.KAFKA_PARTITION,
-            partition,
-            StructuredFields.URI,
-            routingKey));
-  }
-
-  /** Composition of permits */
-  protected class NestedPermit implements InflightLimiter.Permit {
-    private AtomicBoolean completed;
-    private final List<InflightLimiter.Permit> permits;
-
-    /**
-     * Creates a nested permit with nested permits
-     *
-     * @param permits
-     */
-    NestedPermit(InflightLimiter.Permit... permits) {
-      this.permits = ImmutableList.copyOf(permits);
-      this.completed = new AtomicBoolean(false);
-    }
-
-    @Override
-    public boolean complete(InflightLimiter.Result result) {
-      if (completed.compareAndSet(false, true)) {
-        permits.stream().forEach(permit -> permit.complete(result));
-        return true;
-      }
-      return false;
-    }
-  }
-
   interface Limiter extends MetricSource {
     default boolean close() {
       return true;
@@ -283,7 +234,7 @@ public class UnprocessedMessageManager implements BlockingQueue, MetricSource {
       this.totalMessages = new AtomicLong();
       this.totalBytes = new AtomicLong();
       this.permits = ConcurrentHashMap.newKeySet();
-      this.jobScope = jobScope(scope, job);
+      this.jobScope = MetricsUtils.jobScope(scope, job);
       this.delegator = delegator;
     }
 

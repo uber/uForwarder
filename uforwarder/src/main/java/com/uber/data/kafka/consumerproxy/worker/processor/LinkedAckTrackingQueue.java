@@ -5,7 +5,7 @@ import com.uber.m3.tally.Scope;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
-import java.util.Optional;
+import java.util.Map;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -61,7 +61,8 @@ final class LinkedAckTrackingQueue extends AbstractAckTrackingQueue {
    * @throws InterruptedException
    */
   @Override
-  public synchronized void receive(long offset, Optional<String> key) throws InterruptedException {
+  public synchronized void receive(long offset, Map<AttributeKey, Attribute> attributes)
+      throws InterruptedException {
     lock.lock();
     try {
       // receive offsets in order
@@ -74,7 +75,7 @@ final class LinkedAckTrackingQueue extends AbstractAckTrackingQueue {
         }
         // the first time to receive
         if (waitForNotFull(offset)) {
-          offsetStatusMap.put(offset, new OffsetStatus(offset, key));
+          offsetStatusMap.put(offset, new OffsetStatus(offset, attributes));
           cancelableOffsets.add(offset);
           highestReceivedOffset = offset;
         }
@@ -275,23 +276,23 @@ final class LinkedAckTrackingQueue extends AbstractAckTrackingQueue {
     /** ack status */
     AckStatus ackStatus = AckStatus.UNSET;
 
-    private final Optional<String> key;
+    private final Map<AttributeKey, Attribute> attributes;
 
     /**
      * Instantiates an instance, with specific status
      *
      * @param offset the offset
      */
-    private OffsetStatus(long offset, Optional<String> key) {
+    private OffsetStatus(long offset, Map<AttributeKey, Attribute> attributes) {
       this.offset = offset;
-      this.key = key;
-      onReceive(key);
+      this.attributes = attributes;
+      onReceive(attributes);
     }
 
     private AckStatus setStatus(AckStatus ackStatus) {
       AckStatus curStatus = this.ackStatus;
       this.ackStatus = ackStatus;
-      onStatusUpdate(curStatus, ackStatus, key);
+      onStatusUpdate(curStatus, ackStatus, attributes);
       return curStatus;
     }
 

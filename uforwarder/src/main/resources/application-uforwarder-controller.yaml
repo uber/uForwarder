@@ -116,6 +116,7 @@ master:
     # If store.mode is ZK, it will read connection string from zkConnection
     # Use dev ZK b/c we must specify zkConnection override per application to avoid metadata inconsistency.
     zkConnection: 127.0.0.1:2181/uforwarder
+    autoCreateRootNode: true
   coordinator:
     leaderSelector:
       # Determines the frequency of emitting metrics on leader selector state.

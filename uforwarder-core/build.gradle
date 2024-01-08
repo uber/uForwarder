@@ -42,7 +42,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-autoconfigure'
     implementation 'org.springframework.boot:spring-boot-starter-actuator'
     implementation project(':instrumentation')
-    implementation project(':admin-client')
     implementation project(':idl')
     testImplementation project(':fievel-common')
     testImplementation 'junit:junit'

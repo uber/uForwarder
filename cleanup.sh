@@ -10,7 +10,6 @@ function cleanup_fievel() {
 cleanup_fievel
 
 rm instrumentation/src
-rm admin-client/src
 rm -r idl/src
 rm uforwarder-client/src
 rm uforwarder-core/src

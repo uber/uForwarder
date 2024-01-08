@@ -14,7 +14,6 @@ import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
 import io.grpc.stub.MetadataUtils;
 import java.util.Iterator;
-import java.util.List;
 import java.util.concurrent.TimeUnit;
 import org.I0Itec.zkclient.ZkClient;
 import org.junit.Assert;
@@ -29,10 +28,6 @@ public class UForwarderUtils {
     ZkClient zkClient =
         new ZkClient(address, ZOOKEEPER_TIMEOUT, ZOOKEEPER_TIMEOUT, new ZKStringSerializer());
     zkClient.deleteRecursive(UFORWARDER_ZK_ROOT_PATH);
-    zkClient.createPersistent(
-        String.format("%s/%s", UFORWARDER_ZK_ROOT_PATH, UFORWARDER_ZK_LEADER_NODE), true);
-    List<String> children = zkClient.getChildren(UFORWARDER_ZK_ROOT_PATH);
-    Assert.assertTrue(children.contains(UFORWARDER_ZK_LEADER_NODE));
   }
 
   public static void createJob(String address, AddJobGroupRequest addJobGroupRequest) {

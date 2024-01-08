@@ -1,6 +1,5 @@
 package com.uber.data.kafka.consumerproxy.controller;
 
-import com.uber.data.kafka.clients.admin.MultiClusterAdmin;
 import com.uber.data.kafka.consumerproxy.config.KafkaAdminClientConfiguration;
 import com.uber.data.kafka.consumerproxy.config.KafkaOffsetCommitterConfiguration;
 import com.uber.data.kafka.consumerproxy.config.NoopTracerAutoConfiguration;
@@ -16,6 +15,7 @@ import com.uber.data.kafka.consumerproxy.utils.NodeConfigurationUtils;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
+import com.uber.data.kafka.datatransfer.common.AdminClient;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
 import com.uber.data.kafka.datatransfer.common.KafkaPartitionExpansionWatcher;
@@ -101,21 +101,21 @@ public class UForwarderControllerFactory {
   @Bean
   public JobCreator jobCreator(
       @Value("${master.jobCreator}") String jobCreatorMode,
-      MultiClusterAdmin multiClusterAdmin,
+      AdminClient.Builder adminBuilder,
       CoreInfra coreInfra) {
     switch (jobCreatorMode) {
       case "StreamingJobCreator":
         return new StreamingJobCreator(coreInfra.scope());
       case "BatchJobCreator":
-        return new BatchJobCreator(multiClusterAdmin, coreInfra);
+        return new BatchJobCreator(adminBuilder, coreInfra);
       default:
         return new JobCreator() {};
     }
   }
 
   @Bean
-  public MultiClusterAdmin multiClusterAdmin(KafkaAdminClientConfiguration configuration) {
-    return MultiClusterAdmin.create(configuration::getProperties);
+  public AdminClient.Builder adminBuilder(KafkaAdminClientConfiguration configuration) {
+    return AdminClient.newBuilder(configuration::getProperties);
   }
 
   @Bean
@@ -124,10 +124,10 @@ public class UForwarderControllerFactory {
       Store<String, StoredJobGroup> jobGroupStore,
       IdProvider<Long, StoredJob> jobIdProvider,
       JobCreator jobCreator,
-      MultiClusterAdmin multiClusterAdmin,
+      AdminClient.Builder adminBuilder,
       LeaderSelector leaderSelector) {
     return new KafkaPartitionExpansionWatcher(
-        coreInfra, jobGroupStore, jobIdProvider, jobCreator, multiClusterAdmin, leaderSelector);
+        coreInfra, jobGroupStore, jobIdProvider, jobCreator, adminBuilder, leaderSelector);
   }
 
   @Bean(name = "grpcPort")

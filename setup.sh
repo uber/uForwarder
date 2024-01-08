@@ -18,7 +18,6 @@ setup_fievel
 mkdir -p idl/src/main/proto/data/kafka/
 
 ln -s ../../instrumentation/src instrumentation/src
-ln -s ../../admin-client/src admin-client/src
 ln -s ../../../../../../../../../idl/code.uber.internal/data/kafka/data-transfer idl/src/main/proto/data/kafka/data-transfer
 ln -s ../../../../../../../../../idl/code.uber.internal/data/kafka/messaging-consumer idl/src/main/proto/data/kafka/messaging-consumer
 ln -s ../../uforwarder-client/src uforwarder-client/src

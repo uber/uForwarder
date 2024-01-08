@@ -44,6 +44,7 @@ master:
     # Coordinator uses zkConnection for leader election
     # If store.mode is ZK, it will read connection string from zkConnection
     zkConnection: localhost:2181/kafka-consumer-proxy
+    autoCreateRootNode: true
   autoscalar:
     upScaleWindowDuration: 6m
     downScaleWindowDuration: 10m

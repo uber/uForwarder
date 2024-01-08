@@ -26,8 +26,9 @@ class RebalancingWorkerWithSortedJobs implements Comparable<RebalancingWorkerWit
   }
 
   void addJob(RebalancingJob job) {
-    this.jobs.add(job);
-    this.load += job.getLoad();
+    if (this.jobs.add(job)) {
+      this.load += job.getLoad();
+    }
   }
 
   List<RebalancingJob> getAllJobs() {

@@ -11,7 +11,7 @@ plugins {
 }
 
 rootProject.name = 'uforwarder'
-include('fievel-common', 'instrumentation', 'admin-client', 'idl', 'uforwarder-client', 'uforwarder-core', 'uforwarder', 'uforwarder-image', 'uforwarder-container')
+include('fievel-common', 'instrumentation', 'idl', 'uforwarder-client', 'uforwarder-core', 'uforwarder', 'uforwarder-image', 'uforwarder-container', 'uforwarder-sample-consumer')
 
 dependencyResolutionManagement {
     repositories {

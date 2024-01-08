@@ -76,7 +76,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     Assert.assertEquals(
         FlowControl.newBuilder()
             .setMessagesPerSec(1.0)
-            .setBytesPerSec(1.0)
+            .setBytesPerSec(Double.MAX_VALUE)
             .setMaxInflightMessages(1.0)
             .buildPartial(),
         pipelineStateManager.getFlowControl());
@@ -126,7 +126,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     Assert.assertEquals(
         FlowControl.newBuilder()
             .setMessagesPerSec(1.0)
-            .setBytesPerSec(1.0)
+            .setBytesPerSec(Double.MAX_VALUE)
             .setMaxInflightMessages(1.0)
             .build(),
         pipelineStateManager.getFlowControl());
@@ -337,7 +337,8 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     Assert.assertEquals(2, (int) pipelineStateManager.getFlowControl().getMaxInflightMessages());
 
     pipelineStateManager.cancelAll().toCompletableFuture().get();
-    Assert.assertEquals(1, (int) pipelineStateManager.getFlowControl().getBytesPerSec());
+    Assert.assertEquals(
+        Double.MAX_VALUE, pipelineStateManager.getFlowControl().getBytesPerSec(), 0.000001);
     Assert.assertEquals(1, (int) pipelineStateManager.getFlowControl().getMessagesPerSec());
     Assert.assertEquals(1, (int) pipelineStateManager.getFlowControl().getMaxInflightMessages());
   }

@@ -4,26 +4,28 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.Timestamp;
 import com.google.protobuf.util.Timestamps;
-import com.uber.data.kafka.clients.admin.Admin;
-import com.uber.data.kafka.clients.admin.MultiClusterAdmin;
 import com.uber.data.kafka.datatransfer.JobGroup;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.JobType;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTaskGroup;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
+import com.uber.data.kafka.datatransfer.common.AdminClient;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.JobUtils;
 import com.uber.fievel.testing.base.FievelTestBase;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Optional;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsResult;
+import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
+import org.apache.kafka.common.internals.KafkaFutureImpl;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -39,8 +41,8 @@ public class BatchJobCreatorTest extends FievelTestBase {
   private static final Timestamp TEST_END_TIME = Timestamps.fromSeconds(2);
   private static final long TEST_END_OFFSET = 4L;
 
-  private MultiClusterAdmin multiClusterAdmin;
-  private Admin singleClusterAdmin;
+  private AdminClient.Builder adminBuilder;
+  private AdminClient adminClient;
   private BatchJobCreator jobCreator;
   private StoredJobGroup storedJobGroup;
   private KafkaFuture<Map<TopicPartition, OffsetAndMetadata>> listConsumerOffsetFutureMock;
@@ -48,10 +50,10 @@ public class BatchJobCreatorTest extends FievelTestBase {
 
   @Before
   public void setUp() {
-    singleClusterAdmin = Mockito.mock(Admin.class);
-    multiClusterAdmin = Mockito.mock(MultiClusterAdmin.class);
-    Mockito.doReturn(singleClusterAdmin).when(multiClusterAdmin).getAdmin(Mockito.anyString());
-    jobCreator = new BatchJobCreator(multiClusterAdmin, CoreInfra.NOOP);
+    adminClient = Mockito.mock(AdminClient.class);
+    adminBuilder = Mockito.mock(AdminClient.Builder.class);
+    Mockito.doReturn(adminClient).when(adminBuilder).build(Mockito.anyString());
+    jobCreator = new BatchJobCreator(adminBuilder, CoreInfra.NOOP);
     storedJobGroup =
         StoredJobGroup.newBuilder()
             .setJobGroup(
@@ -75,13 +77,15 @@ public class BatchJobCreatorTest extends FievelTestBase {
   }
 
   @Test
-  public void testNewJobWhenThePartitionIsEmpty()
-      throws ExecutionException, InterruptedException, TimeoutException {
+  public void testNewJobWhenThePartitionIsEmpty() {
     TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
-    Mockito.when(singleClusterAdmin.beginningOffsets(ImmutableList.of(topicPartition)))
-        .thenReturn(ImmutableMap.of(topicPartition, TEST_END_OFFSET));
-    Mockito.when(singleClusterAdmin.endOffsets(ImmutableList.of(topicPartition)))
-        .thenReturn(ImmutableMap.of(topicPartition, TEST_END_OFFSET));
+    KafkaFutureImpl offsetFuture = new KafkaFutureImpl();
+    offsetFuture.complete(
+        new ListOffsetsResult.ListOffsetsResultInfo(TEST_END_OFFSET, 0, Optional.empty()));
+    Mockito.when(adminClient.beginningOffsets(ImmutableList.of(topicPartition)))
+        .thenReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, offsetFuture)));
+    Mockito.when(adminClient.endOffsets(ImmutableList.of(topicPartition)))
+        .thenReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, offsetFuture)));
     StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
     Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
     Assert.assertEquals(JobState.JOB_STATE_CANCELED, storedJob.getState());
@@ -95,25 +99,27 @@ public class BatchJobCreatorTest extends FievelTestBase {
         .when(listConsumerOffsetFutureMock)
         .get(20000, TimeUnit.MILLISECONDS);
     Mockito.doReturn(listConsumerGroupOffsetsResult)
-        .when(singleClusterAdmin)
+        .when(adminClient)
         .listConsumerGroupOffsets(TEST_GROUP);
-    Mockito.doReturn(
-            ImmutableMap.of(
-                topicPartition,
-                new OffsetAndTimestamp(TEST_START_OFFSET, Timestamps.toMillis(TEST_START_TIME))))
-        .when(singleClusterAdmin)
+    KafkaFutureImpl startOffsetFuture = new KafkaFutureImpl();
+    startOffsetFuture.complete(
+        new ListOffsetsResult.ListOffsetsResultInfo(
+            TEST_START_OFFSET, Timestamps.toMillis(TEST_START_TIME), Optional.empty()));
+    KafkaFutureImpl endOffsetFuture = new KafkaFutureImpl();
+    endOffsetFuture.complete(
+        new ListOffsetsResult.ListOffsetsResultInfo(
+            TEST_END_OFFSET, Timestamps.toMillis(TEST_END_TIME), Optional.empty()));
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, startOffsetFuture)))
+        .when(adminClient)
         .offsetsForTimes(ImmutableMap.of(topicPartition, Timestamps.toMillis(TEST_START_TIME)));
-    Mockito.doReturn(ImmutableMap.of(topicPartition, TEST_START_OFFSET))
-        .when(singleClusterAdmin)
-        .endOffsets(ImmutableList.of(topicPartition));
-    Mockito.doReturn(
-            ImmutableMap.of(
-                topicPartition,
-                new OffsetAndTimestamp(TEST_END_OFFSET, Timestamps.toMillis(TEST_END_TIME))))
-        .when(singleClusterAdmin)
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, startOffsetFuture)))
+        .when(adminClient)
+        .beginningOffsets(ImmutableList.of(topicPartition));
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, endOffsetFuture)))
+        .when(adminClient)
         .offsetsForTimes(ImmutableMap.of(topicPartition, Timestamps.toMillis(TEST_END_TIME)));
-    Mockito.doReturn(ImmutableMap.of(topicPartition, TEST_END_OFFSET))
-        .when(singleClusterAdmin)
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, endOffsetFuture)))
+        .when(adminClient)
         .endOffsets(ImmutableList.of(topicPartition));
     StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
     Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
@@ -128,13 +134,17 @@ public class BatchJobCreatorTest extends FievelTestBase {
         .when(listConsumerOffsetFutureMock)
         .get(20000, TimeUnit.MILLISECONDS);
     Mockito.doReturn(listConsumerGroupOffsetsResult)
-        .when(singleClusterAdmin)
+        .when(adminClient)
         .listConsumerGroupOffsets(TEST_GROUP);
-    Mockito.doReturn(ImmutableMap.of())
-        .when(singleClusterAdmin)
+    KafkaFutureImpl endOffsetFuture = new KafkaFutureImpl();
+    endOffsetFuture.complete(
+        new ListOffsetsResult.ListOffsetsResultInfo(
+            TEST_END_OFFSET, Timestamps.toMillis(TEST_END_TIME), Optional.empty()));
+    Mockito.doReturn(new ListOffsetsResult(Collections.emptyMap()))
+        .when(adminClient)
         .offsetsForTimes(ImmutableMap.of(topicPartition, Timestamps.toMillis(TEST_END_TIME)));
-    Mockito.doReturn(ImmutableMap.of(topicPartition, TEST_END_OFFSET))
-        .when(singleClusterAdmin)
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, endOffsetFuture)))
+        .when(adminClient)
         .endOffsets(ImmutableList.of(topicPartition));
     StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
     Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
@@ -145,17 +155,15 @@ public class BatchJobCreatorTest extends FievelTestBase {
   @Test
   public void testNewJobWithSameStartAndEndOffsets() {
     TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
-    Mockito.doReturn(
-            ImmutableMap.of(
-                topicPartition,
-                new OffsetAndTimestamp(TEST_END_OFFSET, Timestamps.toMillis(TEST_END_TIME))))
-        .when(singleClusterAdmin)
+    KafkaFutureImpl endOffsetFuture = new KafkaFutureImpl();
+    endOffsetFuture.complete(
+        new ListOffsetsResult.ListOffsetsResultInfo(
+            TEST_END_OFFSET, Timestamps.toMillis(TEST_END_TIME), Optional.empty()));
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, endOffsetFuture)))
+        .when(adminClient)
         .offsetsForTimes(ImmutableMap.of(topicPartition, Timestamps.toMillis(TEST_START_TIME)));
-    Mockito.doReturn(
-            ImmutableMap.of(
-                topicPartition,
-                new OffsetAndTimestamp(TEST_END_OFFSET, Timestamps.toMillis(TEST_END_TIME))))
-        .when(singleClusterAdmin)
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, endOffsetFuture)))
+        .when(adminClient)
         .offsetsForTimes(ImmutableMap.of(topicPartition, Timestamps.toMillis(TEST_END_TIME)));
     StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
     Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
@@ -214,23 +222,16 @@ public class BatchJobCreatorTest extends FievelTestBase {
 
   @Test
   public void testGetOffset() {
-    TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
     Assert.assertEquals(
         TEST_START_OFFSET,
-        BatchJobCreator.getOffset(
-            ImmutableMap.of(
-                topicPartition,
-                new OffsetAndTimestamp(TEST_START_OFFSET, Timestamps.toMillis(TEST_START_TIME))),
-            topicPartition,
-            () -> TEST_START_OFFSET));
+        BatchJobCreator.getOffset(() -> TEST_START_OFFSET, () -> TEST_START_OFFSET));
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testGetOffsetNullOffset() {
     TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
     BatchJobCreator.getOffset(
-        ImmutableMap.of(),
-        topicPartition,
+        () -> null,
         () -> {
           throw new IllegalArgumentException(
               String.format("failed to resolve offsetForTimes for %s", topicPartition));
@@ -241,9 +242,7 @@ public class BatchJobCreatorTest extends FievelTestBase {
   public void testGetOffsetNegativeOffset() {
     TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
     BatchJobCreator.getOffset(
-        ImmutableMap.of(
-            topicPartition, new OffsetAndTimestamp(-1, Timestamps.toMillis(TEST_START_TIME))),
-        topicPartition,
+        () -> -1L,
         () -> {
           throw new IllegalArgumentException(
               String.format("failed to resolve offsetForTimes for %s", topicPartition));

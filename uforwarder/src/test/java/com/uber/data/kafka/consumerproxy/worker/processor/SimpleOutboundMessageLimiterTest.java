@@ -16,6 +16,7 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Assert;
 import org.junit.Before;
@@ -131,29 +132,33 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
   @Test
   public void testUpdateLimitWhileBlocked() {
     // test update limit won't be blocked
+    AtomicInteger sequence = new AtomicInteger(0);
     long start = System.currentTimeMillis();
     outboundMessageLimiter.acquirePermit(pm1);
     outboundMessageLimiter.acquirePermit(pm1);
     Executors.newSingleThreadScheduledExecutor()
         .schedule(
             () -> {
+              sequence.incrementAndGet();
               outboundMessageLimiter.updateLimit(3); // unblock
             },
             100,
             TimeUnit.MILLISECONDS);
     outboundMessageLimiter.acquirePermit(pm1);
-    Assert.assertTrue(System.currentTimeMillis() - start > 100);
+    Assert.assertEquals(1, sequence.get());
 
     Executors.newSingleThreadScheduledExecutor()
         .schedule(
             () -> {
+              sequence.incrementAndGet();
               outboundMessageLimiter.updateLimit(2); // not being blocked
+              sequence.incrementAndGet();
               outboundMessageLimiter.updateLimit(4); // unblock
             },
             100,
             TimeUnit.MILLISECONDS);
     outboundMessageLimiter.acquirePermit(pm1);
-    Assert.assertTrue(System.currentTimeMillis() - start > 200);
+    Assert.assertEquals(3, sequence.get());
   }
 
   @Test

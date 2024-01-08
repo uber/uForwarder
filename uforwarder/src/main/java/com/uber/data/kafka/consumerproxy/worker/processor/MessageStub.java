@@ -1,7 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.EvictingQueue;
-import com.uber.data.kafka.clients.admin.VisibleForTesting;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherImpl;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcResponse;

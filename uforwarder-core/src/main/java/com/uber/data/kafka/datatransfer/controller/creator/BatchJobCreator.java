@@ -5,21 +5,18 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.util.Timestamps;
-import com.uber.data.kafka.clients.admin.Admin;
-import com.uber.data.kafka.clients.admin.MultiClusterAdmin;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
+import com.uber.data.kafka.datatransfer.common.AdminClient;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.StructuredFields;
 import com.uber.data.kafka.datatransfer.common.StructuredLogging;
 import com.uber.data.kafka.instrumentation.Instrumentation;
 import com.uber.m3.tally.Scope;
-import java.util.Map;
+import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import org.apache.kafka.clients.consumer.OffsetAndMetadata;
-import org.apache.kafka.clients.consumer.OffsetAndTimestamp;
-import org.apache.kafka.common.KafkaFuture;
+import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -35,15 +32,16 @@ import org.slf4j.LoggerFactory;
  */
 public class BatchJobCreator extends JobCreatorWithOffsets {
   private static final Logger logger = LoggerFactory.getLogger(BatchJobCreator.class);
+  private static final Duration KAFKA_ADMIN_CLIENT_LIST_OFFSETS_TIMEOUT = Duration.ofMinutes(1);
   private static final String JOB_TYPE = "batch";
   private static final int LIST_CONSUMER_GROUP_OFFSETS_TIMEOUT_MS = 20000;
 
-  private final MultiClusterAdmin multiClusterAdmin;
+  private final AdminClient.Builder adminBuilder;
   private final Scope scope;
   private final CoreInfra infra;
 
-  public BatchJobCreator(MultiClusterAdmin multiClusterAdmin, CoreInfra infra) {
-    this.multiClusterAdmin = multiClusterAdmin;
+  public BatchJobCreator(AdminClient.Builder adminBuilder, CoreInfra infra) {
+    this.adminBuilder = adminBuilder;
     this.scope = infra.scope().tagged(ImmutableMap.of("mode", "batch"));
     this.infra = infra;
   }
@@ -68,16 +66,20 @@ public class BatchJobCreator extends JobCreatorWithOffsets {
                   storedJobGroup.getJobGroup().getKafkaConsumerTaskGroup().getEndTimestamp());
 
           assertValidTimestamps(startTimestamp, endTimestamp);
-          Admin singleClusterAdminClient = multiClusterAdmin.getAdmin(cluster);
+          AdminClient adminClient = adminBuilder.build(cluster);
 
           long lowWatermark =
-              singleClusterAdminClient
-                  .beginningOffsets(ImmutableList.of(topicPartition))
-                  .getOrDefault(topicPartition, 0L);
+              offsetOf(
+                  adminClient.beginningOffsets(ImmutableList.of(topicPartition)),
+                  topicPartition,
+                  consumerGroup,
+                  0);
           long highWatermark =
-              singleClusterAdminClient
-                  .endOffsets(ImmutableList.of(topicPartition))
-                  .getOrDefault(topicPartition, 0L);
+              offsetOf(
+                  adminClient.endOffsets(ImmutableList.of(topicPartition)),
+                  topicPartition,
+                  consumerGroup,
+                  0);
 
           // there are no messages in this partition
           if (lowWatermark == highWatermark) {
@@ -142,21 +144,16 @@ public class BatchJobCreator extends JobCreatorWithOffsets {
           // localhost:9092 --topic
           // topic_4 --partitions 0 --time 1646259569000
           // topic_4:0:
-          Map<TopicPartition, OffsetAndTimestamp> endOffsetMap =
-              singleClusterAdminClient.offsetsForTimes(
-                  ImmutableMap.of(topicPartition, endTimestamp));
-          Map<TopicPartition, OffsetAndTimestamp> startOffsetMap =
-              singleClusterAdminClient.offsetsForTimes(
-                  ImmutableMap.of(topicPartition, startTimestamp));
-          KafkaFuture<Map<TopicPartition, OffsetAndMetadata>> committedOffsetsFuture =
-              singleClusterAdminClient
-                  .listConsumerGroupOffsets(consumerGroup)
-                  .partitionsToOffsetAndMetadata();
 
           long endOffset =
               getOffset(
-                  endOffsetMap,
-                  topicPartition,
+                  () ->
+                      offsetOf(
+                          adminClient.offsetsForTimes(
+                              ImmutableMap.of(topicPartition, endTimestamp)),
+                          topicPartition,
+                          consumerGroup,
+                          -1),
                   () -> {
                     // offsetForTimes may return null result of querying timestamp >
                     // highwatermark timestamp, fallback endOffset in this case.
@@ -165,28 +162,17 @@ public class BatchJobCreator extends JobCreatorWithOffsets {
                         StructuredLogging.kafkaTopic(topic),
                         StructuredLogging.kafkaGroup(consumerGroup),
                         StructuredLogging.kafkaPartition(partition));
-                    return singleClusterAdminClient
-                        .endOffsets(ImmutableList.of(topicPartition))
-                        .getOrDefault(topicPartition, 0L);
-                  });
-          long committedOffset =
-              getCommittedOffset(
-                  committedOffsetsFuture,
-                  topicPartition,
-                  // listConsumerGroupOffsets may error out, fallback to end offset in
-                  // this case.
-                  () -> {
-                    logger.warn(
-                        "failed to get committed offset, falling back to low watermark",
-                        StructuredLogging.kafkaTopic(topic),
-                        StructuredLogging.kafkaGroup(consumerGroup),
-                        StructuredLogging.kafkaPartition(partition));
-                    return lowWatermark;
+                    return highWatermark;
                   });
           long startOffset =
               getOffset(
-                  startOffsetMap,
-                  topicPartition,
+                  () ->
+                      offsetOf(
+                          adminClient.offsetsForTimes(
+                              ImmutableMap.of(topicPartition, startTimestamp)),
+                          topicPartition,
+                          consumerGroup,
+                          -1),
                   // offsetForTimes may return null result of querying timestamp >
                   // highwatermark timestamp, fallback endOffset in this case.
                   () -> {
@@ -234,35 +220,36 @@ public class BatchJobCreator extends JobCreatorWithOffsets {
   }
 
   @VisibleForTesting
-  static long getOffset(
-      Map<TopicPartition, OffsetAndTimestamp> topicPartitionOffsetAndTimestampMap,
-      TopicPartition topicPartition,
-      Supplier<Long> defaultSupplier) {
-    OffsetAndTimestamp offsetAndTimestamp = topicPartitionOffsetAndTimestampMap.get(topicPartition);
-    if (offsetAndTimestamp == null || offsetAndTimestamp.offset() < 0) {
+  static long getOffset(Supplier<Long> offsetSupplier, Supplier<Long> defaultSupplier) {
+    Long offset = offsetSupplier.get();
+    if (offset == null || offset < 0) {
       return defaultSupplier.get();
     }
-    return offsetAndTimestamp.offset();
+    return offset;
   }
 
-  private static long getCommittedOffset(
-      KafkaFuture<Map<TopicPartition, OffsetAndMetadata>> listConsumerGroupOffsetsFuture,
+  private static long offsetOf(
+      ListOffsetsResult listOffsetsResult,
       TopicPartition topicPartition,
-      Supplier<Long> defaultSupplier) {
-    Map<TopicPartition, OffsetAndMetadata> topicPartitionOffsetAndMetadataMap;
+      String consumerGroup,
+      long defaultValue) {
+    if (listOffsetsResult == null) {
+      return defaultValue;
+    }
+
     try {
-      topicPartitionOffsetAndMetadataMap =
-          listConsumerGroupOffsetsFuture.get(
-              LIST_CONSUMER_GROUP_OFFSETS_TIMEOUT_MS, TimeUnit.MILLISECONDS);
+      return listOffsetsResult
+          .partitionResult(topicPartition)
+          .get(KAFKA_ADMIN_CLIENT_LIST_OFFSETS_TIMEOUT.toMillis(), TimeUnit.MILLISECONDS)
+          .offset();
     } catch (Exception e) {
-      logger.error(
-          "failed to fetch committed offset", StructuredLogging.kafkaTopic(topicPartition.topic()));
-      return defaultSupplier.get();
+      logger.warn(
+          "failed to get offset for future result",
+          StructuredLogging.kafkaTopic(topicPartition.topic()),
+          StructuredLogging.kafkaGroup(consumerGroup),
+          StructuredLogging.kafkaPartition(topicPartition.partition()),
+          e);
+      return 0;
     }
-    OffsetAndMetadata offsetAndMetadata = topicPartitionOffsetAndMetadataMap.get(topicPartition);
-    if (offsetAndMetadata == null || offsetAndMetadata.offset() < 0) {
-      return defaultSupplier.get();
-    }
-    return offsetAndMetadata.offset();
   }
 }

@@ -8,6 +8,7 @@ plugins {
 }
 
 dependencies {
+    implementation 'com.101tec:zkclient'
     implementation 'com.github.stefanbirkner:system-rules'
     implementation 'com.google.guava:guava'
     implementation 'com.google.protobuf:protobuf-java'
@@ -43,7 +44,6 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-jetty'
     implementation 'org.springframework.boot:spring-boot-starter-web'
     implementation project(':instrumentation')
-    implementation project(':admin-client')
     implementation project(':uforwarder-core')
     implementation project(':idl')
     testImplementation project(':fievel-common')
@@ -57,7 +57,6 @@ dependencies {
     testRuntimeOnly "org.junit.vintage:junit-vintage-engine"
     integrationTestImplementation 'org.testcontainers:kafka'
     integrationTestImplementation 'org.testcontainers:testcontainers'
-    integrationTestImplementation 'com.101tec:zkclient'
     integrationTestImplementation project(':uforwarder-client')
     integrationTestImplementation project
 }

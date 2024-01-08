@@ -1,10 +1,12 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Timer;
+import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.Assert;
 import org.junit.Before;
@@ -14,6 +16,9 @@ import org.mockito.Mockito;
 
 public class ArrayAckTrackingQueueTest extends FievelTestBase {
   private static final int SIZE = 3;
+  private static final AttributeKey ZONE_KEY = new AttributeKey("zone");
+  private static final Attribute<String> ZONE_A = new Attribute<>("a");
+  private static final Attribute<String> ZONE_B = new Attribute<>("b");
   private ArrayAckTrackingQueue queue;
   private Scope scope;
   private Gauge gauge;
@@ -60,15 +65,15 @@ public class ArrayAckTrackingQueueTest extends FievelTestBase {
 
   @Test
   public void testReceiveNormally() throws InterruptedException {
-    queue.receive(99, "a");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     assertValues(0, 99, 99, 99, 1, 0, 0, 0);
-    assertKeyStatus("a", 1, 0, 0);
-    queue.receive(100, "b");
-    assertKeyStatus("b", 1, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
+    queue.receive(100, ImmutableMap.of(ZONE_KEY, ZONE_B));
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_B), 1, 0, 0);
     assertValues(0, 100, 99, 99, 2, 0, 0, 0);
-    queue.receive(101, "b");
+    queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_B));
     assertValues(0, 101, 99, 99, 3, 0, 0, 0);
-    assertKeyStatus("b", 2, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_B), 2, 0, 0);
   }
 
   @Test
@@ -76,21 +81,21 @@ public class ArrayAckTrackingQueueTest extends FievelTestBase {
     AtomicInteger count = new AtomicInteger(0);
 
     queue.addReactor(() -> count.incrementAndGet());
-    queue.receive(99, "a");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     assertValues(0, 99, 99, 99, 1, 0, 0, 0);
-    assertKeyStatus("a", 1, 0, 0);
-    queue.receive(101, "a");
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
+    queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_A));
     assertValues(0, 101, 101, 101, 1, 0, 0, 0);
-    assertKeyStatus("a", 1, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
     Assert.assertEquals(1, count.get());
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
   @Test
   public void testReceiveBlockedAndAck() throws InterruptedException {
-    queue.receive(99, "b");
-    queue.receive(100, "a");
-    queue.receive(101, "a");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_B));
+    queue.receive(100, ImmutableMap.of(ZONE_KEY, ZONE_A));
+    queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_A));
     new Thread(
             () -> {
               try {
@@ -100,9 +105,9 @@ public class ArrayAckTrackingQueueTest extends FievelTestBase {
               }
             })
         .start();
-    queue.receive(102, "a");
-    assertKeyStatus("a", 3, 0, 0);
-    assertKeyStatus("b", 0, 0, 0);
+    queue.receive(102, ImmutableMap.of(ZONE_KEY, ZONE_A));
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 3, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_B), 0, 0, 0);
     Assert.assertFalse(queue.notInUse);
   }
 
@@ -131,53 +136,53 @@ public class ArrayAckTrackingQueueTest extends FievelTestBase {
     Assert.assertEquals(AckTrackingQueue.CANNOT_ACK, queue.ack(99));
     assertValues(0, -1, -1, -1, 0, 0, 0, 0);
     // ack a too large offset
-    queue.receive(99, "a");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     Assert.assertEquals(AckTrackingQueue.CANNOT_ACK, queue.ack(200));
     assertValues(0, 99, 99, 99, 1, 0, 0, 0);
-    assertKeyStatus("a", 1, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
     // ack a too small offset
     Assert.assertEquals(AckTrackingQueue.CANNOT_ACK, queue.ack(99));
     assertValues(0, 99, 99, 99, 1, 0, 0, 0);
-    assertKeyStatus("a", 1, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
     // ack normally
     Assert.assertEquals(100, queue.ack(100));
     assertValues(1, 99, 100, -1, 0, 0, 0, 0);
-    assertKeyStatus("a", 0, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 0, 0, 0);
   }
 
   @Test
   public void testInOrderAck() throws InterruptedException {
-    queue.receive(99, "a");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     queue.receive(100);
-    queue.receive(101, "a");
+    queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_A));
     Assert.assertEquals(100, queue.ack(100));
     assertValues(1, 101, 100, 100, 2, 0, 0, 0);
-    assertKeyStatus("a", 1, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
     Assert.assertEquals(101, queue.ack(101));
     assertValues(2, 101, 101, 101, 1, 0, 0, 0);
-    assertKeyStatus("a", 1, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
     Assert.assertEquals(102, queue.ack(102));
     assertValues(0, 101, 102, -1, 0, 0, 0, 0);
-    assertKeyStatus("a", 0, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 0, 0, 0);
   }
 
   @Test
   public void testOutOfOrderAck() throws InterruptedException {
-    queue.receive(99, "a");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     queue.receive(100);
-    queue.receive(101, "a");
+    queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_A));
     Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
     assertValues(0, 101, 99, 99, 3, 1, 0, 1);
-    assertKeyStatus("a", 2, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 0, 0);
     Assert.assertEquals(AckTrackingQueue.DUPLICATED_ACK, queue.ack(101));
     assertValues(0, 101, 99, 99, 3, 1, 0, 1);
-    assertKeyStatus("a", 2, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 0, 0);
     Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(102));
     assertValues(0, 101, 99, 99, 3, 2, 0, 2);
-    assertKeyStatus("a", 2, 1, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 1, 0);
     Assert.assertEquals(102, queue.ack(100));
     assertValues(0, 101, 102, -1, 0, 0, 0, 0);
-    assertKeyStatus("a", 0, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 0, 0, 0);
   }
 
   @Test
@@ -257,17 +262,17 @@ public class ArrayAckTrackingQueueTest extends FievelTestBase {
     Assert.assertFalse(queue.nack(99));
     assertValues(0, -1, -1, -1, 0, 0, 0, 0);
     // nack a too large offset
-    queue.receive(99, "a");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     Assert.assertFalse(queue.nack(200));
     assertValues(0, 99, 99, 99, 1, 0, 0, 0);
-    assertKeyStatus("a", 1, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
     // nack a too small offset
     Assert.assertFalse(queue.nack(99));
     assertValues(0, 99, 99, 99, 1, 0, 0, 0);
     // nack normally
     Assert.assertTrue(queue.nack(100));
     assertValues(0, 99, 99, 99, 1, 0, 0, 0);
-    assertKeyStatus("a", 1, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
     // nack a nacked offset
     Assert.assertFalse(queue.nack(100));
     assertValues(0, 99, 99, 99, 1, 0, 0, 0);
@@ -332,9 +337,9 @@ public class ArrayAckTrackingQueueTest extends FievelTestBase {
   @Test
   public void testAckAfterNack() throws InterruptedException {
     // set up
-    queue.receive(99, "a");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     queue.receive(100);
-    queue.receive(101, "a");
+    queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_A));
     Assert.assertTrue(queue.nack(100));
     Assert.assertTrue(queue.nack(101));
     Assert.assertTrue(queue.nack(102));
@@ -346,29 +351,29 @@ public class ArrayAckTrackingQueueTest extends FievelTestBase {
   @Test
   public void testAckAfterCancel() throws InterruptedException {
     // set up
-    queue.receive(99, "a");
-    queue.receive(100, "b");
-    queue.receive(101, "a");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
+    queue.receive(100, ImmutableMap.of(ZONE_KEY, ZONE_B));
+    queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_A));
     Assert.assertTrue(queue.cancel(100));
     assertValues(0, 101, 99, 100, 3, 0, 1, 0);
-    assertKeyStatus("a", 2, 0, 1);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 0, 1);
     Assert.assertEquals(100, queue.ack(100));
     assertValues(1, 101, 100, 100, 2, 0, 0, 0);
-    assertKeyStatus("a", 1, 0, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
   }
 
   @Test
   public void testAckNextAfterCancel() throws InterruptedException {
     // set up
-    queue.receive(99, "a");
-    queue.receive(100, "a");
-    queue.receive(101, "b");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
+    queue.receive(100, ImmutableMap.of(ZONE_KEY, ZONE_A));
+    queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_B));
     Assert.assertTrue(queue.cancel(100));
     assertValues(0, 101, 99, 100, 3, 0, 1, 0);
-    assertKeyStatus("a", 2, 0, 1);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 0, 1);
     Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
     assertValues(0, 101, 99, 101, 3, 1, 1, 1);
-    assertKeyStatus("a", 2, 1, 1);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 1, 1);
   }
 
   @Test
@@ -386,29 +391,29 @@ public class ArrayAckTrackingQueueTest extends FievelTestBase {
   @Test
   public void testCancelMoveOffset() throws InterruptedException {
     // set up
-    queue.receive(99, "a");
-    queue.receive(100, "a");
-    queue.receive(101, "b");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
+    queue.receive(100, ImmutableMap.of(ZONE_KEY, ZONE_A));
+    queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_B));
     Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
     assertValues(0, 101, 99, 99, 3, 1, 0, 1);
-    assertKeyStatus("a", 2, 1, 0);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 1, 0);
     Assert.assertTrue(queue.cancel(100));
     assertValues(0, 101, 99, 101, 3, 1, 1, 1);
-    assertKeyStatus("a", 2, 1, 1);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 1, 1);
   }
 
   @Test
   public void testCancelAll() throws InterruptedException {
     // set up
-    queue.receive(99, "a");
-    queue.receive(100, "a");
-    queue.receive(101, "b");
+    queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
+    queue.receive(100, ImmutableMap.of(ZONE_KEY, ZONE_A));
+    queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_B));
     queue.cancel(100);
     queue.cancel(101);
     queue.cancel(102);
     assertValues(0, 101, 99, -1, 3, 0, 3, 0);
-    assertKeyStatus("a", 2, 0, 2);
-    assertKeyStatus("b", 1, 0, 1);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 0, 2);
+    assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_B), 1, 0, 1);
   }
 
   @Test
@@ -465,8 +470,10 @@ public class ArrayAckTrackingQueueTest extends FievelTestBase {
     Assert.assertEquals(size, length(queue.getState()));
   }
 
-  private void assertKeyStatus(String key, int size, int acked, int canceled) {
-    AckTrackingQueue.Stats stats = queue.getState().keyStats().get(key);
+  private void assertAttributeStatus(
+      Map<AttributeKey, Attribute> attributes, int size, int acked, int canceled) {
+    Attribute zone = attributes.get(ZONE_KEY);
+    AckTrackingQueue.Stats stats = queue.getState().attributesStats().get(ZONE_KEY).get(zone);
     Assert.assertEquals(size, stats.size());
     Assert.assertEquals(acked, stats.acked());
     Assert.assertEquals(canceled, stats.canceled());

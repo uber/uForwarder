@@ -3,7 +3,6 @@ package com.uber.data.kafka.datatransfer.common;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.Sets;
-import com.uber.data.kafka.clients.admin.MultiClusterAdmin;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
@@ -45,7 +44,7 @@ public final class KafkaPartitionExpansionWatcher {
   private final Store<String, StoredJobGroup> jobGroupStore;
   private final IdProvider<Long, StoredJob> jobIdProvider;
   private final JobCreator jobCreator;
-  private final MultiClusterAdmin multiClusterAdmin;
+  private final AdminClient.Builder adminBuilder;
   private final LeaderSelector leaderSelector;
 
   public KafkaPartitionExpansionWatcher(
@@ -53,13 +52,13 @@ public final class KafkaPartitionExpansionWatcher {
       Store<String, StoredJobGroup> jobGroupStore,
       IdProvider<Long, StoredJob> jobIdProvider,
       JobCreator jobCreator,
-      MultiClusterAdmin multiClusterAdmin,
+      AdminClient.Builder adminBuilder,
       LeaderSelector leaderSelector) {
     this.infra = infra;
     this.jobGroupStore = jobGroupStore;
     this.jobIdProvider = jobIdProvider;
     this.jobCreator = jobCreator;
-    this.multiClusterAdmin = multiClusterAdmin;
+    this.adminBuilder = adminBuilder;
     this.leaderSelector = leaderSelector;
   }
 
@@ -118,8 +117,8 @@ public final class KafkaPartitionExpansionWatcher {
           infra.tracer(),
           () -> {
             Set<String> allAvailableTopics =
-                multiClusterAdmin
-                    .getAdmin(entry.getKey())
+                adminBuilder
+                    .build(entry.getKey())
                     .listTopics()
                     .listings()
                     .get()
@@ -142,8 +141,8 @@ public final class KafkaPartitionExpansionWatcher {
             }
 
             Map<String, Integer> topicPartitionMap =
-                multiClusterAdmin
-                    .getAdmin(entry.getKey())
+                adminBuilder
+                    .build(entry.getKey())
                     .describeTopics(entry.getValue())
                     .all()
                     .get(
