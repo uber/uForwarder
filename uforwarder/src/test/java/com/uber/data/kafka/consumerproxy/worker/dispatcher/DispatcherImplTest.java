@@ -131,6 +131,7 @@ public class DispatcherImplTest extends FievelTestBase {
     Assert.assertTrue(dispatcher.isRunning());
     dispatcher.stop();
     Assert.assertFalse(dispatcher.isRunning());
+    Mockito.verify(resqProducer, Mockito.times(1)).stop();
     // close one more time
     dispatcher.stop();
     Assert.assertFalse(dispatcher.isRunning());

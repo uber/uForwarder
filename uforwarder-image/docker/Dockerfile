@@ -1,4 +1,4 @@
-FROM openjdk:11-jre-slim
+FROM eclipse-temurin:11.0.17_8-jdk
 
 COPY bin_main.jar /opt/uforwarder/
 COPY entrypoint.sh /opt/uforwarder/

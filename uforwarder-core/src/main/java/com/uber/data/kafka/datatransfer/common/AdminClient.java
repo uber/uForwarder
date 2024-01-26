@@ -6,12 +6,14 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.function.Function;
 import java.util.stream.Collectors;
+import org.apache.kafka.clients.admin.AlterConsumerGroupOffsetsResult;
 import org.apache.kafka.clients.admin.DescribeTopicsOptions;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.ListConsumerGroupOffsetsResult;
 import org.apache.kafka.clients.admin.ListOffsetsResult;
 import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.admin.OffsetSpec;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 
 /** Wrapper of Kafka admit client {@link org.apache.kafka.clients.admin.AdminClient} */
@@ -91,6 +93,18 @@ public class AdminClient {
    */
   public ListConsumerGroupOffsetsResult listConsumerGroupOffsets(String groupId) {
     return delegator.listConsumerGroupOffsets(groupId);
+  }
+
+  /**
+   * Alters(resets) the consumer group offsets. NOTE: In order to succeed, the group must be
+   * empty(stopped).
+   *
+   * @param groupId the consumer group id
+   * @param offsets the offsets
+   */
+  public AlterConsumerGroupOffsetsResult alterConsumerGroupOffsets(
+      String groupId, Map<TopicPartition, OffsetAndMetadata> offsets) {
+    return delegator.alterConsumerGroupOffsets(groupId, offsets);
   }
 
   /**

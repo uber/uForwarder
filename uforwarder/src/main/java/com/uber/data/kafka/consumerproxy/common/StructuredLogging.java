@@ -23,6 +23,8 @@ public class StructuredLogging extends com.uber.data.kafka.datatransfer.common.S
   private static final String OFFSET_GAP = "offset_gap";
   private static final String JOB_TYPE = "job_type";
 
+  private static final String VIRTUAL_PARTITION = "virtual_partition";
+
   public static StructuredArgument rpcRoutingKey(String rpcRoutingKey) {
     return StructuredArguments.keyValue(RPC_ROUTING_KEY, rpcRoutingKey);
   }
@@ -45,5 +47,9 @@ public class StructuredLogging extends com.uber.data.kafka.datatransfer.common.S
 
   public static StructuredArgument jobType(String jobType) {
     return StructuredArguments.keyValue(JOB_TYPE, jobType);
+  }
+
+  public static StructuredArgument virtualPartition(long partitionIdx) {
+    return StructuredArguments.keyValue(VIRTUAL_PARTITION, partitionIdx);
   }
 }

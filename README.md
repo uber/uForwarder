@@ -19,17 +19,17 @@ RPC protocol supported
 
 - GRPC
 
-## Documentation
+## Overfiew
 
-Enabling Seamless Kafka Async Queuing with Consumer Proxy ([Blog](https://www.uber.com/blog/kafka-async-queuing-with-consumer-proxy/))
+For an overview of the project, please read the Uber Engineering blog [Enabling Seamless Kafka Async Queuing with Consumer Proxy](https://www.uber.com/blog/kafka-async-queuing-with-consumer-proxy/)
 
 ## Table of Contents
 
-- Build
-- Contributing
-- License
-- Acknowledgments
-- Contact
+1. [Build](#build)
+2. [Contributing](#contributing)
+3. [License](#license)
+4. [Acknowledgments](#acknowledgments)
+5. [Contact](#contact)
 
 ## Build
 
@@ -40,29 +40,29 @@ Enabling Seamless Kafka Async Queuing with Consumer Proxy ([Blog](https://www.ub
 
 ### Steps
 
-- Build binary
+1. Build binary
 
-```
-./gradlew jar
-```
+  ```
+  ./gradlew jar
+  ```
 
-- Run unit test
+2. Run unit test
 
-```
-./gradlew test
-```
+  ```
+  ./gradlew test
+  ```
 
-- Run integration test
+3. Run integration test
 
-```
-./gradlew integrationTest
-```
+  ```
+  ./gradlew integrationTest
+  ```
 
-- Run code coverage verification
+4. Run code coverage verification
 
-```
-./gradlew check
-```
+  ```
+  ./gradlew check
+  ```
 
 ## Usage
 
@@ -73,27 +73,27 @@ Enabling Seamless Kafka Async Queuing with Consumer Proxy ([Blog](https://www.ub
 
 ### Steps
 
-- Create a new docker network
+1. Create a new docker network
 
 ```
 docker network create docker-network
 ```
 
-- Start Zookeeper and Kafka broker
+2. Start Zookeeper and Kafka broker
 
 ```
 docker run --env ALLOW_ANONYMOUS_LOGIN=yes --network docker-network -p 2181:2181 --name zookeeper zookeeper:3.8.0
 docker run --env KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181 --env KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 --env KAFKA_LISTENERS=DOCKER://0.0.0.0:9092,HOSTER://0.0.0.0:9093 --env KAFKA_ADVERTISED_LISTENERS=DOCKER://kafka:9092,HOSTER://localhost:9093 -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=DOCKER:PLAINTEXT,HOSTER:PLAINTEXT -e KAFKA_INTER_BROKER_LISTENER_NAME=DOCKER --network docker-network -p 9093:9093 --name kafka confluentinc/cp-kafka:5.2.1
 ```
 
-- Run Uforwarder controller and worker
+3. Run Uforwarder controller and worker
 
 ```
 docker run --env UFORWARDER_PROFILE=uforwarder-controller --env UFORWARDER_KAFKA_CONNECT=kafka:9092 --env UFORWARDER_ZOOKEEPER_CONNECT=zookeeper:2181/uforwarder --network docker-network --name controller -p 8087:8087 uforwarder:latest
 docker run --env UFORWARDER_PROFILE=uforwarder-worker --env UFORWARDER_KAFKA_CONNECT=kafka:9092 --env UFORWARDER_CONTROLLER_CONNECT=controller:8087 --network docker-network --name worker uforwarder:latest
 ```
 
-- Run Sample Consumer
+4. Run Sample Consumer
 
 ```
 ./gradlew uforwarder-sample-consumer:bootRun
@@ -101,18 +101,11 @@ docker run --env UFORWARDER_PROFILE=uforwarder-worker --env UFORWARDER_KAFKA_CON
 
 ## Contributing
 
-- Fork the project
-- Create a new branch
-- Make your changes and commit them
-- Push to your fork and submit a pull request
+We accept contributions through Pull Requests (PR's).  Please sign our [Contributing License Agreement (CLA)](cla-assistant.io) after you submit the PR, so that it can be accepted.
 
 ## License
 
 Apache License Version 2.0
-
-## Acknowledgments
-
-Give credits to any third party, organization or individuals that contributed to the project
 
 ## Contact
 

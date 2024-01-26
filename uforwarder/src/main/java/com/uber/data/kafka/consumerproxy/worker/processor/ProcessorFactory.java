@@ -1,5 +1,6 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.uber.data.kafka.consumerproxy.config.ProcessorConfiguration;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
@@ -25,12 +26,15 @@ public class ProcessorFactory {
     this.unprocessedManagerBuilder = unprocessedManagerBuilder;
   }
 
-  public ProcessorImpl create(Job job) {
+  public ProcessorImpl create(Job job, String processorId) {
     return new ProcessorImpl(
         job,
         coreInfra
             .contextManager()
-            .wrap(Executors.newScheduledThreadPool(config.getThreadPoolSize())),
+            .wrap(
+                Executors.newScheduledThreadPool(
+                    config.getThreadPoolSize(),
+                    new ThreadFactoryBuilder().setNameFormat(processorId + "-%d").build())),
         outboundMessageLimiterBuilder,
         ackStatusManagerBuilder,
         unprocessedManagerBuilder,

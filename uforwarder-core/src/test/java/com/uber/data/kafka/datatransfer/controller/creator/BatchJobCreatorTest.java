@@ -171,6 +171,58 @@ public class BatchJobCreatorTest extends FievelTestBase {
   }
 
   @Test
+  public void testOffsetForTimesThrowsExceptionForEndOffsets() {
+    TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
+
+    // High watermark is available
+    KafkaFutureImpl highWatermarkFuture = new KafkaFutureImpl();
+    highWatermarkFuture.complete(
+        new ListOffsetsResult.ListOffsetsResultInfo(
+            TEST_END_OFFSET, Timestamps.toMillis(TEST_END_TIME), Optional.empty()));
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, highWatermarkFuture)))
+        .when(adminClient)
+        .endOffsets(ImmutableList.of(topicPartition));
+    // offsetForTimes throws exception
+    KafkaFutureImpl endOffsetFuture = new KafkaFutureImpl();
+    endOffsetFuture.completeExceptionally(new TimeoutException("time out translating offset"));
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, endOffsetFuture)))
+        .when(adminClient)
+        .offsetsForTimes(ImmutableMap.of(topicPartition, Timestamps.toMillis(TEST_END_TIME)));
+
+    StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
+    Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
+    Assert.assertEquals(TEST_END_OFFSET, storedJob.getJob().getKafkaConsumerTask().getEndOffset());
+  }
+
+  @Test
+  public void testOffsetForTimesThrowsExceptionForStartOffsets() {
+    TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
+
+    // High-watermark and End offset are available
+    KafkaFutureImpl endOffsetFuture = new KafkaFutureImpl();
+    endOffsetFuture.complete(
+        new ListOffsetsResult.ListOffsetsResultInfo(
+            TEST_END_OFFSET, Timestamps.toMillis(TEST_END_TIME), Optional.empty()));
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, endOffsetFuture)))
+        .when(adminClient)
+        .endOffsets(ImmutableList.of(topicPartition));
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, endOffsetFuture)))
+        .when(adminClient)
+        .offsetsForTimes(ImmutableMap.of(topicPartition, Timestamps.toMillis(TEST_END_TIME)));
+    // offsetForTimes throws exception
+    KafkaFutureImpl startOffsetFuture = new KafkaFutureImpl();
+    startOffsetFuture.completeExceptionally(new TimeoutException("time out translating offset"));
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, startOffsetFuture)))
+        .when(adminClient)
+        .offsetsForTimes(ImmutableMap.of(topicPartition, Timestamps.toMillis(TEST_START_TIME)));
+
+    StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
+    Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
+    Assert.assertEquals(
+        TEST_END_OFFSET, storedJob.getJob().getKafkaConsumerTask().getStartOffset());
+  }
+
+  @Test
   public void testAssertValidOffsets() {
     BatchJobCreator.assertValidOffsets(1, 2);
   }

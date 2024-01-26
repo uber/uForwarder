@@ -201,7 +201,8 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
                 "Worker is overloaded after adjusting workload.",
                 StructuredLogging.workerId(rebalancingWorkerWithSortedJobs.getWorkerId()),
                 StructuredLogging.count(rebalancingWorkerWithSortedJobs.getNumberOfJobs()),
-                StructuredLogging.workloadScale(rebalancingWorkerWithSortedJobs.getLoad()));
+                StructuredLogging.workloadScale(rebalancingWorkerWithSortedJobs.getLoad()),
+                StructuredLogging.virtualPartition(partitionIdx));
           }
         }
       }

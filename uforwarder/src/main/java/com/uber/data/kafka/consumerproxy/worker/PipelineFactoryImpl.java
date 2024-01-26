@@ -31,6 +31,7 @@ public class PipelineFactoryImpl implements PipelineFactory {
   private static final String DELIMITER = "__";
   private static final String CONSUMER = "consumer";
   private static final String PRODUCER = "producer";
+  private static final String PROCESSOR = "processor";
   // TODO(T4902455): allow retry and dlq topics from any cluster
   private static final String DLQ = "dlq";
   private final String serviceName;
@@ -65,18 +66,16 @@ public class PipelineFactoryImpl implements PipelineFactory {
     try {
       kafkaPipelineStateManager = Optional.of(new KafkaPipelineStateManager(job, infra.scope()));
       boolean isSecure = job.hasSecurityConfig() && job.getSecurityConfig().getIsSecure();
-      fetcher =
-          Optional.of(
-              kafkaFetcherFactory.create(
-                  job, String.join(DELIMITER, serviceName, getPipelineId(job), CONSUMER), infra));
-      processor = Optional.of(processorFactory.create(job));
+      fetcher = Optional.of(kafkaFetcherFactory.create(job, getActorName(job, CONSUMER), infra));
+      String processorId = getActorName(job, PROCESSOR);
+      processor = Optional.of(processorFactory.create(job, processorId));
       grpcDispatcher =
           Optional.of(
               grpcDispatcherFactory.create(
                   serviceName,
                   job.getRpcDispatcherTask().getUri(),
                   job.getRpcDispatcherTask().getProcedure()));
-      final String clientId = serviceName + DELIMITER + getPipelineId(job) + DELIMITER + PRODUCER;
+      final String clientId = getActorName(job, PRODUCER);
       Optional<KafkaDispatcher<byte[], byte[]>> resqKafkaProducer =
           RetryUtils.hasResqTopic(job)
               ? Optional.of(
@@ -118,5 +117,16 @@ public class PipelineFactoryImpl implements PipelineFactory {
         job.getKafkaConsumerTask().getConsumerGroup(),
         job.getKafkaConsumerTask().getCluster(),
         job.getKafkaConsumerTask().getTopic());
+  }
+
+  /**
+   * Gets producer/consumer/processor name
+   *
+   * @param job
+   * @param role producer/consumer/processor
+   * @return
+   */
+  private String getActorName(Job job, String role) {
+    return String.join(DELIMITER, serviceName, getPipelineId(job), role);
   }
 }

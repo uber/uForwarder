@@ -4,6 +4,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.hash.Hashing;
+import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.config.RebalancerConfiguration;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.StoredJob;
@@ -235,6 +236,12 @@ class RebalancerCommon {
       if (diff >= MINIMUM_WORKER_THRESHOLD) {
         int numberOfWorkersToRemove =
             (int) Math.floor(diff * rebalancerConfiguration.getWorkerToReduceRatio());
+        // remove at least 2 workers
+        numberOfWorkersToRemove = Math.max(MINIMUM_WORKER_THRESHOLD, numberOfWorkersToRemove);
+        logger.info(
+            "Need to remove {} workers for partition.",
+            numberOfWorkersToRemove,
+            StructuredLogging.virtualPartition(parititionIdx));
         List<Long> toRemoveWorkerIds =
             removeJobsFromLeastLoadedWorkers(
                 rebalancingCache, parititionIdx, numberOfWorkersToRemove);
@@ -249,6 +256,8 @@ class RebalancerCommon {
         if (rebalancingCache.getAllWorkerIdsForPartition(parititionIdx).size()
             < workersNeededPerPartition.get(parititionIdx)) {
           rebalancingCache.put(newWorkers.get(idx), parititionIdx);
+          logger.info(
+              "Add worker to partition.", StructuredLogging.virtualPartition(parititionIdx));
           break;
         }
       }

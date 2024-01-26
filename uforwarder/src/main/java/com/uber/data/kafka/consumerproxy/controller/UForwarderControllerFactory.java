@@ -1,7 +1,6 @@
 package com.uber.data.kafka.consumerproxy.controller;
 
 import com.uber.data.kafka.consumerproxy.config.KafkaAdminClientConfiguration;
-import com.uber.data.kafka.consumerproxy.config.KafkaOffsetCommitterConfiguration;
 import com.uber.data.kafka.consumerproxy.config.NoopTracerAutoConfiguration;
 import com.uber.data.kafka.consumerproxy.config.RebalancerConfiguration;
 import com.uber.data.kafka.consumerproxy.config.SchedulerConfiguration;
@@ -51,7 +50,6 @@ import org.springframework.context.annotation.Profile;
 @Configuration
 @EnableConfigurationProperties({
   RebalancerConfiguration.class,
-  KafkaOffsetCommitterConfiguration.class,
   MetricsConfiguration.class,
   NoopTracerAutoConfiguration.class,
   KafkaAdminClientConfiguration.class,
@@ -73,8 +71,8 @@ public class UForwarderControllerFactory {
   @Bean
   public Rebalancer rebalancer(
       RebalancerConfiguration rebalancerConfiguration,
-      KafkaOffsetCommitterConfiguration offsetCommitterConfiguration,
       DynamicConfiguration dynamicConfiguration,
+      AdminClient.Builder adminBuilder,
       Scope scope,
       Scalar scalar)
       throws IOException {
@@ -89,9 +87,9 @@ public class UForwarderControllerFactory {
         return new BatchRpcUriRebalancer(
             scope,
             rebalancerConfiguration,
-            new KafkaOffsetCommitterFactory(offsetCommitterConfiguration),
             scalar,
             new HibernatingJobRebalancer(rebalancerConfiguration),
+            adminBuilder,
             dynamicConfiguration);
       default:
         return new Rebalancer() {};
