@@ -17,7 +17,7 @@ tasks.register('prepareDockerFile', Copy) {
 
 tasks.register('createDockerFile', Dockerfile) {
     dependsOn('prepareDockerFile')
-    from('openjdk:11-jre-slim')
+    from('eclipse-temurin:11.0.17_8-jdk')
     copyFile('entrypoint.sh','/opt/uforwarder/')
     copyFile("uforwarder-boot-${mavenVersion}.jar",'/opt/uforwarder/bin_main.jar')
     runCommand('chmod +x /opt/uforwarder/entrypoint.sh')
@@ -32,7 +32,7 @@ tasks.register('createDockerFile', Dockerfile) {
 
 tasks.register('buildImage', DockerBuildImage) {
     dependsOn('createDockerFile')
-    images.add('uforwarder:0.21')
+    images.add('uforwarder:0.1')
 }
 
 tasks.getByName('build').dependsOn('buildImage')

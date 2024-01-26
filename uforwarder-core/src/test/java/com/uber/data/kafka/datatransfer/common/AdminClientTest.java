@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.common;
 
+import com.google.common.collect.ImmutableMap;
 import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.Collection;
 import java.util.Collections;
@@ -8,6 +9,7 @@ import java.util.Properties;
 import java.util.function.Function;
 import org.apache.kafka.clients.admin.DescribeTopicsOptions;
 import org.apache.kafka.clients.admin.OffsetSpec;
+import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Assert;
 import org.junit.Before;
@@ -86,5 +88,17 @@ public class AdminClientTest extends FievelTestBase {
   public void testListConsumerGroupOffsets() {
     AdminClient.listConsumerGroupOffsets("group1");
     Mockito.verify(delegator, Mockito.times(1)).listConsumerGroupOffsets("group1");
+  }
+
+  @Test
+  public void testAlterConsumerGroupOffsets() {
+    TopicPartition tp = new TopicPartition("topic1", 0);
+    OffsetAndMetadata offsetAndMetadata = new OffsetAndMetadata(1L);
+    ArgumentCaptor<Map<TopicPartition, OffsetAndMetadata>> captor =
+        ArgumentCaptor.forClass(Map.class);
+    AdminClient.alterConsumerGroupOffsets("group1", ImmutableMap.of(tp, offsetAndMetadata));
+    Mockito.verify(delegator, Mockito.times(1))
+        .alterConsumerGroupOffsets(Mockito.eq("group1"), captor.capture());
+    Assert.assertEquals(offsetAndMetadata, captor.getValue().get(tp));
   }
 }

@@ -13,6 +13,7 @@ import com.uber.data.kafka.datatransfer.common.StructuredFields;
 import com.uber.data.kafka.datatransfer.common.StructuredLogging;
 import com.uber.data.kafka.instrumentation.Instrumentation;
 import com.uber.m3.tally.Scope;
+import com.uber.m3.tally.Stopwatch;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
@@ -68,18 +69,23 @@ public class BatchJobCreator extends JobCreatorWithOffsets {
           assertValidTimestamps(startTimestamp, endTimestamp);
           AdminClient adminClient = adminBuilder.build(cluster);
 
+          Stopwatch beginningOffsetLatencyWatch =
+              scope.timer(MetricNames.BEGINNING_OFFSETS_LATENCY).start();
           long lowWatermark =
               offsetOf(
                   adminClient.beginningOffsets(ImmutableList.of(topicPartition)),
                   topicPartition,
                   consumerGroup,
-                  0);
+                  0,
+                  beginningOffsetLatencyWatch);
+          Stopwatch endOffsetLatencyWatch = scope.timer(MetricNames.END_OFFSETS_LATENCY).start();
           long highWatermark =
               offsetOf(
                   adminClient.endOffsets(ImmutableList.of(topicPartition)),
                   topicPartition,
                   consumerGroup,
-                  0);
+                  0,
+                  endOffsetLatencyWatch);
 
           // there are no messages in this partition
           if (lowWatermark == highWatermark) {
@@ -147,13 +153,15 @@ public class BatchJobCreator extends JobCreatorWithOffsets {
 
           long endOffset =
               getOffset(
-                  () ->
-                      offsetOf(
-                          adminClient.offsetsForTimes(
-                              ImmutableMap.of(topicPartition, endTimestamp)),
-                          topicPartition,
-                          consumerGroup,
-                          -1),
+                  () -> {
+                    Stopwatch watch = scope.timer(MetricNames.OFFSET_FOR_TIMES_LATENCY).start();
+                    return offsetOf(
+                        adminClient.offsetsForTimes(ImmutableMap.of(topicPartition, endTimestamp)),
+                        topicPartition,
+                        consumerGroup,
+                        -1,
+                        watch);
+                  },
                   () -> {
                     // offsetForTimes may return null result of querying timestamp >
                     // highwatermark timestamp, fallback endOffset in this case.
@@ -166,13 +174,16 @@ public class BatchJobCreator extends JobCreatorWithOffsets {
                   });
           long startOffset =
               getOffset(
-                  () ->
-                      offsetOf(
-                          adminClient.offsetsForTimes(
-                              ImmutableMap.of(topicPartition, startTimestamp)),
-                          topicPartition,
-                          consumerGroup,
-                          -1),
+                  () -> {
+                    Stopwatch watch = scope.timer(MetricNames.OFFSET_FOR_TIMES_LATENCY).start();
+                    return offsetOf(
+                        adminClient.offsetsForTimes(
+                            ImmutableMap.of(topicPartition, startTimestamp)),
+                        topicPartition,
+                        consumerGroup,
+                        -1,
+                        watch);
+                  },
                   // offsetForTimes may return null result of querying timestamp >
                   // highwatermark timestamp, fallback endOffset in this case.
                   () -> {
@@ -232,7 +243,8 @@ public class BatchJobCreator extends JobCreatorWithOffsets {
       ListOffsetsResult listOffsetsResult,
       TopicPartition topicPartition,
       String consumerGroup,
-      long defaultValue) {
+      long defaultValue,
+      Stopwatch stopwatch) {
     if (listOffsetsResult == null) {
       return defaultValue;
     }
@@ -249,7 +261,15 @@ public class BatchJobCreator extends JobCreatorWithOffsets {
           StructuredLogging.kafkaGroup(consumerGroup),
           StructuredLogging.kafkaPartition(topicPartition.partition()),
           e);
-      return 0;
+      return defaultValue;
     }
+  }
+
+  private static class MetricNames {
+    private static final String OFFSET_FOR_TIMES_LATENCY =
+        "creator.job.create.offsetForTimes.latency";
+    private static final String BEGINNING_OFFSETS_LATENCY =
+        "creator.job.create.beginningOffsets.latency";
+    private static final String END_OFFSETS_LATENCY = "creator.job.create.endOffsets.latency";
   }
 }

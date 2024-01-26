@@ -70,7 +70,9 @@ public class PipelineFactoryImplTest extends FievelTestBase {
         .when(grpcDispatcherFactory)
         .create(Mockito.anyString(), Mockito.anyString(), Mockito.anyString());
     processorFactory = Mockito.mock(ProcessorFactory.class);
-    Mockito.doReturn(processor).when(processorFactory).create(Mockito.any(Job.class));
+    Mockito.doReturn(processor)
+        .when(processorFactory)
+        .create(Mockito.any(Job.class), Mockito.anyString());
     pipelineFactory =
         new PipelineFactoryImpl(
             SERVICE_NAME,

@@ -6,21 +6,21 @@ import com.google.protobuf.util.Timestamps;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.common.StructuredTags;
 import com.uber.data.kafka.consumerproxy.config.RebalancerConfiguration;
-import com.uber.data.kafka.consumerproxy.controller.KafkaOffsetCommitterFactory;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTaskGroup;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
 import com.uber.data.kafka.datatransfer.StoredWorker;
+import com.uber.data.kafka.datatransfer.common.AdminClient;
 import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.Scalar;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
 import com.uber.m3.tally.Scope;
+import com.uber.m3.tally.Stopwatch;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
@@ -48,22 +48,22 @@ public class BatchRpcUriRebalancer extends AbstractRpcUriRebalancer {
   private static final long OFFSET_COMMIT_SKEW_MS = TimeUnit.HOURS.toMillis(1);
 
   private static final Logger logger = LoggerFactory.getLogger(BatchRpcUriRebalancer.class);
-  private final KafkaOffsetCommitterFactory kafkaOffsetCommitterFactory;
   private final DynamicConfiguration dynamicConfiguration;
+  private final AdminClient.Builder adminBuilder;
   private final Scope scope;
 
   public BatchRpcUriRebalancer(
       Scope scope,
       RebalancerConfiguration config,
-      KafkaOffsetCommitterFactory kafkaOffsetCommitterFactory,
       Scalar scalar,
       HibernatingJobRebalancer hibernatingJobRebalancer,
+      AdminClient.Builder adminBuilder,
       DynamicConfiguration dynamicConfiguration)
       throws IOException {
     super(scope, config, scalar, hibernatingJobRebalancer);
-    this.kafkaOffsetCommitterFactory = kafkaOffsetCommitterFactory;
     this.scope = scope.tagged(ImmutableMap.of("rebalancerType", "BatchRpcUriRebalancer"));
     this.dynamicConfiguration = dynamicConfiguration;
+    this.adminBuilder = adminBuilder;
   }
 
   @Override
@@ -154,85 +154,93 @@ public class BatchRpcUriRebalancer extends AbstractRpcUriRebalancer {
     if (!dynamicConfiguration.isOffsetCommittingEnabled()) {
       return;
     }
-    long currentTimeMs = System.currentTimeMillis();
-    for (RebalancingJobGroup rebalancingJobGroup : jobGroups.values()) {
-      Timestamp endTimestamp =
-          rebalancingJobGroup.getJobGroup().getKafkaConsumerTaskGroup().getEndTimestamp();
-      long endTimestampMs = Timestamps.toMillis(endTimestamp);
-      // try to keep committing offsets for a certain time period so that it can eventually succeed.
-      // (1) we keep committing for a certain time period because the committed offset might be
-      //     override by another purge/merge operation, which will eventually be deleted.
-      // (2) we don't keep committing forever because
-      //     (a) messages will be purged after a certain time period, we don't need to do it anymore
-      //     (b) there might be too many committing work, which might take unacceptable long time.
-      if (currentTimeMs - endTimestampMs > OFFSET_COMMIT_SKEW_MS) {
-        continue;
-      }
-      // TODO(qichao): https://t3.uberinternal.com/browse/KAFEP-1263
-      // The following code for committing the offset is no longer needed due to
-      // recent fixes in KCP DLQ purge. KCP now uses worker to commit the offset.
-      String topic = rebalancingJobGroup.getJobGroup().getKafkaConsumerTaskGroup().getTopic();
-      Map<TopicPartition, OffsetAndMetadata> partitionAndOffsetToCommit = new HashMap<>();
-      for (StoredJob job : rebalancingJobGroup.getJobs().values()) {
-        long startOffset = job.getJob().getKafkaConsumerTask().getStartOffset();
-        long endOffset = job.getJob().getKafkaConsumerTask().getEndOffset();
-        if (endOffset > 0
-            && startOffset == endOffset
-            && job.getState() == JobState.JOB_STATE_CANCELED) {
-          partitionAndOffsetToCommit.put(
-              new TopicPartition(topic, job.getJob().getKafkaConsumerTask().getPartition()),
-              new OffsetAndMetadata(endOffset));
+    Stopwatch postProcessStopwatch = scope.timer(MetricNames.POST_PROCESS_LATENCY).start();
+    try {
+      long currentTimeMs = System.currentTimeMillis();
+      for (RebalancingJobGroup rebalancingJobGroup : jobGroups.values()) {
+        Timestamp endTimestamp =
+            rebalancingJobGroup.getJobGroup().getKafkaConsumerTaskGroup().getEndTimestamp();
+        long endTimestampMs = Timestamps.toMillis(endTimestamp);
+        // try to keep committing offsets for a certain time period so that it can eventually
+        // succeed.
+        // (1) we keep committing for a certain time period because the committed offset might be
+        //     override by another purge/merge operation, which will eventually be deleted.
+        // (2) we don't keep committing forever because
+        //     (a) messages will be purged after a certain time period, we don't need to do it
+        // anymore
+        //     (b) there might be too many committing work, which might take unacceptable long time.
+        if (currentTimeMs - endTimestampMs > OFFSET_COMMIT_SKEW_MS) {
+          continue;
+        }
+        // TODO(qichao): https://t3.uberinternal.com/browse/KAFEP-1263
+        // The following code for committing the offset is no longer needed due to
+        // recent fixes in KCP DLQ purge. KCP now uses worker to commit the offset.
+        String topic = rebalancingJobGroup.getJobGroup().getKafkaConsumerTaskGroup().getTopic();
+        Map<TopicPartition, OffsetAndMetadata> partitionAndOffsetToCommit = new HashMap<>();
+        for (StoredJob job : rebalancingJobGroup.getJobs().values()) {
+          long startOffset = job.getJob().getKafkaConsumerTask().getStartOffset();
+          long endOffset = job.getJob().getKafkaConsumerTask().getEndOffset();
+          if (endOffset > 0
+              && startOffset == endOffset
+              && job.getState() == JobState.JOB_STATE_CANCELED) {
+            partitionAndOffsetToCommit.put(
+                new TopicPartition(topic, job.getJob().getKafkaConsumerTask().getPartition()),
+                new OffsetAndMetadata(endOffset));
+          }
+        }
+        // commit offsets to kafka clusters
+        if (!partitionAndOffsetToCommit.isEmpty()) {
+          try {
+            Stopwatch stopwatch = scope.timer(MetricNames.OFFSET_COMMIT_LATENCY).start();
+            KafkaConsumerTaskGroup taskGroup =
+                rebalancingJobGroup.getJobGroup().getKafkaConsumerTaskGroup();
+            AdminClient client = adminBuilder.build(taskGroup.getCluster());
+            client.alterConsumerGroupOffsets(
+                taskGroup.getConsumerGroup(), partitionAndOffsetToCommit);
+            stopwatch.stop();
+          } catch (Exception e) {
+            // failed to commit offset might lead to wrong dlq lag reports.
+            // we need to add metrics and alerts.
+            logger.warn(
+                MetricNames.OFFSET_COMMIT_FAILURE,
+                StructuredLogging.kafkaCluster(
+                    rebalancingJobGroup.getJobGroup().getKafkaConsumerTaskGroup().getCluster()),
+                StructuredLogging.kafkaGroup(
+                    rebalancingJobGroup
+                        .getJobGroup()
+                        .getKafkaConsumerTaskGroup()
+                        .getConsumerGroup()),
+                StructuredLogging.kafkaTopic(topic),
+                e);
+            scope
+                .tagged(
+                    StructuredTags.builder()
+                        .setKafkaCluster(
+                            rebalancingJobGroup
+                                .getJobGroup()
+                                .getKafkaConsumerTaskGroup()
+                                .getCluster())
+                        .setKafkaGroup(
+                            rebalancingJobGroup
+                                .getJobGroup()
+                                .getKafkaConsumerTaskGroup()
+                                .getConsumerGroup())
+                        .setKafkaTopic(topic)
+                        .build())
+                .counter(MetricNames.OFFSET_COMMIT_FAILURE)
+                .inc(1);
+          }
         }
       }
-      // commit offsets to kafka clusters
-      if (!partitionAndOffsetToCommit.isEmpty()) {
-        try {
-          boolean isSecure =
-              rebalancingJobGroup.getJobGroup().hasSecurityConfig()
-                  && rebalancingJobGroup.getJobGroup().getSecurityConfig().getIsSecure();
-          KafkaConsumer<byte[], byte[]> kafkaConsumer =
-              kafkaOffsetCommitterFactory.create(
-                  rebalancingJobGroup.getJobGroup().getKafkaConsumerTaskGroup().getCluster(),
-                  rebalancingJobGroup.getJobGroup().getKafkaConsumerTaskGroup().getConsumerGroup(),
-                  isSecure);
-          kafkaConsumer.commitSync(partitionAndOffsetToCommit);
-          kafkaConsumer.wakeup();
-          kafkaConsumer.close();
-        } catch (Exception e) {
-          // failed to commit offset might lead to wrong dlq lag reports.
-          // we need to add metrics and alerts.
-          logger.warn(
-              MetricNames.OFFSET_COMMIT_FAILURE,
-              StructuredLogging.kafkaCluster(
-                  rebalancingJobGroup.getJobGroup().getKafkaConsumerTaskGroup().getCluster()),
-              StructuredLogging.kafkaGroup(
-                  rebalancingJobGroup.getJobGroup().getKafkaConsumerTaskGroup().getConsumerGroup()),
-              StructuredLogging.kafkaTopic(topic),
-              e);
-          scope
-              .tagged(
-                  StructuredTags.builder()
-                      .setKafkaCluster(
-                          rebalancingJobGroup
-                              .getJobGroup()
-                              .getKafkaConsumerTaskGroup()
-                              .getCluster())
-                      .setKafkaGroup(
-                          rebalancingJobGroup
-                              .getJobGroup()
-                              .getKafkaConsumerTaskGroup()
-                              .getConsumerGroup())
-                      .setKafkaTopic(topic)
-                      .build())
-              .counter(MetricNames.OFFSET_COMMIT_FAILURE)
-              .inc(1);
-        }
-      }
+    } finally {
+      postProcessStopwatch.stop();
     }
   }
 
   private static class MetricNames {
     private static final String OFFSET_COMMIT_FAILURE = "offset.commit.failure";
+    private static final String OFFSET_COMMIT_LATENCY = "controller.dlq.offset.commit.latency";
+    private static final String POST_PROCESS_LATENCY = "controller.dlq.post.process.latency";
 
     private MetricNames() {}
   }

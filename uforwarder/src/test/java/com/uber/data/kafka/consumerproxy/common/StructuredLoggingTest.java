@@ -22,5 +22,7 @@ public class StructuredLoggingTest extends FievelTestBase {
     Assert.assertEquals("offset_gap=5", keyValue.toString());
     keyValue = StructuredLogging.spiffeId("value6");
     Assert.assertEquals("spiffe_id=value6", keyValue.toString());
+    keyValue = StructuredLogging.virtualPartition(6);
+    Assert.assertEquals("virtual_partition=6", keyValue.toString());
   }
 }

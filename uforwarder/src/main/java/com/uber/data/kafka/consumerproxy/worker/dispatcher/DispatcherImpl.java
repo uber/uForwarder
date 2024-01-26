@@ -188,6 +188,9 @@ public class DispatcherImpl implements Sink<DispatcherMessage, DispatcherRespons
         grpcDispatcher.stop();
       }
       dlqProducer.stop();
+      if (resqProducer.isPresent()) {
+        resqProducer.get().stop();
+      }
     } catch (Exception e) {
       LOGGER.error("failed to close message dispatcher", e);
       infra.scope().counter(MetricNames.CLOSE_FAILURE).inc(1);

@@ -3,11 +3,11 @@ package com.uber.data.kafka.consumerproxy.controller.rebalancer;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.util.Timestamps;
 import com.uber.data.kafka.consumerproxy.config.RebalancerConfiguration;
-import com.uber.data.kafka.consumerproxy.controller.KafkaOffsetCommitterFactory;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
+import com.uber.data.kafka.datatransfer.common.AdminClient;
 import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.AutoScalar;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
@@ -17,14 +17,12 @@ import java.io.IOException;
 import java.util.Collections;
 import java.util.Map;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 public class BatchRpcUriRebalancerTest extends FievelTestBase {
@@ -33,14 +31,14 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
   private static final String TOPIC = "topic";
   private static final int PARTITION = 2;
   private BatchRpcUriRebalancer rebalancer;
-  private KafkaOffsetCommitterFactory kafkaOffsetCommitterFactory;
   private AutoScalar autoScalar;
   private HibernatingJobRebalancer hibernatingJobRebalancer;
+  private AdminClient.Builder adminClientBuilder;
 
   @Before
   public void setup() throws IOException {
     RebalancerConfiguration config = new RebalancerConfiguration();
-    kafkaOffsetCommitterFactory = Mockito.mock(KafkaOffsetCommitterFactory.class);
+    adminClientBuilder = Mockito.mock(AdminClient.Builder.class);
     autoScalar = Mockito.mock(AutoScalar.class);
     hibernatingJobRebalancer = Mockito.mock(HibernatingJobRebalancer.class);
     DynamicConfiguration dynamicConfiguration = Mockito.mock(DynamicConfiguration.class);
@@ -55,9 +53,9 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
         new BatchRpcUriRebalancer(
             new NoopScope(),
             config,
-            kafkaOffsetCommitterFactory,
             autoScalar,
             hibernatingJobRebalancer,
+            adminClientBuilder,
             dynamicConfiguration);
   }
 
@@ -177,11 +175,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
         buildRebalancingJobGroup(
             1, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_RUNNING, 0, 0, 2, 2, false);
     rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
-    Mockito.verify(kafkaOffsetCommitterFactory, Mockito.never())
-        .create(
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyBoolean());
+    Mockito.verify(adminClientBuilder, Mockito.never()).build(Mockito.anyString());
   }
 
   @Test
@@ -197,11 +191,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
             2,
             false);
     rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
-    Mockito.verify(kafkaOffsetCommitterFactory, Mockito.never())
-        .create(
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyBoolean());
+    Mockito.verify(adminClientBuilder, Mockito.never()).build(Mockito.anyString());
   }
 
   @Test
@@ -217,11 +207,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
             2,
             false);
     rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
-    Mockito.verify(kafkaOffsetCommitterFactory, Mockito.never())
-        .create(
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyBoolean());
+    Mockito.verify(adminClientBuilder, Mockito.never()).build(Mockito.anyString());
   }
 
   @Test
@@ -237,11 +223,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
             2,
             false);
     rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
-    Mockito.verify(kafkaOffsetCommitterFactory, Mockito.never())
-        .create(
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyBoolean());
+    Mockito.verify(adminClientBuilder, Mockito.never()).build(Mockito.anyString());
   }
 
   @Test
@@ -252,9 +234,9 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
         new BatchRpcUriRebalancer(
             new NoopScope(),
             new RebalancerConfiguration(),
-            kafkaOffsetCommitterFactory,
             autoScalar,
             hibernatingJobRebalancer,
+            adminClientBuilder,
             dynamicConfiguration);
 
     RebalancingJobGroup rebalancingJobGroup =
@@ -269,18 +251,13 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
             true);
     rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
 
-    Mockito.verify(kafkaOffsetCommitterFactory, Mockito.never())
-        .create(
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyString(),
-            ArgumentMatchers.anyBoolean());
+    Mockito.verify(adminClientBuilder, Mockito.never()).build(Mockito.anyString());
   }
 
   @Test
   public void testPostProcessNoCommitWithCommit() throws Exception {
-    KafkaConsumer kafkaConsumer = Mockito.mock(KafkaConsumer.class);
-    Mockito.when(kafkaOffsetCommitterFactory.create(CLUSTER, CONSUMER_GROUP, true))
-        .thenReturn(kafkaConsumer);
+    AdminClient adminClient = Mockito.mock(AdminClient.class);
+    Mockito.when(adminClientBuilder.build(CLUSTER)).thenReturn(adminClient);
 
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
@@ -295,41 +272,17 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
     rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
     ArgumentCaptor<String> clusterCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<String> consumerGroupCaptor = ArgumentCaptor.forClass(String.class);
-    Mockito.verify(kafkaOffsetCommitterFactory, Mockito.times(1))
-        .create(clusterCaptor.capture(), consumerGroupCaptor.capture(), Mockito.eq(true));
-    Assert.assertEquals(CLUSTER, clusterCaptor.getValue());
-    Assert.assertEquals(CONSUMER_GROUP, consumerGroupCaptor.getValue());
     ArgumentCaptor<Map<TopicPartition, OffsetAndMetadata>> mapCaptor =
         ArgumentCaptor.forClass(Map.class);
-    Mockito.verify(kafkaConsumer, Mockito.times(1)).commitSync(mapCaptor.capture());
+    Mockito.verify(adminClientBuilder, Mockito.times(1)).build(clusterCaptor.capture());
+    Mockito.verify(adminClient, Mockito.times(1))
+        .alterConsumerGroupOffsets(consumerGroupCaptor.capture(), mapCaptor.capture());
+    Assert.assertEquals(CLUSTER, clusterCaptor.getValue());
+    Assert.assertEquals(CONSUMER_GROUP, consumerGroupCaptor.getValue());
     Map<TopicPartition, OffsetAndMetadata> partitionAndOffsetToCommit = mapCaptor.getValue();
     Assert.assertEquals(1, partitionAndOffsetToCommit.size());
     Assert.assertEquals(
         2, partitionAndOffsetToCommit.get(new TopicPartition(TOPIC, PARTITION)).offset());
-  }
-
-  @Test
-  public void testPostProcessNoCommitDueToException() throws Exception {
-    Mockito.when(kafkaOffsetCommitterFactory.create(CLUSTER, CONSUMER_GROUP, false))
-        .thenThrow(new Exception());
-
-    RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(
-            1,
-            JobState.JOB_STATE_RUNNING,
-            JobState.JOB_STATE_CANCELED,
-            System.currentTimeMillis(),
-            2,
-            2,
-            2,
-            false);
-    rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
-    ArgumentCaptor<String> clusterCaptor = ArgumentCaptor.forClass(String.class);
-    ArgumentCaptor<String> consumerGroupCaptor = ArgumentCaptor.forClass(String.class);
-    Mockito.verify(kafkaOffsetCommitterFactory, Mockito.times(1))
-        .create(clusterCaptor.capture(), consumerGroupCaptor.capture(), Mockito.eq(false));
-    Assert.assertEquals(CLUSTER, clusterCaptor.getValue());
-    Assert.assertEquals(CONSUMER_GROUP, consumerGroupCaptor.getValue());
   }
 
   private RebalancingJobGroup buildRebalancingJobGroup(
