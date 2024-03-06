@@ -1,6 +1,7 @@
 package com.uber.data.kafka.datatransfer.common;
 
 import com.google.common.collect.ImmutableMap;
+import com.uber.data.kafka.datatransfer.Node;
 import java.util.Map;
 
 public final class StructuredTags extends StructuredFields {
@@ -70,13 +71,14 @@ public final class StructuredTags extends StructuredFields {
     return this;
   }
 
-  public StructuredTags setRoutingDelegate(String routingDelegate) {
-    mapBuilder.put(ROUTING_DELEGATE, routingDelegate);
+  public StructuredTags setPipeline(String pipeline) {
+    mapBuilder.put(PIPELINE, pipeline);
     return this;
   }
 
-  public StructuredTags setPipeline(String pipeline) {
-    mapBuilder.put(PIPELINE, pipeline);
+  public StructuredTags setNode(Node node) {
+    this.mapBuilder.put(HOST, node.getHost());
+    this.mapBuilder.put(PORT, Integer.toString(node.getPort()));
     return this;
   }
 

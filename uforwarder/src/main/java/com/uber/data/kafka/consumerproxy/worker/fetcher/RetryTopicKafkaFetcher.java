@@ -11,6 +11,7 @@ import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.CheckpointManager;
+import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.InflightMessageTracker;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaCheckpointManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfiguration;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.SeekStartOffsetOption;
@@ -63,6 +64,7 @@ public final class RetryTopicKafkaFetcher extends AbstractKafkaFetcherThread<byt
         config,
         checkpointManager,
         throughputTracker,
+        new InflightMessageTracker(),
         kafkaConsumer,
         infra,
         false,
@@ -93,9 +95,8 @@ public final class RetryTopicKafkaFetcher extends AbstractKafkaFetcherThread<byt
       AutoOffsetResetPolicy autoOffsetResetPolicy) {
     // we don't need to see as for the retry topic, we want to start from
     // 1. the last committed offset if it exists.
-    // 2. the earliest offset if the last committed offset does not exist. This is guaranteed
-    // because the KafkaFetcherConfiguration sets ConsumerConfig.AUTO_OFFSET_RESET_CONFIG to be
-    // "earliest".
+    // 2. the earliest/latest offset if the last committed offset does not exist. This is based on
+    // ConsumerConfig.AUTO_OFFSET_RESET_POLICY setted in KafkaFetcherConfiguration
     return SeekStartOffsetOption.DO_NOT_SEEK;
   }
 
@@ -223,6 +224,7 @@ public final class RetryTopicKafkaFetcher extends AbstractKafkaFetcherThread<byt
       String threadName,
       String bootstrapServer,
       String consumerGroup,
+      AutoOffsetResetPolicy autoOffsetResetPolicy,
       KafkaFetcherConfiguration config,
       Optional<RetryQueue> retryQueueConfig,
       boolean isSecure,
@@ -233,6 +235,7 @@ public final class RetryTopicKafkaFetcher extends AbstractKafkaFetcherThread<byt
                 bootstrapServer,
                 threadName,
                 consumerGroup,
+                autoOffsetResetPolicy,
                 IsolationLevel.ISOLATION_LEVEL_UNSET,
                 isSecure));
     KafkaCheckpointManager checkpointManager = new KafkaCheckpointManager(infra.scope());

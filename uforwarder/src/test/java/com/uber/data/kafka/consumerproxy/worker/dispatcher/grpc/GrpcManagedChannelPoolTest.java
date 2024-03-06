@@ -1,16 +1,18 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc;
 
-import com.google.common.collect.ImmutableList;
 import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.CallOptions;
 import io.grpc.ClientCall;
 import io.grpc.ManagedChannel;
+import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
+import io.grpc.Status;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicLong;
+import java.util.function.Supplier;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
 public class GrpcManagedChannelPoolTest extends FievelTestBase {
@@ -27,8 +29,9 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
   public void setup() {
     channelOne = Mockito.mock(ManagedChannel.class);
     channelTwo = Mockito.mock(ManagedChannel.class);
-    poolWithTwoChannels =
-        new GrpcManagedChannelPool(ImmutableList.of(channelOne, channelTwo), new AtomicLong(0));
+    Supplier<ManagedChannel> channelProvider = Mockito.mock(Supplier.class);
+    Mockito.when(channelProvider.get()).thenReturn(channelOne).thenReturn(channelTwo);
+    poolWithTwoChannels = new GrpcManagedChannelPool(channelProvider, 2, 10);
 
     methodDescriptor = Mockito.mock(MethodDescriptor.class);
     callOptions = CallOptions.DEFAULT;
@@ -43,7 +46,7 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
 
   @Test(expected = IllegalArgumentException.class)
   public void testEmptyPool() {
-    new GrpcManagedChannelPool(ImmutableList.of(), new AtomicLong(0));
+    new GrpcManagedChannelPool(Mockito.mock(Supplier.class), 0, 10);
   }
 
   @Test
@@ -66,16 +69,8 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
 
   @Test
   public void testIsShutdownAllShutdown() {
-    Mockito.doReturn(true).when(channelOne).isShutdown();
-    Mockito.doReturn(true).when(channelTwo).isShutdown();
+    poolWithTwoChannels.shutdown();
     Assert.assertTrue(poolWithTwoChannels.isShutdown());
-  }
-
-  @Test
-  public void testIsShutdownAllNotShutdown() {
-    Mockito.doReturn(false).when(channelOne).isShutdown();
-    Mockito.doReturn(false).when(channelTwo).isShutdown();
-    Assert.assertFalse(poolWithTwoChannels.isShutdown());
   }
 
   @Test
@@ -123,5 +118,40 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
     Mockito.doReturn(true).when(channelOne).awaitTermination(Mockito.anyLong(), Mockito.any());
     Mockito.doReturn(false).when(channelTwo).awaitTermination(Mockito.anyLong(), Mockito.any());
     Assert.assertFalse(poolWithTwoChannels.awaitTermination(1, TimeUnit.SECONDS));
+  }
+
+  @Test
+  public void testMetrics() {
+    ClientCall poolCall = poolWithTwoChannels.newCall(methodDescriptor, callOptions);
+    poolCall.start(Mockito.mock(ClientCall.Listener.class), Mockito.mock(Metadata.class));
+    double usage = poolWithTwoChannels.getMetrics().usage();
+    Assert.assertEquals(0.05, usage, 0.0001);
+    ArgumentCaptor<ClientCall.Listener> listenerArgumentCaptor =
+        ArgumentCaptor.forClass(ClientCall.Listener.class);
+    Mockito.verify(clientCall).start(listenerArgumentCaptor.capture(), Mockito.any());
+    ClientCall.Listener listener = listenerArgumentCaptor.getValue();
+    listener.onClose(Status.OK, Mockito.mock(Metadata.class));
+    usage = poolWithTwoChannels.getMetrics().usage();
+    Assert.assertEquals(0.00, usage, 0.0001);
+  }
+
+  @Test
+  public void testConnectionScaleOut() {
+    for (int i = 0; i < 18; ++i) {
+      ClientCall poolCall = poolWithTwoChannels.newCall(methodDescriptor, callOptions);
+      poolCall.start(Mockito.mock(ClientCall.Listener.class), Mockito.mock(Metadata.class));
+    }
+
+    double usage = poolWithTwoChannels.getMetrics().usage();
+    Assert.assertEquals(0.9, usage, 0.0001);
+
+    // over usage limit trigger connection pool scaling
+    for (int i = 0; i < 2; ++i) {
+      ClientCall poolCall = poolWithTwoChannels.newCall(methodDescriptor, callOptions);
+      poolCall.start(Mockito.mock(ClientCall.Listener.class), Mockito.mock(Metadata.class));
+    }
+
+    usage = poolWithTwoChannels.getMetrics().usage();
+    Assert.assertEquals(0.66666, usage, 0.0001);
   }
 }

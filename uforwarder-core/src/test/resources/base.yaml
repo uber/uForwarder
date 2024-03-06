@@ -2,10 +2,10 @@ service:
   name: ${UDEPLOY_SERVICE_NAME:kafka-consumer-proxy}
 
 grpc:
-  port: 8087
+  port: 0
 
 system:
-  port: 8881
+  port: 0
 
 logging:
   pattern:

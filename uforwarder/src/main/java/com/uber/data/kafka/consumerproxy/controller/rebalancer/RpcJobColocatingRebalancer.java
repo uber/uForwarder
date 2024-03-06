@@ -4,6 +4,7 @@ import static com.uber.data.kafka.consumerproxy.controller.rebalancer.Rebalancer
 import static com.uber.data.kafka.consumerproxy.controller.rebalancer.RebalancerCommon.WORKLOAD_CAPACITY_PER_WORKER;
 import static com.uber.data.kafka.consumerproxy.controller.rebalancer.RebalancerCommon.roundUpToNearestNumber;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
@@ -110,6 +111,13 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     emitMetrics(workerNeededPerPartition);
   }
 
+  // Right now, cache is storing the partition to worker mapping so it is needed to be exposed in
+  // unit test.
+  // KAFEP-4649 to remove cache and use ZK instead.
+  protected RebalancingCache getRebalancingCache() {
+    return rebalancingCache;
+  }
+
   private void assignJobsToCorrectVirtualPartition(
       Map<String, RebalancingJobGroup> jobGroupMap,
       List<StaleWorkerReplacement> toBeMovedStaleJobs,
@@ -147,7 +155,9 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
   }
 
   private void handleJobsOnStaleWorkers(List<StaleWorkerReplacement> toBeMovedStaleJobs) {
+    int totalStaleJobs = 0;
     for (StaleWorkerReplacement replacement : toBeMovedStaleJobs) {
+      totalStaleJobs += replacement.storedJobs.size();
       // always start from the least loaded worker
       PriorityQueue<RebalancingWorkerWithSortedJobs> candidateWorkers = new PriorityQueue<>();
       candidateWorkers.addAll(
@@ -172,6 +182,11 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
             candidateWorkers.add(leastLoadedWorker);
           });
     }
+
+    scope
+        .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
+        .gauge(MetricNames.STALE_JOB_COUNT)
+        .update(totalStaleJobs);
   }
 
   private void ensureWorkersLoadBalanced() {
@@ -275,39 +290,60 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     }
     scope.gauge(MetricNames.USED_WORKER_COUNT).update(usedWorkers);
 
+    int totalNumberOfWorkersStillNeeded = 0;
     for (long partitionIdx : rebalancingCache.getAllPartitions()) {
       usedWorkers = 0;
-      Map<String, String> metricTags =
+      Map<String, String> partitionTags =
           ImmutableMap.of(VIRTUAL_PARTITION_TAG, Long.toString(partitionIdx));
       DoubleSummaryStatistics stats = new DoubleSummaryStatistics();
       List<RebalancingWorkerWithSortedJobs> allWorkersWithinPartition =
           rebalancingCache.getAllWorkersForPartition(partitionIdx);
       scope
           .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
-          .tagged(metricTags)
+          .tagged(partitionTags)
           .gauge(MetricNames.ASSIGNED_WORKER_NUMBER_IN_PARTITION)
           .update(allWorkersWithinPartition.size());
+
+      scope
+          .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
+          .tagged(partitionTags)
+          .gauge(MetricNames.REQUESTED_WORKER_NUMBER_IN_PARTITION)
+          .update(workerNeededPerPartition.get((int) partitionIdx));
+
+      totalNumberOfWorkersStillNeeded +=
+          workerNeededPerPartition.get((int) partitionIdx) - allWorkersWithinPartition.size();
 
       for (RebalancingWorkerWithSortedJobs worker : allWorkersWithinPartition) {
         if (worker.getNumberOfJobs() > 0) {
           usedWorkers += 1;
         }
+        Map<String, String> workerTags =
+            ImmutableMap.of(
+                VIRTUAL_PARTITION_TAG,
+                Long.toString(partitionIdx),
+                MetricNames.WORKER_IDX,
+                Long.toString(worker.getWorkerId()));
         stats.accept(worker.getLoad());
+        scope
+            .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
+            .tagged(workerTags)
+            .gauge(MetricNames.WORKER_EXPECTED_LOAD)
+            .update(worker.getLoad());
       }
 
       scope
           .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
-          .tagged(metricTags)
+          .tagged(partitionTags)
           .gauge(MetricNames.WORKER_LOAD_AVG)
           .update(stats.getAverage());
       scope
           .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
-          .tagged(metricTags)
+          .tagged(partitionTags)
           .gauge(MetricNames.WORKER_LOAD_MAX)
           .update(stats.getMax());
       scope
           .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
-          .tagged(metricTags)
+          .tagged(partitionTags)
           .gauge(MetricNames.WORKER_LOAD_MIN)
           .update(stats.getMin());
 
@@ -323,10 +359,15 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
 
       scope
           .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
-          .tagged(metricTags)
+          .tagged(partitionTags)
           .gauge(MetricNames.WORKER_LOAD_STD_DEVIATION)
           .update(standardDeviation / usedWorkers);
     }
+
+    scope
+        .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
+        .gauge(MetricNames.EXTRA_WORKERS_UNFULFILLED)
+        .update(totalNumberOfWorkersStillNeeded);
 
     int totalRequestedNumberOfWorker =
         workerNeededPerPartition.stream().mapToInt(Integer::intValue).sum();
@@ -361,7 +402,8 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
    * RebalancingWorkerTable is an internal data structure to keep track of each worker and the
    * corresponding virtual node, as well as the jobs on each worker
    */
-  static class RebalancingCache {
+  @VisibleForTesting
+  protected static class RebalancingCache {
     private final Map<Long, Long> workerIdToVirtualPartitionMap = new HashMap<>();
     private final Map<Long, Set<Long>> virtualPartitionToWorkerIdMap = new HashMap<>();
     private final Map<Long, RebalancingWorkerWithSortedJobs> workerIdToWorkerMap = new HashMap<>();
@@ -465,6 +507,10 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
 
     private static final String WORKER_LOAD_MIN = "worker.load.min";
 
+    private static final String WORKER_EXPECTED_LOAD = "worker.load.expected";
+
+    private static final String WORKER_IDX = "worker.idx";
+
     private static final String OVERLOAD_WORKER_NUMBER = "overload.worker.number";
 
     private static final String UNADJUSTED_WORKLOAD_WORKER = "unadjusted.worker.number";
@@ -472,7 +518,14 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     private static final String ASSIGNED_WORKER_NUMBER_IN_PARTITION =
         "per.partition.assigned.worker.number";
 
+    private static final String REQUESTED_WORKER_NUMBER_IN_PARTITION =
+        "per.partition.requested.worker.number";
+
+    private static final String EXTRA_WORKERS_UNFULFILLED = "unfulfilled.extra.workers";
+
     private static final String JOB_MOVEMENT = "job.movement";
+
+    private static final String STALE_JOB_COUNT = "stale.job.count";
 
     private MetricNames() {}
   }

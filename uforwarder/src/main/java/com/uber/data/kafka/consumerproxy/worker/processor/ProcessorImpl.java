@@ -125,6 +125,8 @@ public class ProcessorImpl
   private final int maxKafkaRetry;
   private final boolean clusterFilterEnabled;
 
+  private final String addressFromUri;
+
   public ProcessorImpl(
       Job job,
       ScheduledExecutorService executor,
@@ -143,6 +145,7 @@ public class ProcessorImpl
             infra.scope()),
         executor, // this executor is for non-blocking operations
         outboundMessageLimiterBuilder.build(job),
+        job.getRpcDispatcherTask().getUri(),
         outboundMessageLimit,
         clusterFilterEnabled,
         // TODO(haitao.zhang): make those two values configurable
@@ -156,6 +159,7 @@ public class ProcessorImpl
       AckManager ackManager,
       ScheduledExecutorService executor,
       OutboundMessageLimiter outboundMessageLimiter,
+      String jobUri,
       int outboundMessageLimit,
       boolean clusterFilterEnabled,
       int maxGrpcRetry,
@@ -164,6 +168,7 @@ public class ProcessorImpl
     this.ackManager = ackManager;
     this.executor = executor;
     this.outboundMessageLimiter = outboundMessageLimiter;
+    this.addressFromUri = RoutingUtils.extractAddress(jobUri);
     this.maxGrpcRetry = maxGrpcRetry;
     this.clusterFilterEnabled = clusterFilterEnabled;
     this.maxKafkaRetry = maxKafkaRetry;
@@ -208,7 +213,7 @@ public class ProcessorImpl
                       .tagged(
                           ImmutableMap.of(
                               StructuredFields.URI,
-                              RoutingUtils.extractAddress(finalJob.getRpcDispatcherTask().getUri()),
+                              addressFromUri,
                               StructuredFields.KAFKA_GROUP,
                               finalJob.getKafkaConsumerTask().getConsumerGroup(),
                               StructuredFields.KAFKA_CLUSTER,
@@ -918,9 +923,7 @@ public class ProcessorImpl
     final ConsumerRecord<byte[], byte[]> consumerRecord = request.getItem();
     final StructuredArgument[] logTags =
         new StructuredArgument[] {
-          StructuredArguments.keyValue(
-              StructuredFields.URI,
-              RoutingUtils.extractAddress(job.getRpcDispatcherTask().getUri())),
+          StructuredArguments.keyValue(StructuredFields.URI, addressFromUri),
           StructuredArguments.keyValue(
               StructuredFields.KAFKA_GROUP, job.getKafkaConsumerTask().getConsumerGroup()),
           StructuredArguments.keyValue(
@@ -933,7 +936,7 @@ public class ProcessorImpl
         };
     final String[] tags =
         new String[] {
-          StructuredFields.URI, RoutingUtils.extractAddress(job.getRpcDispatcherTask().getUri()),
+          StructuredFields.URI, addressFromUri,
           StructuredFields.KAFKA_GROUP, job.getKafkaConsumerTask().getConsumerGroup(),
           StructuredFields.KAFKA_CLUSTER, job.getKafkaConsumerTask().getCluster(),
           StructuredFields.KAFKA_TOPIC, job.getKafkaConsumerTask().getTopic(),
@@ -950,7 +953,7 @@ public class ProcessorImpl
             .tagged(
                 ImmutableMap.of(
                     StructuredFields.URI,
-                    RoutingUtils.extractAddress(job.getRpcDispatcherTask().getUri()),
+                    addressFromUri,
                     StructuredFields.KAFKA_GROUP,
                     job.getKafkaConsumerTask().getConsumerGroup(),
                     StructuredFields.KAFKA_CLUSTER,
@@ -1213,7 +1216,8 @@ public class ProcessorImpl
 
   private static void logCommand(String command, Job job) {
     LOGGER.info(
-        String.format("%s on processor", command),
+        "{} on processor",
+        command,
         com.uber.data.kafka.datatransfer.common.StructuredLogging.jobId(job.getJobId()),
         com.uber.data.kafka.datatransfer.common.StructuredLogging.kafkaTopic(
             job.getKafkaConsumerTask().getTopic()),

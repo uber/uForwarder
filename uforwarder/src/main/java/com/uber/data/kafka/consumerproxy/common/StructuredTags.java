@@ -5,14 +5,14 @@ import com.uber.data.kafka.datatransfer.common.StructuredFields;
 import com.uber.m3.util.ImmutableMap;
 import java.util.Map;
 
-public final class StructuredTags extends StructuredFields {
+public class StructuredTags extends StructuredFields {
   private static final String JOB_TYPE = "job_type";
   private static final String DESTINATION = "destination";
   private static final String MODE = "mode";
 
   private final ImmutableMap.Builder<String, String> mapBuilder;
 
-  private StructuredTags() {
+  StructuredTags() {
     this.mapBuilder = new ImmutableMap.Builder<>();
   }
 
@@ -52,11 +52,6 @@ public final class StructuredTags extends StructuredFields {
 
   public StructuredTags setJobType(String jobType) {
     mapBuilder.put(JOB_TYPE, jobType);
-    return this;
-  }
-
-  public StructuredTags setZoneIntention(String zoneIntention) {
-    mapBuilder.put(ZONE_INTENTION, zoneIntention);
     return this;
   }
 

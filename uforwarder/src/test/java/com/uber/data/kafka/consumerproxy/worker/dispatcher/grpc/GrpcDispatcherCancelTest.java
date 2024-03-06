@@ -9,7 +9,6 @@ import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 import com.uber.fievel.testing.base.FievelTestBase;
-import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.MethodDescriptor;
 import io.grpc.Server;
@@ -45,7 +44,7 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
   private GrpcDispatcherConfiguration config;
   private Server server;
   private MethodDescriptor<ByteString, Empty> methodDescriptor;
-  private ManagedChannel channel;
+  private GrpcManagedChannelPool channel;
   private String callee;
   private MessageStub stub;
   private int port;
@@ -60,7 +59,11 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
     this.callee = "callee";
     this.port = findFreePort();
     this.methodDescriptor = methodDescriptor("test/testAPI", new BytesMarshaller());
-    this.channel = ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build();
+    this.channel =
+        new GrpcManagedChannelPool(
+            () -> ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build(),
+            1,
+            10);
     this.stub = new MessageStub();
     this.latch = new CountDownLatch(1);
     this.dispatcher =

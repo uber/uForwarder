@@ -38,6 +38,14 @@ message KafkaConsumerTaskStatus {
   double messages_per_sec = 3;
   // number of bytes per second delivered.
   double bytes_per_sec = 4;
+  // deprecated, use total_messages_inflight instead
+  double messages_inflight = 5 [deprecated = true];
+  // deprecated, use total_bytes_inflight instead
+  double bytes_inflight = 6 [deprecated = true];
+  // number of messages inflight to be processed
+  int64 total_messages_inflight = 7;
+  // number of bytes of messages inflight to be processed
+  int64 total_bytes_inflight = 8;
 }
 
 // KafkaDispatcherTaskStatus represents the state of the dispatcher task.

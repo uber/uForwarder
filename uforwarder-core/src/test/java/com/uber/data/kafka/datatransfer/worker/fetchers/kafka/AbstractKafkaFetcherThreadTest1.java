@@ -43,6 +43,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
   private PipelineStateManager pipelineStateManager;
   private CheckpointManager checkpointManager;
   private ThroughputTracker throughputTracker;
+  private InflightMessageTracker inflightMessageTracker;
   private KafkaConsumer mockConsumer;
   private CoreInfra coreInfra;
   private Map<TopicPartition, Job> topicPartitionJobMap;
@@ -56,6 +57,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
     kafkaFetcherConfiguration = new KafkaFetcherConfiguration();
     checkpointManager = Mockito.mock(CheckpointManager.class);
     throughputTracker = Mockito.mock(ThroughputTracker.class);
+    inflightMessageTracker = Mockito.mock(InflightMessageTracker.class);
     tp = new TopicPartition(TOPIC, 0);
     job = createConsumerJob(0, TOPIC, 0, GROUP, 2000, 1000);
     topicPartitionJobMap = ImmutableMap.of(tp, job);
@@ -94,6 +96,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra);
     fetcherThread.setPipelineStateManager(pipelineStateManager);
@@ -115,6 +118,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra);
     fetcherThread.setPipelineStateManager(pipelineStateManager);
@@ -136,6 +140,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra);
     fetcherThread.setPipelineStateManager(pipelineStateManager);
@@ -160,6 +165,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true) {
@@ -197,6 +203,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true) {
@@ -243,6 +250,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true) {
@@ -289,6 +297,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true) {
@@ -335,6 +344,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true) {
@@ -376,6 +386,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra);
     fetcherThread.setPipelineStateManager(pipelineStateManager);

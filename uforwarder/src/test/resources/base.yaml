@@ -8,10 +8,10 @@ logging:
 # GRPC Server configurations
 grpc:
   # Port for GRPC Server
-  port: 8081
+  port: 0
 
 system:
-  port: 8082
+  port: 0
 
 # These are the configurations for the system debug pages.
 management:
@@ -164,6 +164,8 @@ worker:
     threadPoolSize: 2
     # The max number of unprocessed inbound messages cached for each topic-partition.
     maxInboundCacheCount: 1001
+    # The max number of unprocessed inbound message cached for the processor
+    maxProcessorInBoundCacheCount: 9999
     # The max number of unprocessed outbound messages cached for each topic-partition.
     # This number can be override by user-defined JobConfiguration.
     maxOutboundCacheCount: 251

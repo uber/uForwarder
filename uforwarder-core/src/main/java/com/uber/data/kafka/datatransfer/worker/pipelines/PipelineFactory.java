@@ -4,6 +4,7 @@ import com.uber.data.kafka.datatransfer.Job;
 
 /** PipelineFactory is used by the DataTransferFramework PipelineManager to create Pipelines. */
 public interface PipelineFactory {
+  String DELIMITER = "__";
 
   /**
    * Create a new Pipeline.
@@ -23,4 +24,16 @@ public interface PipelineFactory {
    * @implSpec pipelineId must be consistent for a fixed jobDefinition.
    */
   String getPipelineId(Job job);
+
+  /**
+   * Composes thread name based on the serviceName, role(producer/consumer/processor) and job.
+   *
+   * @param job job
+   * @param role producer/consumer/processor
+   * @param serviceName serviceName
+   * @return actor(thread) name
+   */
+  default String getThreadName(Job job, String role, String serviceName) {
+    return String.join(DELIMITER, serviceName, getPipelineId(job), role);
+  }
 }

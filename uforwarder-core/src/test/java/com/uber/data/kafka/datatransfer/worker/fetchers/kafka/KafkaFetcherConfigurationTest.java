@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.worker.fetchers.kafka;
 
+import com.uber.data.kafka.datatransfer.AutoOffsetResetPolicy;
 import com.uber.data.kafka.datatransfer.IsolationLevel;
 import com.uber.data.kafka.datatransfer.common.KafkaClusterResolver;
 import com.uber.data.kafka.datatransfer.common.KafkaUtils;
@@ -26,7 +27,6 @@ public class KafkaFetcherConfigurationTest extends FievelTestBase {
     Assert.assertEquals(
         "com.uber.data.kafka.datatransfer.common.KafkaClusterResolver",
         kafkaFetcherConfiguration.getResolverClass());
-    Assert.assertEquals("earliest", kafkaFetcherConfiguration.getAutoOffsetResetPolicy());
     Properties properties =
         kafkaFetcherConfiguration.getKafkaConsumerProperties(
             "localhost:9092", "client-id", "group", IsolationLevel.ISOLATION_LEVEL_UNSET, false);
@@ -52,7 +52,6 @@ public class KafkaFetcherConfigurationTest extends FievelTestBase {
 
   @Test
   public void testSet() throws Exception {
-    kafkaFetcherConfiguration.setAutoOffsetResetPolicy("latest");
     kafkaFetcherConfiguration.setBootstrapServers("127.0.0.1");
     kafkaFetcherConfiguration.setNumberOfFetchers(2);
     kafkaFetcherConfiguration.setOffsetCommitIntervalMs(1);
@@ -65,12 +64,16 @@ public class KafkaFetcherConfigurationTest extends FievelTestBase {
     Assert.assertEquals(1, kafkaFetcherConfiguration.getOffsetMonitorIntervalMs());
     Assert.assertEquals(1, kafkaFetcherConfiguration.getPollTimeoutMs());
     Assert.assertEquals(TestResolver.class.getName(), kafkaFetcherConfiguration.getResolverClass());
-    Assert.assertEquals("latest", kafkaFetcherConfiguration.getAutoOffsetResetPolicy());
     Assert.assertEquals(true, kafkaFetcherConfiguration.getCommitOnIdleFetcher());
     kafkaFetcherConfiguration.setResolverClass(KafkaClusterResolver.class.getName());
     Properties properties =
         kafkaFetcherConfiguration.getKafkaConsumerProperties(
-            "127.0.0.1", "client-id", "group", IsolationLevel.ISOLATION_LEVEL_READ_COMMITTED, true);
+            "127.0.0.1",
+            "client-id",
+            "group",
+            AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST,
+            IsolationLevel.ISOLATION_LEVEL_READ_COMMITTED,
+            true);
     Assert.assertEquals("client-id", properties.getProperty(ConsumerConfig.CLIENT_ID_CONFIG));
     Assert.assertEquals("latest", properties.getProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG));
     Assert.assertEquals(
