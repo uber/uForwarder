@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
+import com.uber.data.kafka.consumerproxy.common.MetricsUtils;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.config.GrpcDispatcherConfiguration;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
@@ -20,7 +21,6 @@ import io.grpc.CallOptions;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
 import io.grpc.ClientInterceptors;
-import io.grpc.ManagedChannel;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
@@ -42,7 +42,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.slf4j.helpers.NOPLogger;
 
 /** GrpcDispatcher is used to dispatch messages to other Uber micro services. */
 public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
@@ -61,7 +60,9 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
 
   private final String callee;
 
-  private final ManagedChannel channel;
+  private final String calleeAddress;
+
+  private final GrpcManagedChannelPool channel;
   private final MethodDescriptor<ByteString, Empty> methodDescriptor;
   private String caller;
   private final AtomicBoolean running;
@@ -71,13 +72,14 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
   GrpcDispatcher(
       CoreInfra infra,
       GrpcDispatcherConfiguration configuration,
-      ManagedChannel channel,
+      GrpcManagedChannelPool channel,
       MethodDescriptor<ByteString, Empty> methodDescriptor,
       String callee,
       GrpcFilter grpcFilter,
       String caller) {
     this.infra = infra;
     this.callee = callee;
+    this.calleeAddress = RoutingUtils.extractAddress(callee);
     this.channel = channel;
     this.methodDescriptor = methodDescriptor;
     this.configuration = configuration;
@@ -96,9 +98,10 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
     this(
         infra,
         configuration,
-        GrpcManagedChannelPool.of(
-            (options) -> ManagedChannelBuilder.forTarget(callee).usePlaintext().build(),
-            configuration.getGrpcChannelPoolSize()),
+        new GrpcManagedChannelPool(
+            () -> ManagedChannelBuilder.forTarget(callee).usePlaintext().disableRetry().build(),
+            configuration.getGrpcChannelPoolSize(),
+            configuration.getMaxConcurrentStreams()),
         buildMethodDescriptor(procedure),
         callee,
         grpcFilter,
@@ -122,6 +125,10 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
     }
 
     final Job job = item.getJob();
+    MetricsUtils.jobScope(infra.scope(), job, calleeAddress)
+        .gauge(MetricNames.CHANNEL_USAGE)
+        .update(channel.getMetrics().usage());
+
     String[] tags = extractDispatchMetricsTags(item);
     return attempt.complete(
         Instrumentation.instrument
@@ -143,7 +150,7 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
 
                   attempt.onCancel(() -> clientCall.cancel(ERROR_MESSAGE_CANCEL, null));
                   Instrumentation.instrument.withStreamObserver(
-                      NOPLogger.NOP_LOGGER,
+                      LOGGER,
                       infra.scope(),
                       ClientCalls::asyncUnaryCall,
                       clientCall,
@@ -364,6 +371,7 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
     static final String TIMEOUT_COUNT = "dispatcher.grpc.timeout-count";
     static final String ADJUSTED_RPC_TIMEOUT = "dispatcher.grpc.adjusted-rpc-timeout";
     static final String CALL = "dispatcher.grpc.call";
+    static final String CHANNEL_USAGE = "dispatcher.grpc.channel.usage";
     static final String DISPATCH = "dispatcher.grpc.dispatch";
   }
 }

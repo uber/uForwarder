@@ -259,7 +259,8 @@ public class MessageStub {
             try {
               reactor.run();
             } catch (Exception e) {
-              LOGGER.warn("Failed to cancel attempt", jobTags, e);
+              scope.counter(MetricNames.DISPATCHER_CANCEL_FAILURE).inc(1);
+              LOGGER.error("Failed to cancel attempt", jobTags, e);
             }
           };
 
@@ -323,7 +324,7 @@ public class MessageStub {
     PASSIVE_CANCEL("passive-cancel"),
     RETRY_CANCELLED("retry-canceled"),
     PERMIT_CANCELLED("permit-canceled"),
-    ATTEMPT_CANCELED("attempt-cancel"),
+    ATTEMPT_CANCELED("attempt-canceled"),
     ATTEMPT_PASSIVE_CANCELED("attempt-passive-canceled"),
     PERMIT_PASSIVE_CANCELED("permit-passive-canceled"),
     CLOSED("closed");
@@ -353,5 +354,6 @@ public class MessageStub {
 
   private static class MetricNames {
     static final String PROCESSOR_STUB_TEMPLATE = "processor.stub.%s";
+    static final String DISPATCHER_CANCEL_FAILURE = "dispatcher.cancel.failure";
   }
 }

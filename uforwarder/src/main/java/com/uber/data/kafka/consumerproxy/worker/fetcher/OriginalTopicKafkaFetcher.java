@@ -7,6 +7,7 @@ import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.CheckpointManager;
+import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.InflightMessageTracker;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaCheckpointManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfiguration;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.SeekStartOffsetOption;
@@ -42,7 +43,15 @@ public final class OriginalTopicKafkaFetcher extends AbstractKafkaFetcherThread<
       ThroughputTracker throughputTracker,
       Consumer<byte[], byte[]> kafkaConsumer,
       CoreInfra infra) {
-    super(threadName, config, checkpointManager, throughputTracker, kafkaConsumer, infra, true);
+    super(
+        threadName,
+        config,
+        checkpointManager,
+        throughputTracker,
+        new InflightMessageTracker(),
+        kafkaConsumer,
+        infra,
+        true);
   }
 
   /**
@@ -124,6 +133,7 @@ public final class OriginalTopicKafkaFetcher extends AbstractKafkaFetcherThread<
       String threadName,
       String bootstrapServers,
       String consumerGroup,
+      AutoOffsetResetPolicy autoOffsetResetPolicy,
       IsolationLevel isolationLevel,
       KafkaFetcherConfiguration config,
       boolean isSecure,
@@ -132,7 +142,12 @@ public final class OriginalTopicKafkaFetcher extends AbstractKafkaFetcherThread<
     KafkaConsumer<byte[], byte[]> kafkaConsumer =
         new KafkaConsumer<>(
             config.getKafkaConsumerProperties(
-                bootstrapServers, threadName, consumerGroup, isolationLevel, isSecure));
+                bootstrapServers,
+                threadName,
+                consumerGroup,
+                autoOffsetResetPolicy,
+                isolationLevel,
+                isSecure));
     KafkaCheckpointManager checkpointManager = new KafkaCheckpointManager(infra.scope());
     ThroughputTracker throughputTracker = new ThroughputTracker();
     return new OriginalTopicKafkaFetcher(

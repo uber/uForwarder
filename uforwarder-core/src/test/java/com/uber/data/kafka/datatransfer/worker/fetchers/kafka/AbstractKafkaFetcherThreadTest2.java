@@ -38,6 +38,7 @@ public class AbstractKafkaFetcherThreadTest2 extends FievelTestBase {
   private AbstractKafkaFetcherThread fetcherThread;
   private CheckpointManager checkpointManager;
   private ThroughputTracker throughputTracker;
+  private InflightMessageTracker inflightMessageTracker;
   private PipelineStateManager configManager;
   private MockConsumer mockConsumer;
   private Sink processor;
@@ -75,12 +76,14 @@ public class AbstractKafkaFetcherThreadTest2 extends FievelTestBase {
             scope);
     checkpointManager = new KafkaCheckpointManager(scope);
     throughputTracker = new ThroughputTracker();
+    inflightMessageTracker = new InflightMessageTracker();
     fetcherThread =
         new KafkaFetcherThread(
             THREAD_NAME,
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             infra);
     fetcherThread.setPipelineStateManager(configManager);

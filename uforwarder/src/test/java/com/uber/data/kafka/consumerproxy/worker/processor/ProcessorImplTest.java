@@ -2,6 +2,7 @@ package com.uber.data.kafka.consumerproxy.worker.processor;
 
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.uber.data.kafka.consumer.DLQMetadata;
+import com.uber.data.kafka.consumerproxy.config.ProcessorConfiguration;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherImpl;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherMessage;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
@@ -62,6 +63,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
   private OutboundMessageLimiter.Builder outboundMessageLimiterBuilder;
   private UnprocessedMessageManager.Builder UnprocessedMessageManagerBuilder;
   private MessageAckStatusManager.Builder messageAckStatusManagerBuilder;
+  private ProcessorConfiguration config;
 
   @Before
   public void setUp() throws Exception {
@@ -109,13 +111,25 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 });
     outboundMessageLimiterBuilder =
         new SimpleOutboundMessageLimiter.Builder(infra, adaptiveInflightLimiterBuilder, false);
+
+    config = new ProcessorConfiguration();
+    config.setMaxInboundCacheCount(1);
+    config.setMaxInboundCacheByteSize(10);
     UnprocessedMessageManagerBuilder =
         new UnprocessedMessageManager.Builder(
-            1, 10L, Mockito.mock(LongFixedInflightLimiter.class), infra);
+            config, Mockito.mock(LongFixedInflightLimiter.class), infra);
     messageAckStatusManagerBuilder = new MessageAckStatusManager.Builder(1, infra);
     processor =
         new ProcessorImpl(
-            ackManager, executor, outboundMessageLimiterBuilder.build(job), 10, true, 1, 1, infra);
+            ackManager,
+            executor,
+            outboundMessageLimiterBuilder.build(job),
+            job.getRpcDispatcherTask().getUri(),
+            10,
+            true,
+            1,
+            1,
+            infra);
     processor.setNextStage(dispatcher);
     processor.setPipelineStateManager(pipelineStateManager);
 

@@ -73,6 +73,9 @@ public final class ProcessorMessage {
   // cancel processing
   private final MessageStub stub;
 
+  // SLA benchmark related metrics
+  private final long consumerRecordTimestamp;
+
   // inflight permit
   private Optional<InflightLimiter.Permit> permit = Optional.empty();
 
@@ -93,7 +96,8 @@ public final class ProcessorMessage {
       long timeoutCount,
       Optional<Span> parentSpan,
       CoreInfra infra,
-      MessageStub stub) {
+      MessageStub stub,
+      long consumerRecordTimestamp) {
     this.key = key;
     this.value = value;
     this.kafkaHeaders = kafkaHeaders;
@@ -130,6 +134,7 @@ public final class ProcessorMessage {
 
           span.finish();
         };
+    this.consumerRecordTimestamp = consumerRecordTimestamp;
   }
 
   public int getValueByteSize() {
@@ -195,7 +200,8 @@ public final class ProcessorMessage {
           dlqMetadata.getTimeoutCount(),
           span,
           infra,
-          stub);
+          stub,
+          consumerRecord.timestamp());
     }
 
     return new ProcessorMessage(
@@ -214,7 +220,8 @@ public final class ProcessorMessage {
         0,
         span,
         infra,
-        stub);
+        stub,
+        consumerRecord.timestamp());
   }
 
   @VisibleForTesting
@@ -291,7 +298,8 @@ public final class ProcessorMessage {
         physicalOffset,
         retryCount.get(),
         dispatchAttempt.get(),
-        timeoutCount.get());
+        timeoutCount.get(),
+        consumerRecordTimestamp);
   }
 
   public DispatcherMessage getKafkaDispatcherMessage(String topic) {
@@ -322,7 +330,8 @@ public final class ProcessorMessage {
         physicalOffset,
         retryCount.get(),
         dispatchAttempt.get(),
-        timeoutCount.get());
+        timeoutCount.get(),
+        consumerRecordTimestamp);
   }
 
   /** Close is invoked to cleanup tracer state from async message dispatch. */

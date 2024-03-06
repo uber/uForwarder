@@ -75,6 +75,6 @@ public class UForwarderWorkerFactoryTest extends FievelTestBase {
   @Test
   public void testNode() {
     Assert.assertNotNull(this.node);
-    Assert.assertEquals(8082, node.getPort());
+    Assert.assertEquals(0, node.getPort());
   }
 }

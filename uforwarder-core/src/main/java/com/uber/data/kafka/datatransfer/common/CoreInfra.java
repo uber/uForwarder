@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.common;
 
+import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.common.context.ContextManager;
 import com.uber.m3.tally.NoopScope;
 import com.uber.m3.tally.Scope;
@@ -24,6 +25,7 @@ public class CoreInfra {
   private final ContextManager contextManager;
   private final DynamicConfiguration dynamicConfiguration;
   private final Placement placement;
+  private final Node node;
 
   /** Instantiates a new Core infra. */
   private CoreInfra(Builder builder) {
@@ -32,6 +34,7 @@ public class CoreInfra {
     this.contextManager = builder.contextManager;
     this.dynamicConfiguration = builder.dynamicConfiguration;
     this.placement = builder.placement;
+    this.node = builder.node;
   }
 
   /**
@@ -65,6 +68,7 @@ public class CoreInfra {
         .withContextManager(contextManager)
         .withDynamicConfiguration(dynamicConfiguration)
         .withPlacement(placement)
+        .withNode(node)
         .build();
   }
 
@@ -81,6 +85,7 @@ public class CoreInfra {
         .withContextManager(contextManager)
         .withDynamicConfiguration(dynamicConfiguration)
         .withPlacement(placement)
+        .withNode(node)
         .build();
   }
 
@@ -112,6 +117,15 @@ public class CoreInfra {
   }
 
   /**
+   * Gets the {@link Node}, containing the node(host, port) information
+   *
+   * @return the node object
+   */
+  public Node getNode() {
+    return node;
+  }
+
+  /**
    * Builder builder.
    *
    * @return the builder
@@ -127,6 +141,7 @@ public class CoreInfra {
     private ContextManager contextManager = ContextManager.NOOP;
     private DynamicConfiguration dynamicConfiguration = DynamicConfiguration.DEFAULT;
     private Placement placement = Placement.DEFAULT;
+    private Node node = Node.getDefaultInstance();
 
     /**
      * Sets scope.
@@ -180,6 +195,17 @@ public class CoreInfra {
      */
     public Builder withPlacement(Placement placement) {
       this.placement = placement;
+      return this;
+    }
+
+    /**
+     * Sets Node
+     *
+     * @param node the node(host, port) information object
+     * @return the builder
+     */
+    public Builder withNode(Node node) {
+      this.node = node;
       return this;
     }
 

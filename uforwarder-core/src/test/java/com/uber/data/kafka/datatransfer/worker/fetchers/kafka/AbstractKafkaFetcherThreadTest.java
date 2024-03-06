@@ -1,5 +1,9 @@
 package com.uber.data.kafka.datatransfer.worker.fetchers.kafka;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.eq;
+
 import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
@@ -50,6 +54,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
   private PipelineStateManager pipelineStateManager;
   private CheckpointManager checkpointManager;
   private ThroughputTracker throughputTracker;
+  private InflightMessageTracker inflightMessageTracker;
   private CheckpointInfo checkpointInfo;
   private KafkaConsumer mockConsumer;
   private Sink processor;
@@ -63,15 +68,15 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     checkpointInfo = Mockito.mock(CheckpointInfo.class);
     checkpointManager = Mockito.mock(CheckpointManager.class);
     throughputTracker = Mockito.mock(ThroughputTracker.class);
-    Mockito.when(checkpointManager.addCheckpointInfo(ArgumentMatchers.any()))
-        .thenReturn(checkpointInfo);
-    Mockito.when(checkpointManager.getCheckpointInfo(ArgumentMatchers.any()))
-        .thenReturn(checkpointInfo);
-    Mockito.when(checkpointManager.getCheckpointInfo(ArgumentMatchers.any()))
-        .thenReturn(checkpointInfo);
+    inflightMessageTracker = Mockito.mock(InflightMessageTracker.class);
+    Mockito.when(checkpointManager.addCheckpointInfo(any())).thenReturn(checkpointInfo);
+    Mockito.when(checkpointManager.getCheckpointInfo(any())).thenReturn(checkpointInfo);
+    Mockito.when(checkpointManager.getCheckpointInfo(any())).thenReturn(checkpointInfo);
     Mockito.when(checkpointInfo.getStartingOffset()).thenReturn(1L);
-    Mockito.when(throughputTracker.getThroughput(Mockito.any()))
+    Mockito.when(throughputTracker.getThroughput(any()))
         .thenReturn(new ThroughputTracker.Throughput(1, 2));
+    Mockito.when(inflightMessageTracker.getInflightMessageStats(any()))
+        .thenReturn(new InflightMessageTracker.InflightMessageStats(1, 100));
     kafkaFetcherConfiguration = new KafkaFetcherConfiguration();
     kafkaFetcherConfiguration.setPollTimeoutMs(10);
     Scope scope = Mockito.mock(Scope.class);
@@ -86,8 +91,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     Mockito.when(scope.counter(ArgumentMatchers.anyString())).thenReturn(counter);
     Mockito.when(scope.gauge(ArgumentMatchers.anyString())).thenReturn(gauge);
     Mockito.when(scope.timer(ArgumentMatchers.anyString())).thenReturn(timer);
-    Mockito.when(scope.histogram(ArgumentMatchers.anyString(), ArgumentMatchers.any()))
-        .thenReturn(histogram);
+    Mockito.when(scope.histogram(ArgumentMatchers.anyString(), any())).thenReturn(histogram);
     Mockito.when(timer.start()).thenReturn(stopwatch);
 
     mockConsumer = Mockito.mock(KafkaConsumer.class);
@@ -109,6 +113,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra);
     fetcherThread.setPipelineStateManager(pipelineStateManager);
@@ -145,6 +150,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             null,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra);
     fetcherThread.start();
@@ -158,6 +164,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             null,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra);
     fetcherThread.start();
@@ -207,14 +214,14 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra);
 
     // try to commit an empty map
     fetcherThread.setPipelineStateManager(pipelineStateManager);
     fetcherThread.commitOffsets(ImmutableMap.of());
-    Mockito.verify(mockConsumer, Mockito.never())
-        .commitAsync(ArgumentMatchers.anyMap(), ArgumentMatchers.any());
+    Mockito.verify(mockConsumer, Mockito.never()).commitAsync(ArgumentMatchers.anyMap(), any());
 
     // try to commit an non-empty map
     Job job = createConsumerJob(1, TOPIC_NAME, 0, CONSUMER_GROUP, 1000, 1000);
@@ -255,6 +262,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             false);
@@ -262,8 +270,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     // try to commit an empty map
     fetcherThread.setPipelineStateManager(pipelineStateManager);
     fetcherThread.commitOffsets(ImmutableMap.of());
-    Mockito.verify(mockConsumer, Mockito.never())
-        .commitAsync(ArgumentMatchers.anyMap(), ArgumentMatchers.any());
+    Mockito.verify(mockConsumer, Mockito.never()).commitAsync(ArgumentMatchers.anyMap(), any());
     Mockito.verify(mockConsumer, Mockito.never()).commitSync(mapCaptor.capture());
 
     // try to commit an non-empty map
@@ -300,6 +307,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true,
@@ -397,6 +405,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     // when the consumer records are empty
     fetcherThread.processFetchedData(consumerRecords, taskMap);
     Mockito.verify(mockConsumer, Mockito.times(1)).pause(Collections.singleton(tp2));
+    Mockito.verify(inflightMessageTracker, Mockito.never()).addMessage(any(), anyInt());
 
     // prepare consumer records
     ConsumerRecord consumerRecord = Mockito.mock(ConsumerRecord.class);
@@ -410,6 +419,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     fetcherThread.processFetchedData(consumerRecords, ImmutableMap.of(tp2, job));
     Mockito.verify(mockConsumer, Mockito.times(1)).pause(Collections.singleton(tp1));
     Mockito.verify(mockConsumer, Mockito.times(1)).seek(tp1, 101L);
+    Mockito.verify(inflightMessageTracker, Mockito.never()).addMessage(eq(tp1), anyInt());
 
     // case 1: tp2 is not tracked, so it's paused
     CompletableFuture completableFuture = CompletableFuture.completedFuture(101L);
@@ -417,6 +427,9 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     fetcherThread.processFetchedData(consumerRecords, taskMap);
     // tp2 pause is accumulated
     Mockito.verify(mockConsumer, Mockito.times(2)).pause(Collections.singleton(tp2));
+    Mockito.verify(inflightMessageTracker, Mockito.times(1)).addMessage(eq(tp1), eq(1));
+    Mockito.verify(inflightMessageTracker, Mockito.times(1)).removeMessage(eq(tp1), eq(1));
+    Mockito.reset(inflightMessageTracker);
 
     // case 2: offset 101 is bounded for tp1 but we don't care
     Mockito.when(checkpointInfo.bounded(101L)).thenReturn(true);
@@ -426,6 +439,8 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     // tp1 is paused
     Mockito.verify(mockConsumer, Mockito.times(1)).pause(Collections.singleton(tp1));
     Mockito.verify(checkpointManager, Mockito.never()).setFetchOffset(job, 101);
+    Mockito.verify(inflightMessageTracker, Mockito.times(1)).addMessage(eq(tp1), eq(1));
+    Mockito.verify(inflightMessageTracker, Mockito.times(1)).removeMessage(eq(tp1), eq(1));
 
     // message processing exception is handled
     completableFuture = new CompletableFuture();
@@ -443,6 +458,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true,
@@ -493,7 +509,9 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     Mockito.when(processor.submit(Mockito.isA(ItemAndJob.class))).thenReturn(completableFuture);
     fetcherThread.processFetchedData(consumerRecords, taskMap);
     // only commit once since there is offsetCommitIntervalMs
-    Mockito.verify(mockConsumer, Mockito.times(1)).commitAsync(Mockito.any(), Mockito.any());
+    Mockito.verify(mockConsumer, Mockito.times(1)).commitAsync(any(), any());
+    Mockito.verify(inflightMessageTracker, Mockito.times(2)).addMessage(eq(tp1), eq(1));
+    Mockito.verify(inflightMessageTracker, Mockito.times(2)).removeMessage(eq(tp1), eq(1));
   }
 
   @Test
@@ -518,6 +536,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
   public void testRefreshPartitionMap() throws ExecutionException, InterruptedException {
     Map<TopicPartition, Job> newTopicPartitionJobMap = new HashMap<>();
     Map<TopicPartition, Job> allTopicPartitionJobMap = new HashMap<>();
+    Map<TopicPartition, Job> removedTopicPartitionJobMap = new HashMap<>();
     Job job1 = createConsumerJob(1, TOPIC_NAME, 0, CONSUMER_GROUP, 1000, 1000);
     Job job2 = createConsumerJob(2, TOPIC_NAME, 1, CONSUMER_GROUP, 1000, 1000);
     Job job3 = createConsumerJob(3, TOPIC_NAME, 2, CONSUMER_GROUP, 1000, 1000);
@@ -526,30 +545,37 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
 
     // no add, no delete
     Assert.assertFalse(
-        fetcherThread.extractTopicPartitionMap(newTopicPartitionJobMap, allTopicPartitionJobMap));
+        fetcherThread.extractTopicPartitionMap(
+            newTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap));
     validateMap(0, 0);
     Assert.assertEquals(0, newTopicPartitionJobMap.size());
+    Assert.assertEquals(0, removedTopicPartitionJobMap.size());
     Assert.assertEquals(0, allTopicPartitionJobMap.size());
 
     // no add, no delete
     newTopicPartitionJobMap = new HashMap<>();
     allTopicPartitionJobMap = new HashMap<>();
+    removedTopicPartitionJobMap = new HashMap<>();
     pipelineStateManager.run(job1).toCompletableFuture().get();
     validateMap(1, 0);
     Assert.assertTrue(
-        fetcherThread.extractTopicPartitionMap(newTopicPartitionJobMap, allTopicPartitionJobMap));
+        fetcherThread.extractTopicPartitionMap(
+            newTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap));
     validateMap(1, 1);
     Assert.assertEquals(1, newTopicPartitionJobMap.size());
     Assert.assertEquals(1, allTopicPartitionJobMap.size());
+    Assert.assertEquals(0, removedTopicPartitionJobMap.size());
     Assert.assertTrue(allTopicPartitionJobMap.containsValue(job1));
 
     // add 1 job
     newTopicPartitionJobMap = new HashMap<>();
     allTopicPartitionJobMap = new HashMap<>();
+    removedTopicPartitionJobMap = new HashMap<>();
     pipelineStateManager.run(job2).toCompletableFuture().get();
     validateMap(2, 1);
     Assert.assertTrue(
-        fetcherThread.extractTopicPartitionMap(newTopicPartitionJobMap, allTopicPartitionJobMap));
+        fetcherThread.extractTopicPartitionMap(
+            newTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap));
     validateMap(2, 2);
     Assert.assertEquals(1, newTopicPartitionJobMap.size());
     Assert.assertTrue(
@@ -559,41 +585,51 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
                 job2.getKafkaConsumerTask().getPartition())));
     Assert.assertEquals(2, allTopicPartitionJobMap.size());
     Assert.assertTrue(allTopicPartitionJobMap.containsValue(job1));
+    Assert.assertEquals(0, removedTopicPartitionJobMap.size());
     Assert.assertTrue(allTopicPartitionJobMap.containsValue(job2));
 
     // delete 1 non-existing job
     newTopicPartitionJobMap = new HashMap<>();
     allTopicPartitionJobMap = new HashMap<>();
+    removedTopicPartitionJobMap = new HashMap<>();
     pipelineStateManager.cancel(job3).toCompletableFuture().get();
     validateMap(2, 2);
     Assert.assertFalse(
-        fetcherThread.extractTopicPartitionMap(newTopicPartitionJobMap, allTopicPartitionJobMap));
+        fetcherThread.extractTopicPartitionMap(
+            newTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap));
     validateMap(2, 2);
     Assert.assertEquals(0, newTopicPartitionJobMap.size());
     Assert.assertEquals(2, allTopicPartitionJobMap.size());
+    Assert.assertEquals(0, removedTopicPartitionJobMap.size());
     Assert.assertTrue(allTopicPartitionJobMap.containsValue(job1));
     Assert.assertTrue(allTopicPartitionJobMap.containsValue(job2));
 
     // delete 1 existing job
     newTopicPartitionJobMap = new HashMap<>();
     allTopicPartitionJobMap = new HashMap<>();
+    removedTopicPartitionJobMap = new HashMap<>();
     pipelineStateManager.cancel(job2).toCompletableFuture().get();
     validateMap(1, 2);
     Assert.assertTrue(
-        fetcherThread.extractTopicPartitionMap(newTopicPartitionJobMap, allTopicPartitionJobMap));
+        fetcherThread.extractTopicPartitionMap(
+            newTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap));
     validateMap(1, 1);
     Assert.assertEquals(0, newTopicPartitionJobMap.size());
     Assert.assertEquals(1, allTopicPartitionJobMap.size());
+    Assert.assertEquals(1, removedTopicPartitionJobMap.size());
+    Assert.assertTrue(removedTopicPartitionJobMap.containsValue(job2));
     Assert.assertTrue(allTopicPartitionJobMap.containsValue(job1));
 
     // add 1 job and cancel one job at the same time
     newTopicPartitionJobMap = new HashMap<>();
     allTopicPartitionJobMap = new HashMap<>();
+    removedTopicPartitionJobMap = new HashMap<>();
     pipelineStateManager.run(job2).toCompletableFuture().get();
     pipelineStateManager.cancel(job1).toCompletableFuture().get();
     validateMap(1, 1);
     Assert.assertTrue(
-        fetcherThread.extractTopicPartitionMap(newTopicPartitionJobMap, allTopicPartitionJobMap));
+        fetcherThread.extractTopicPartitionMap(
+            newTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap));
     validateMap(1, 1);
     Assert.assertEquals(1, newTopicPartitionJobMap.size());
     Assert.assertTrue(
@@ -602,16 +638,20 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
                 job2.getKafkaConsumerTask().getTopic(),
                 job2.getKafkaConsumerTask().getPartition())));
     Assert.assertEquals(1, allTopicPartitionJobMap.size());
+    Assert.assertEquals(1, removedTopicPartitionJobMap.size());
+    Assert.assertTrue(removedTopicPartitionJobMap.containsValue(job1));
     Assert.assertTrue(allTopicPartitionJobMap.containsValue(job2));
 
     // add 2 jobs with the same topic-partition
     newTopicPartitionJobMap = new HashMap<>();
     allTopicPartitionJobMap = new HashMap<>();
+    removedTopicPartitionJobMap = new HashMap<>();
     pipelineStateManager.run(job3).toCompletableFuture().get();
     pipelineStateManager.run(job4).toCompletableFuture().get();
     validateMap(3, 1);
     Assert.assertTrue(
-        fetcherThread.extractTopicPartitionMap(newTopicPartitionJobMap, allTopicPartitionJobMap));
+        fetcherThread.extractTopicPartitionMap(
+            newTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap));
     validateMap(3, 3);
     Assert.assertEquals(1, newTopicPartitionJobMap.size());
     Assert.assertTrue(
@@ -620,12 +660,14 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
                 job3.getKafkaConsumerTask().getTopic(),
                 job3.getKafkaConsumerTask().getPartition())));
     Assert.assertEquals(2, allTopicPartitionJobMap.size());
+    Assert.assertEquals(0, removedTopicPartitionJobMap.size());
     Assert.assertTrue(allTopicPartitionJobMap.containsValue(job2));
     Assert.assertTrue(
         allTopicPartitionJobMap.containsValue(job3) || allTopicPartitionJobMap.containsValue(job4));
 
     newTopicPartitionJobMap = new HashMap<>();
     allTopicPartitionJobMap = new HashMap<>();
+    removedTopicPartitionJobMap = new HashMap<>();
     pipelineStateManager.cancel(job1).toCompletableFuture().get();
     validateMap(3, 3);
     pipelineStateManager.update(job1).toCompletableFuture().get();
@@ -635,22 +677,27 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     pipelineStateManager.update(job2).toCompletableFuture().get();
     validateMap(3, 3);
     Assert.assertFalse(
-        fetcherThread.extractTopicPartitionMap(newTopicPartitionJobMap, allTopicPartitionJobMap));
+        fetcherThread.extractTopicPartitionMap(
+            newTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap));
     validateMap(3, 3);
     Assert.assertEquals(0, newTopicPartitionJobMap.size());
     Assert.assertEquals(2, allTopicPartitionJobMap.size());
+    Assert.assertEquals(0, removedTopicPartitionJobMap.size());
     Assert.assertTrue(allTopicPartitionJobMap.containsValue(job2));
 
     // add 1 job with an existing topic-partition
     newTopicPartitionJobMap = new HashMap<>();
     allTopicPartitionJobMap = new HashMap<>();
+    removedTopicPartitionJobMap = new HashMap<>();
     pipelineStateManager.run(job5).toCompletableFuture().get();
     validateMap(4, 3);
     Assert.assertTrue(
-        fetcherThread.extractTopicPartitionMap(newTopicPartitionJobMap, allTopicPartitionJobMap));
+        fetcherThread.extractTopicPartitionMap(
+            newTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap));
     validateMap(4, 4);
     Assert.assertEquals(0, newTopicPartitionJobMap.size());
     Assert.assertEquals(2, allTopicPartitionJobMap.size());
+    Assert.assertEquals(0, removedTopicPartitionJobMap.size());
     Assert.assertTrue(allTopicPartitionJobMap.containsValue(job2));
     Assert.assertTrue(
         allTopicPartitionJobMap.containsValue(job3)
@@ -663,7 +710,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     Job job = createConsumerJob(1, TOPIC_NAME, 0, CONSUMER_GROUP, 1000, 1000);
     pipelineStateManager.run(job).toCompletableFuture().get();
 
-    Mockito.doThrow(new RuntimeException()).when(mockConsumer).poll(ArgumentMatchers.any());
+    Mockito.doThrow(new RuntimeException()).when(mockConsumer).poll(any());
     fetcherThread.doWork();
   }
 
@@ -677,12 +724,9 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     job = jobBuilder.build();
 
     CheckpointInfo checkpointInfo = new CheckpointInfo(job, 20, null);
-    Mockito.when(checkpointManager.addCheckpointInfo(ArgumentMatchers.any()))
-        .thenReturn(checkpointInfo);
-    Mockito.when(checkpointManager.getCheckpointInfo(ArgumentMatchers.any()))
-        .thenReturn(checkpointInfo);
-    Mockito.when(checkpointManager.getCheckpointInfo(ArgumentMatchers.any()))
-        .thenReturn(checkpointInfo);
+    Mockito.when(checkpointManager.addCheckpointInfo(any())).thenReturn(checkpointInfo);
+    Mockito.when(checkpointManager.getCheckpointInfo(any())).thenReturn(checkpointInfo);
+    Mockito.when(checkpointManager.getCheckpointInfo(any())).thenReturn(checkpointInfo);
 
     pipelineStateManager.run(job).toCompletableFuture().get();
 

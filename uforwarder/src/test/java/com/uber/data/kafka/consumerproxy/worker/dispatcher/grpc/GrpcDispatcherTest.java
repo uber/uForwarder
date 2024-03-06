@@ -17,7 +17,6 @@ import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
-import io.grpc.ManagedChannel;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
@@ -46,7 +45,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
   private CoreInfra infra;
   private GrpcDispatcherConfiguration config;
   private String callee;
-  private ManagedChannel channel;
+  private GrpcManagedChannelPool channel;
   private MethodDescriptor<ByteString, Empty> methodDescriptor;
   private long timeoutMs;
   private GrpcDispatcher dispatcher;
@@ -55,6 +54,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
   private DynamicConfiguration dynamicConfiguration;
   private MessageStub messageStub;
   private MessageStub mockStub;
+  private GrpcManagedChannelPool.Metrics channelPoolMetrics;
 
   @Before
   public void setup() {
@@ -62,12 +62,14 @@ public class GrpcDispatcherTest extends FievelTestBase {
     messageStub = new MessageStub();
     this.config = new GrpcDispatcherConfiguration();
     this.callee = "muttley://kafka-consumer-proxy";
-    this.channel = Mockito.mock(ManagedChannel.class);
+    this.channel = Mockito.mock(GrpcManagedChannelPool.class);
+    this.channelPoolMetrics = Mockito.mock(GrpcManagedChannelPool.Metrics.class);
     this.methodDescriptor = GrpcDispatcher.buildMethodDescriptor("group/topic");
     this.grpcFilter = Mockito.mock(GrpcFilter.class);
     this.grpcRequest = Mockito.mock(GrpcRequest.class);
     this.dynamicConfiguration = Mockito.mock(DynamicConfiguration.class);
     this.infra = CoreInfra.builder().withContextManager(contextManager).build();
+    Mockito.when(channel.getMetrics()).thenReturn(channelPoolMetrics);
     Mockito.when(contextManager.wrap(Mockito.any(CompletableFuture.class)))
         .thenAnswer(
             (Answer<CompletableFuture>)
@@ -379,5 +381,47 @@ public class GrpcDispatcherTest extends FievelTestBase {
       Assert.assertEquals(Status.Code.FAILED_PRECONDITION, future.get().status().getCode());
       Assert.assertEquals(entry.getValue(), future.get().code().get());
     }
+  }
+
+  @Test
+  public void testRuntimeExceptionWhenStartClientCall()
+      throws ExecutionException, InterruptedException {
+    ClientCall<ByteString, Empty> clientCall = Mockito.mock(ClientCall.class);
+    MessageStub messageStub = new MessageStub();
+    Mockito.doThrow(new RuntimeException("NPE"))
+        .when(clientCall)
+        .start(Mockito.any(), Mockito.any());
+    Job.Builder jobBuilder = Job.newBuilder();
+    jobBuilder.getRpcDispatcherTaskBuilder().setRpcTimeoutMs(1000000);
+    Job job = jobBuilder.build();
+    GrpcRequest grpcRequest =
+        new GrpcRequest(
+            "group",
+            "topic",
+            0,
+            0,
+            messageStub,
+            0,
+            0,
+            0,
+            "physicaltopic",
+            "physicalCluster",
+            0,
+            0,
+            HEADERS,
+            "value".getBytes(),
+            "key".getBytes());
+    CompletableFuture<GrpcResponse> future =
+        dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture();
+    Assert.assertTrue(future.isDone());
+    Assert.assertEquals(Status.UNKNOWN.getCode(), future.get().status().getCode());
+    // Make sure current attempt has been reset
+    Assert.assertTrue(messageStub.newAttempt() != null);
+  }
+
+  @Test
+  public void testConstructor() {
+    Assert.assertNotNull(
+        new GrpcDispatcher(infra, config, "caller", "dns:///127.0.0.1", "procedure", grpcFilter));
   }
 }

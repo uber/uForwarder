@@ -83,7 +83,8 @@ public final class PipelineImpl implements Pipeline {
     return (v, t) -> {
       if (t != null) {
         LOGGER.warn(
-            String.format("failed to %s on pipeline", command),
+            "failed to {} on pipeline",
+            command,
             StructuredLogging.jobId(job.getJobId()),
             StructuredLogging.kafkaTopic(job.getKafkaConsumerTask().getTopic()),
             StructuredLogging.kafkaCluster(job.getKafkaConsumerTask().getCluster()),
@@ -91,7 +92,8 @@ public final class PipelineImpl implements Pipeline {
             StructuredLogging.kafkaPartition(job.getKafkaConsumerTask().getPartition()));
       } else {
         LOGGER.info(
-            String.format("%s on pipeline", command),
+            "{} on pipeline",
+            command,
             StructuredLogging.jobId(job.getJobId()),
             StructuredLogging.kafkaTopic(job.getKafkaConsumerTask().getTopic()),
             StructuredLogging.kafkaCluster(job.getKafkaConsumerTask().getCluster()),
@@ -104,9 +106,9 @@ public final class PipelineImpl implements Pipeline {
   private static BiConsumer<Void, Throwable> logCommand(String command) {
     return (v, t) -> {
       if (t != null) {
-        LOGGER.warn(String.format("failed to %s on pipeline", command));
+        LOGGER.warn("failed to {} on pipeline", command);
       } else {
-        LOGGER.info(String.format("%s on pipeline", command));
+        LOGGER.info("{} on pipeline", command);
       }
     };
   }
