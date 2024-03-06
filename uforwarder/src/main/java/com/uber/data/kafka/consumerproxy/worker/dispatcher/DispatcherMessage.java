@@ -41,6 +41,9 @@ public class DispatcherMessage {
   private final long timeoutCount;
   private final MessageStub stub;
 
+  // SLA benchmark related metrics
+  private final long consumerRecordTimestamp;
+
   public DispatcherMessage(
       Type type,
       String destination,
@@ -58,7 +61,8 @@ public class DispatcherMessage {
       long physicalOffset,
       long retryCount,
       long dispatchAttempt,
-      long timeoutCount) {
+      long timeoutCount,
+      long consumerRecordTimestamp) {
     this.type = type;
     this.destination = destination;
     this.key = key;
@@ -76,6 +80,7 @@ public class DispatcherMessage {
     this.retryCount = retryCount;
     this.dispatchAttempt = dispatchAttempt;
     this.timeoutCount = timeoutCount;
+    this.consumerRecordTimestamp = consumerRecordTimestamp;
   }
 
   public ProducerRecord<byte[], byte[]> getProducerRecord() {

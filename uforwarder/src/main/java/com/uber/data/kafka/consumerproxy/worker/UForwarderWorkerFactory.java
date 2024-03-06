@@ -80,11 +80,7 @@ public class UForwarderWorkerFactory {
       CoreInfra coreInfra,
       ProcessorConfiguration config,
       LongFixedInflightLimiter sharedByteSizeLimiter) {
-    return new UnprocessedMessageManager.Builder(
-        config.getMaxInboundCacheCount(),
-        config.getMaxInboundCacheByteSize(),
-        sharedByteSizeLimiter,
-        coreInfra);
+    return new UnprocessedMessageManager.Builder(config, sharedByteSizeLimiter, coreInfra);
   }
 
   @Bean

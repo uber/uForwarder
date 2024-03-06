@@ -24,5 +24,9 @@ public class StructuredLoggingTest extends FievelTestBase {
     Assert.assertEquals("spiffe_id=value6", keyValue.toString());
     keyValue = StructuredLogging.virtualPartition(6);
     Assert.assertEquals("virtual_partition=6", keyValue.toString());
+    keyValue = StructuredLogging.workloadBasedWorkerCount(8);
+    Assert.assertEquals("worker_count=8", keyValue.toString());
+    keyValue = StructuredLogging.workerId(1000L);
+    Assert.assertEquals("worker_id=1000", keyValue.toString());
   }
 }

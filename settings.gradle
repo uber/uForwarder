@@ -15,14 +15,7 @@ include('fievel-common', 'instrumentation', 'idl', 'uforwarder-client', 'uforwar
 
 dependencyResolutionManagement {
     repositories {
-        maven {
-            url "http://artifactory.uber.internal:4587/artifactory/repo/"
-            allowInsecureProtocol = true
-            metadataSources {
-                mavenPom()
-                artifact()
-            }
-        }
+        mavenCentral()
         mavenLocal() {
             metadataSources {
                 mavenPom()

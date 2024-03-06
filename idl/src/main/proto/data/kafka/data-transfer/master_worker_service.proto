@@ -104,4 +104,3 @@ enum CommandType {
   // This command updates a job.
   COMMAND_TYPE_UPDATE_JOB = 3;
 }
-

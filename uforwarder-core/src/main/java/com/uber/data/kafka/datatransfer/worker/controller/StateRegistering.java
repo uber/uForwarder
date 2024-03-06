@@ -101,10 +101,10 @@ class StateRegistering extends State {
                   this.controllerClient, response.getParticipants().getMaster());
         } catch (Exception reconnectException) {
           logger.error(
-              String.format(
-                  "[%s -> %s] "
-                      + "got redirect master response but failed to reconnect to the new master",
-                  StateRegistering.STATE, StateRegistering.STATE),
+              "[{} -> {}] "
+                  + "got redirect master response but failed to reconnect to the new master",
+              StateRegistering.STATE,
+              StateRegistering.STATE,
               StructuredLogging.masterHostPort(
                   NodeUtils.getHostAndPortString(response.getParticipants().getMaster())),
               reconnectException);

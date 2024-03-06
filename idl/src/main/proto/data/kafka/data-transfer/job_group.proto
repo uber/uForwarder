@@ -70,6 +70,10 @@ message JobGroup {
   // AvailabilityTaskGroup is populated for jobs related to Kafka Availability service
   // Its job type should be JOB_TYPE_KAFKA_AVAILABILITY when populated
   AvailabilityTaskGroup availability_task_group = 12;
+
+  // ReplicationTaskGroup is populated for job groups that involve Kafka replication/ingestion
+  // Its job type should be JOB_TYPE_KAFKA_REPLICATION when populated
+  ReplicationTaskGroup replication_task_group = 13;
 }
 
 // KafkaConsumerTaskGroup is a specification for a Kafka Consumption Group task.
@@ -192,3 +196,8 @@ message AvailabilityTaskGroup {
   bool zone_isolated = 2;
 }
 
+// ReplicationTaskGroup is a task group spec for Kafka Replication/Ingestion
+message ReplicationTaskGroup {
+  // whether the source end_offset should be ignored and keep running continuously
+  bool is_continuous = 1;
+}

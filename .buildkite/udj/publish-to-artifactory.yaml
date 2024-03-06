@@ -1,6 +1,0 @@
-version: 1.0
-
-#kafka8
-uown: c02fca8f-86fa-4482-b460-1c3accdc336a
-
-command: "./gradlew publish -PmavenUsername=${ARTIFACTORY_USERNAME} -PmavenPassword=${ARTIFACTORY_PASSWORD}"

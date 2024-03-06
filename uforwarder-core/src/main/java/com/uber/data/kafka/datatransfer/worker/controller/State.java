@@ -103,7 +103,7 @@ abstract class State {
                     MetricsTags.TO_STATE, to));
     taggedScope.timer(MetricsNames.STATE_TRANSITION_LATENCY).record(latency);
     taggedScope.counter(MetricsNames.STATE_TRANSITION_SUCCESS).inc(1);
-    logger.info(String.format("[%s -> %s] " + msg, from, to));
+    logger.info("[{} -> {}] " + msg, from, to);
   }
 
   protected void markSuccess(
@@ -118,11 +118,9 @@ abstract class State {
         .inc(1);
     // debug level used for StateWorking to avoid spamming log file with heartbeat log
     if (debugLog) {
-      logger.debug(
-          String.format("[%s -> %s] " + msg, from, to), StructuredLogging.masterHostPort(master));
+      logger.debug("[{} -> {}] " + msg, from, to, StructuredLogging.masterHostPort(master));
     } else {
-      logger.info(
-          String.format("[%s -> %s] " + msg, from, to), StructuredLogging.masterHostPort(master));
+      logger.info("[{} -> {}] " + msg, from, to, StructuredLogging.masterHostPort(master));
     }
   }
 
@@ -135,7 +133,7 @@ abstract class State {
                 MetricsTags.TO_STATE, to))
         .counter(MetricsNames.STATE_TRANSITION_ERROR)
         .inc(1);
-    logger.error(String.format("[%s -> %s] " + msg, from, to), e);
+    logger.error("[{} -> {}] " + msg, from, to, e);
   }
 
   protected void markError(
@@ -148,8 +146,7 @@ abstract class State {
                 MetricsTags.TO_STATE, to))
         .counter(MetricsNames.STATE_TRANSITION_ERROR)
         .inc(1);
-    logger.error(
-        String.format("[%s -> %s] " + msg, from, to), StructuredLogging.masterHostPort(master), e);
+    logger.error("[{} -> {}] " + msg, from, to, StructuredLogging.masterHostPort(master), e);
   }
 
   protected void markWarn(
@@ -162,8 +159,7 @@ abstract class State {
                 MetricsTags.TO_STATE, to))
         .counter(MetricsNames.STATE_TRANSITION_ERROR_RETRY)
         .inc(1);
-    logger.warn(
-        String.format("[%s -> %s] " + msg, from, to), StructuredLogging.masterHostPort(master), e);
+    logger.warn("[{} -> {}] " + msg, from, to, StructuredLogging.masterHostPort(master), e);
   }
 
   protected void assertValidWorker(long workerId) throws Exception {

@@ -65,7 +65,14 @@ public class RetryTopicKafkaFetcherTest extends FievelTestBase {
   @Test
   public void testOf() throws Exception {
     RetryTopicKafkaFetcher.of(
-        THREAD_NAME, BOOTSTRAP_SERVERS, GROUP, kafkaFetcherConfiguration, null, false, infra);
+        THREAD_NAME,
+        BOOTSTRAP_SERVERS,
+        GROUP,
+        AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST,
+        kafkaFetcherConfiguration,
+        null,
+        false,
+        infra);
   }
 
   @Test

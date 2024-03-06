@@ -1,5 +1,6 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import com.uber.data.kafka.consumerproxy.config.ProcessorConfiguration;
 import com.uber.data.kafka.consumerproxy.worker.limiter.LongFixedInflightLimiter;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.m3.tally.Counter;
@@ -42,6 +43,7 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
   private Gauge mockBytesGauge;
   private Gauge mockGlobalBytesGauge;
   private Scope mockScope;
+  private ProcessorConfiguration config;
 
   @Before
   public void setUp() throws Exception {
@@ -75,8 +77,11 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     pm3 = newProcessMessage(physicalKafkaMetadata3);
     pm4 = newEmptyProcessMessage(physicalKafkaMetadata4);
     sharedByteSizeLimiter = new LongFixedInflightLimiter(10);
+    config = new ProcessorConfiguration();
+    config.setMaxInboundCacheCount(2);
+    config.setMaxInboundCacheByteSize(8);
     unprocessedMessageManager =
-        new UnprocessedMessageManager(job1, 2, 8, sharedByteSizeLimiter, mockScope);
+        new UnprocessedMessageManager(job1, config, sharedByteSizeLimiter, mockScope);
     unprocessedMessageManager.init(job1);
     unprocessedMessageManager.init(job2);
     unprocessedMessageManager.init(job4);
@@ -368,6 +373,16 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
   public void testDetectBlockingAndMarkCancel() {
     Assert.assertFalse(unprocessedMessageManager.detectBlockingMessage(tp1).isPresent());
     Assert.assertFalse(unprocessedMessageManager.markCanceled(physicalKafkaMetadata1));
+  }
+
+  @Test
+  public void testWithProcessorInboundCacheLimit() {
+    config.setMaxProcessorInBoundCacheCount(3);
+    unprocessedMessageManager =
+        new UnprocessedMessageManager(job1, config, sharedByteSizeLimiter, mockScope);
+    unprocessedMessageManager.init(job1);
+    unprocessedMessageManager.init(job2);
+    Assert.assertEquals(3, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment

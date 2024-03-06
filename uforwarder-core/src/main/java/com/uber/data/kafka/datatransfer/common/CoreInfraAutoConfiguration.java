@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.common;
 
+import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.common.context.ContextManager;
 import com.uber.m3.tally.Scope;
 import io.opentracing.Tracer;
@@ -41,13 +42,15 @@ public class CoreInfraAutoConfiguration {
       Tracer tracer,
       ContextManager contextManager,
       DynamicConfiguration dynamicConfiguration,
-      Placement placement) {
+      Placement placement,
+      Node node) {
     return CoreInfra.builder()
         .withScope(scope)
         .withTracer(tracer)
         .withContextManager(contextManager)
         .withDynamicConfiguration(dynamicConfiguration)
         .withPlacement(placement)
+        .withNode(node)
         .build();
   }
 }

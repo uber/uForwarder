@@ -6,6 +6,8 @@ import com.uber.m3.tally.Scope;
 import com.uber.m3.util.Duration;
 import io.grpc.ClientCall;
 import io.grpc.Status;
+import io.grpc.StatusException;
+import io.grpc.StatusRuntimeException;
 import io.grpc.stub.StreamObserver;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
@@ -275,15 +277,13 @@ public enum Instrumentation implements Instrument {
     }
     final Closeable tracingScope = getTracingScope(tracer, span);
     final long startNs = System.nanoTime();
+    InstrumentedStreamObserver instrumentedStreamObserver =
+        new InstrumentedStreamObserver<>(
+            logger, scope, tracingScope, span, responseStreamObserver, startNs, name, tags);
     try {
-      consumer.accept(
-          clientCall,
-          request,
-          new InstrumentedStreamObserver<>(
-              logger, scope, tracingScope, span, responseStreamObserver, startNs, name, tags));
-    } catch (IllegalStateException e) {
-      // call could have been cancelled at this point
-      responseStreamObserver.onError(Status.CANCELLED.asRuntimeException());
+      consumer.accept(clientCall, request, instrumentedStreamObserver);
+    } catch (Throwable t) {
+      instrumentedStreamObserver.onError(t);
     }
   }
 
@@ -594,7 +594,16 @@ public enum Instrumentation implements Instrument {
           .tagged(metricsTags(Tags.Value.failure, code.name(), tags))
           .histogram(name + ".latency", BUCKETS)
           .recordDuration(Duration.ofNanos(System.nanoTime() - startNs));
-      logger.error(name, loggingTags(Tags.Value.failure, code.name(), tags), t);
+      if (!(t instanceof StatusException || t instanceof StatusRuntimeException)) {
+        // It will handle following errors with in-memory retry
+        // 1. IllegalStateException if call already canceled
+        // 2. NullPointerException for https://github.com/grpc/grpc-java/issues/9185
+        // 3. Other unknown errors
+        logger.error(name, loggingTags(t, code.name(), tags));
+      } else {
+        logger.debug(name, loggingTags(t, code.name(), tags));
+      }
+
       safeClose(tracingScope);
       if (span != null) {
         span.finish();

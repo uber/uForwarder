@@ -1,0 +1,26 @@
+{
+  "data": [
+  {
+    "job": {
+      "job": {
+        "jobId": "744763638"
+      },
+      "state": "JOB_STATE_RUNNING",
+      "workerId": "0",
+      "scale": 1.1
+    },
+    "jobGroupId": "hp-checkers-event@kloak-dca-h@kcp_test_consumer_2"
+  },
+  {
+    "job": {
+      "job": {
+        "jobId": "363937000"
+      },
+      "state": "JOB_STATE_RUNNING",
+      "workerId": "0",
+      "scale": 1.1
+    },
+    "jobGroupId": "hp-checkers-event@kloak-dca-h@kcp_test_consumer_2"
+  }
+ ]
+}

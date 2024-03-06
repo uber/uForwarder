@@ -66,8 +66,10 @@ public class PipelineFactoryImpl implements PipelineFactory {
     try {
       kafkaPipelineStateManager = Optional.of(new KafkaPipelineStateManager(job, infra.scope()));
       boolean isSecure = job.hasSecurityConfig() && job.getSecurityConfig().getIsSecure();
-      fetcher = Optional.of(kafkaFetcherFactory.create(job, getActorName(job, CONSUMER), infra));
-      String processorId = getActorName(job, PROCESSOR);
+      fetcher =
+          Optional.of(
+              kafkaFetcherFactory.create(job, getThreadName(job, CONSUMER, serviceName), infra));
+      String processorId = getThreadName(job, PROCESSOR, serviceName);
       processor = Optional.of(processorFactory.create(job, processorId));
       grpcDispatcher =
           Optional.of(
@@ -75,7 +77,7 @@ public class PipelineFactoryImpl implements PipelineFactory {
                   serviceName,
                   job.getRpcDispatcherTask().getUri(),
                   job.getRpcDispatcherTask().getProcedure()));
-      final String clientId = getActorName(job, PRODUCER);
+      final String clientId = getThreadName(job, PRODUCER, serviceName);
       Optional<KafkaDispatcher<byte[], byte[]>> resqKafkaProducer =
           RetryUtils.hasResqTopic(job)
               ? Optional.of(
@@ -117,16 +119,5 @@ public class PipelineFactoryImpl implements PipelineFactory {
         job.getKafkaConsumerTask().getConsumerGroup(),
         job.getKafkaConsumerTask().getCluster(),
         job.getKafkaConsumerTask().getTopic());
-  }
-
-  /**
-   * Gets producer/consumer/processor name
-   *
-   * @param job
-   * @param role producer/consumer/processor
-   * @return
-   */
-  private String getActorName(Job job, String role) {
-    return String.join(DELIMITER, serviceName, getPipelineId(job), role);
   }
 }
