@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.uber.data.kafka.consumerproxy.common.MetricsUtils;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.common.StructuredTags;
+import com.uber.data.kafka.consumerproxy.config.ProcessorConfiguration;
 import com.uber.data.kafka.consumerproxy.worker.limiter.BootstrapLongFixedInflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.InflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.LongFixedInflightLimiter;
@@ -29,8 +30,7 @@ import org.slf4j.LoggerFactory;
 public class UnprocessedMessageManager implements BlockingQueue, MetricSource {
   private static final Logger LOGGER = LoggerFactory.getLogger(UnprocessedMessageManager.class);
   protected final ConcurrentMap<TopicPartition, PartitionLimiter> topicPartitionLimiterMap;
-  protected final int maxInboundCacheCount;
-  protected final long maxInboundByteSize;
+  protected final ProcessorConfiguration config;
   protected final LongFixedInflightLimiter sharedByteSizeLimiter;
   protected final Scope scope;
   protected final Job jobTemplate;
@@ -39,13 +39,11 @@ public class UnprocessedMessageManager implements BlockingQueue, MetricSource {
 
   UnprocessedMessageManager(
       Job jobTemplate,
-      int maxInboundCacheCount,
-      long maxInboundByteSize,
+      ProcessorConfiguration config,
       LongFixedInflightLimiter sharedByteSizeLimiter,
       Scope scope) {
     this.jobTemplate = jobTemplate;
-    this.maxInboundCacheCount = maxInboundCacheCount;
-    this.maxInboundByteSize = maxInboundByteSize;
+    this.config = config;
     this.sharedByteSizeLimiter = sharedByteSizeLimiter;
     this.topicPartitionLimiterMap = new ConcurrentHashMap<>();
     this.scope = scope;
@@ -192,8 +190,12 @@ public class UnprocessedMessageManager implements BlockingQueue, MetricSource {
   private void syncLimit() {
     // release all blocked threads than create new limiter
     int nPartitions = topicPartitionLimiterMap.size();
-    countLimiter.updateLimit(nPartitions * maxInboundCacheCount);
-    byteSizeLimiter.updateLimit(nPartitions * maxInboundByteSize);
+    int maxUnprocessedCount =
+        Math.min(
+            config.getMaxProcessorInBoundCacheCount(),
+            nPartitions * config.getMaxInboundCacheCount());
+    countLimiter.updateLimit(maxUnprocessedCount);
+    byteSizeLimiter.updateLimit(nPartitions * config.getMaxInboundCacheByteSize());
   }
 
   @Override
@@ -335,25 +337,21 @@ public class UnprocessedMessageManager implements BlockingQueue, MetricSource {
   }
 
   public static class Builder {
-    protected final int maxInboundCacheCount;
-    protected final long maxInboundByteSize;
+    protected final ProcessorConfiguration config;
     protected final LongFixedInflightLimiter sharedByteSizeLimiter;
     protected final CoreInfra infra;
 
     public Builder(
-        int maxInboundCacheCount,
-        long maxInboundByteSize,
+        ProcessorConfiguration config,
         LongFixedInflightLimiter sharedByteSizeLimiter,
         CoreInfra infra) {
-      this.maxInboundCacheCount = maxInboundCacheCount;
-      this.maxInboundByteSize = maxInboundByteSize;
+      this.config = config;
       this.sharedByteSizeLimiter = sharedByteSizeLimiter;
       this.infra = infra;
     }
 
     UnprocessedMessageManager build(Job job) {
-      return new UnprocessedMessageManager(
-          job, maxInboundCacheCount, maxInboundByteSize, sharedByteSizeLimiter, infra.scope());
+      return new UnprocessedMessageManager(job, config, sharedByteSizeLimiter, infra.scope());
     }
   }
 

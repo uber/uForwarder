@@ -4,6 +4,7 @@ import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.uber.data.kafka.consumerproxy.utils.RetryUtils;
+import com.uber.data.kafka.datatransfer.AutoOffsetResetPolicy;
 import com.uber.data.kafka.datatransfer.IsolationLevel;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.RetryQueue;
@@ -63,6 +64,8 @@ public class KafkaFetcherFactory {
     String bootstrapServers = brokerConnectionStringMap.get(clusterAndSecureKey);
     String consumerGroup = jobTemplate.getKafkaConsumerTask().getConsumerGroup();
     IsolationLevel isolationLevel = jobTemplate.getKafkaConsumerTask().getIsolationLevel();
+    AutoOffsetResetPolicy autoOffsetResetPolicy =
+        jobTemplate.getKafkaConsumerTask().getAutoOffsetResetPolicy();
     boolean isSecure =
         jobTemplate.hasSecurityConfig() && jobTemplate.getSecurityConfig().getIsSecure();
 
@@ -77,7 +80,14 @@ public class KafkaFetcherFactory {
         || retryQueue.isPresent()) {
       kafkaFetcher =
           RetryTopicKafkaFetcher.of(
-              threadId, bootstrapServers, consumerGroup, config, retryQueue, isSecure, coreInfra);
+              threadId,
+              bootstrapServers,
+              consumerGroup,
+              autoOffsetResetPolicy,
+              config,
+              retryQueue,
+              isSecure,
+              coreInfra);
     } else if (topic.equals(jobTemplate.getRpcDispatcherTask().getDlqTopic())) {
       kafkaFetcher =
           DlqTopicKafkaFetcher.of(
@@ -88,6 +98,7 @@ public class KafkaFetcherFactory {
               threadId,
               bootstrapServers,
               consumerGroup,
+              autoOffsetResetPolicy,
               isolationLevel,
               config,
               isSecure,

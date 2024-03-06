@@ -749,8 +749,6 @@ public class StateMachineTest extends FievelTestBase {
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
     Assert.assertEquals(StateWorking.STATE, oldState.toString());
-    // Wait for the lease to expire.
-    Thread.sleep(1000 * 3);
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
@@ -759,6 +757,46 @@ public class StateMachineTest extends FievelTestBase {
     Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
     // Work should be canceled.
     Mockito.verify(controllable, Mockito.times(1)).cancelAll();
+  }
+
+  /**
+   * Test that worker still connecting in the following situations: 1. old leader not available 2.
+   * new leader available after reconnect 3. lease not expire
+   */
+  @Test
+  public void workingToWorkingCausedByHeartbeatFailureWhenLeaseNotExpires() throws Exception {
+    List<JobStatus> jobStatusList =
+        ImmutableList.of(
+            JobStatus.newBuilder().setJob(job1).setState(JobState.JOB_STATE_RUNNING).build());
+    Mockito.when(controllable.getJobStatus()).thenReturn(jobStatusList);
+    Mockito.when(
+            stub.heartbeat(
+                HeartbeatRequest.newBuilder()
+                    .setParticipants(
+                        Participants.newBuilder().setWorker(worker).setMaster(master).build())
+                    .addAllJobStatus(jobStatusList)
+                    .build()))
+        .thenThrow(new StatusRuntimeException(Status.UNAVAILABLE));
+    Mockito.when(controllerClientFactory.reconnect(ArgumentMatchers.any()))
+        .thenReturn(new ControllerClient(master, channel, stub, infra));
+
+    lease.success();
+    State oldState =
+        new StateWorking(
+            infra,
+            worker,
+            controllerClientFactory,
+            lease,
+            heartbeatTimeout,
+            commandExecutors,
+            controllable,
+            new ControllerClient(master, channel, stub, infra));
+    // oldState is WORKING
+    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    // Transition state.
+    State newState = oldState.nextState();
+    // newState should be WORKING
+    Assert.assertEquals(StateWorking.STATE, newState.toString());
   }
 
   /**

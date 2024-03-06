@@ -13,6 +13,11 @@ public class ProcessorConfiguration {
   // This is the default unprocessed inbounded message count for each topic partition.
   private int maxInboundCacheCount = 1000;
 
+  // This is the default unprocessed inbound message count for the processor
+  // actual unprocessed inbound message count limit equals to min(maxProcessorInBoundCacheCount,
+  // nPartitions * maxInboundCacheCount)
+  private int maxProcessorInBoundCacheCount = 10000;
+
   // This is the default unprocessed inbound message byte size for each topic partition
   private int maxInboundCacheByteSize = 10 * 1024 * 1024;
 
@@ -98,5 +103,13 @@ public class ProcessorConfiguration {
 
   public void setClusterFilterEnabled(boolean enableClusterFilter) {
     this.clusterFilterEnabled = enableClusterFilter;
+  }
+
+  public int getMaxProcessorInBoundCacheCount() {
+    return maxProcessorInBoundCacheCount;
+  }
+
+  public void setMaxProcessorInBoundCacheCount(int maxProcessorInBoundCacheCount) {
+    this.maxProcessorInBoundCacheCount = maxProcessorInBoundCacheCount;
   }
 }

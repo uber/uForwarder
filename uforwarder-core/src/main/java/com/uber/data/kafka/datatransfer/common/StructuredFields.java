@@ -18,11 +18,6 @@ public class StructuredFields {
   public static final String JOB_ID = "job_id";
   public static final String HEADER = "header";
   public static final String FETCHER_TYPE = "fetcher_type";
-  public static final String ROUTING_DELEGATE = "routing_delegate";
   public static final String PIPELINE = "pipeline";
-  // zone intention is the intended message delivery zone
-  public static final String ZONE_INTENTION = "zone_intention";
-  // dispatch zone is where the KCP worker dispatches messages from
-  public static final String DISPATCH_ZONE = "dispatch_zone";
   public static final String RETRY_COUNT = "retry_count";
 }

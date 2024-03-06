@@ -1,5 +1,6 @@
 package com.uber.data.kafka.consumerproxy.controller.rebalancer;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
 import com.google.common.collect.ImmutableSet;
@@ -209,7 +210,8 @@ class RebalancerCommon {
     return numberOfWorker;
   }
 
-  private static void adjustWorkerCountForPartition(
+  @VisibleForTesting
+  static void adjustWorkerCountForPartition(
       RpcJobColocatingRebalancer.RebalancingCache rebalancingCache,
       List<Integer> workersNeededPerPartition,
       final Map<Long, StoredWorker> workerMap,
@@ -241,27 +243,36 @@ class RebalancerCommon {
         logger.info(
             "Need to remove {} workers for partition.",
             numberOfWorkersToRemove,
-            StructuredLogging.virtualPartition(parititionIdx));
+            StructuredLogging.virtualPartition(parititionIdx),
+            StructuredLogging.workloadBasedWorkerCount(
+                workersNeededPerPartition.get(parititionIdx)));
         List<Long> toRemoveWorkerIds =
             removeJobsFromLeastLoadedWorkers(
                 rebalancingCache, parititionIdx, numberOfWorkersToRemove);
         toRemoveWorkerIds.forEach(rebalancingCache::removeWorker);
         newWorkers.addAll(toRemoveWorkerIds);
+        // reset workers needed for this partition to be the same as the current worker size
+        workersNeededPerPartition.set(
+            parititionIdx, rebalancingCache.getAllWorkerIdsForPartition(parititionIdx).size());
       }
     }
 
-    for (int idx = 0; idx < newWorkers.size(); idx++) {
-      for (int parititionIdx = 0; parititionIdx < numberOfPartition; parititionIdx++) {
-        // we need to handle increased worker number
-        if (rebalancingCache.getAllWorkerIdsForPartition(parititionIdx).size()
-            < workersNeededPerPartition.get(parititionIdx)) {
-          rebalancingCache.put(newWorkers.get(idx), parititionIdx);
-          logger.info(
-              "Add worker to partition.", StructuredLogging.virtualPartition(parititionIdx));
-          break;
-        }
+    int totalExtraWorkersNeeded = 0;
+    for (int partitionIdx = 0; partitionIdx < numberOfPartition; partitionIdx++) {
+      if (workersNeededPerPartition.get(partitionIdx)
+          > rebalancingCache.getAllWorkerIdsForPartition(partitionIdx).size()) {
+        totalExtraWorkersNeeded +=
+            (workersNeededPerPartition.get(partitionIdx)
+                - rebalancingCache.getAllWorkerIdsForPartition(partitionIdx).size());
       }
     }
+
+    roundRobinAssignWorkers(
+        totalExtraWorkersNeeded,
+        workersNeededPerPartition,
+        rebalancingCache,
+        newWorkers,
+        numberOfPartition);
   }
 
   private static void redistributeWorkerForPartition(
@@ -285,14 +296,34 @@ class RebalancerCommon {
     workerIdAndHash.sort(Comparator.comparing(Pair::getRight));
     // assign workers to partition
 
-    int workerIdx = 0;
-    for (int partitionIdx = 0; partitionIdx < numberOfPartition; partitionIdx++) {
-      for (int idx = 0;
-          idx < workerNeededPerPartition.get(partitionIdx) && workerIdx < workerIdAndHash.size();
-          idx++) {
-        Pair<Long, Long> worker = workerIdAndHash.get(workerIdx++);
-        rebalancingCache.put(worker.getLeft(), partitionIdx);
+    roundRobinAssignWorkers(
+        workerNeededPerPartition.stream().mapToInt(Integer::intValue).sum(),
+        workerNeededPerPartition,
+        rebalancingCache,
+        workerIdAndHash.stream().map(Pair::getLeft).collect(Collectors.toList()),
+        numberOfPartition);
+  }
+
+  private static void roundRobinAssignWorkers(
+      int totalNumberOfWorkersNeeded,
+      List<Integer> workersNeededPerPartition,
+      RpcJobColocatingRebalancer.RebalancingCache rebalancingCache,
+      List<Long> newWorkers,
+      int numberOfPartition) {
+    int partitionIdx = 0;
+    int idleWorkerIdx = 0;
+    while (idleWorkerIdx < newWorkers.size() && totalNumberOfWorkersNeeded > 0) {
+      if (rebalancingCache.getAllWorkerIdsForPartition(partitionIdx).size()
+          < workersNeededPerPartition.get(partitionIdx)) {
+        rebalancingCache.put(newWorkers.get(idleWorkerIdx), partitionIdx);
+        logger.info(
+            "Add worker to partition.",
+            StructuredLogging.virtualPartition(partitionIdx),
+            StructuredLogging.workerId(newWorkers.get(idleWorkerIdx)));
+        idleWorkerIdx += 1;
+        totalNumberOfWorkersNeeded -= 1;
       }
+      partitionIdx = (partitionIdx + 1) % numberOfPartition;
     }
   }
 

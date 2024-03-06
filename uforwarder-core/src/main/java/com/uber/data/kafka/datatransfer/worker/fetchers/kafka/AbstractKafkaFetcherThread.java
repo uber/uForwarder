@@ -107,6 +107,8 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
   private final KafkaFetcherConfiguration config;
   private final ThroughputTracker throughputTracker;
 
+  private final InflightMessageTracker inflightMessageTracker;
+
   private final Scope scope;
   private final CoreInfra infra;
 
@@ -126,6 +128,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
       KafkaFetcherConfiguration config,
       CheckpointManager checkpointManager,
       ThroughputTracker throughputTracker,
+      InflightMessageTracker inflightMessageTracker,
       Consumer<K, V> kafkaConsumer,
       CoreInfra infra,
       boolean asyncCommitOffset) {
@@ -134,6 +137,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         config,
         checkpointManager,
         throughputTracker,
+        inflightMessageTracker,
         kafkaConsumer,
         infra,
         asyncCommitOffset,
@@ -145,6 +149,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
       KafkaFetcherConfiguration config,
       CheckpointManager checkpointManager,
       ThroughputTracker throughputTracker,
+      InflightMessageTracker inflightMessageTracker,
       Consumer<K, V> kafkaConsumer,
       CoreInfra infra,
       boolean asyncCommitOffset,
@@ -154,6 +159,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         infra.contextManager().wrap(Executors.newSingleThreadScheduledExecutor());
     this.checkpointManager = checkpointManager;
     this.throughputTracker = throughputTracker;
+    this.inflightMessageTracker = inflightMessageTracker;
     this.config = config;
     this.offsetMonitorMs = config.getOffsetMonitorIntervalMs();
     this.pollTimeoutMs = config.getPollTimeoutMs();
@@ -249,11 +255,13 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         .update(1.0);
     // step 1: discover topic partition changes
     Map<TopicPartition, Job> addedTopicPartitionJobMap = new HashMap<>();
+    Map<TopicPartition, Job> removedTopicPartitionJobMap = new HashMap<>();
     Map<TopicPartition, Job> allTopicPartitionJobMap = new HashMap<>();
-    // the extractTopicPartitionMap method will modify two passed-in maps, therefore, do not make
-    // those two maps immutable.
+    // the extractTopicPartitionMap method will modify three passed-in maps, therefore, do not make
+    // those maps immutable.
     boolean assignmentChange =
-        extractTopicPartitionMap(addedTopicPartitionJobMap, allTopicPartitionJobMap);
+        extractTopicPartitionMap(
+            addedTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap);
 
     // step 2: handle newly-added topic partitions
     // specifically, (1) the checkpoint manager starts to track them (2) extracts topic partitions
@@ -261,8 +269,9 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     Map<TopicPartition, Long> topicPartitionOffsetMap =
         addToCheckPointManager(addedTopicPartitionJobMap);
 
-    // step 2.1 track throughput of newly added topic partitions
-    addToThroughputTracker(addedTopicPartitionJobMap);
+    // step 2.1 track throughput and inflightMessage of newly added topic partitions and the removed
+    // topic partitions
+    adjustTracker(addedTopicPartitionJobMap, removedTopicPartitionJobMap);
 
     // use kafkaConsumerLock to ensure threadsafe access for kafkaConsumer and the in-order enqueue
     // for ConsumerRecords
@@ -484,6 +493,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
   @VisibleForTesting
   boolean extractTopicPartitionMap(
       Map<TopicPartition, Job> newTopicPartitionJobMap,
+      Map<TopicPartition, Job> removedTopicPartitionJobMap,
       Map<TopicPartition, Job> allTopicPartitionJobMap) {
     Preconditions.checkNotNull(pipelineStateManager, "pipeline config manager required");
     // Use a snapshot of the expectedRunningJobMap as it might change.
@@ -547,9 +557,21 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
 
     Sets.SetView<Job> cancelJobs = Sets.difference(oldJobs, newJobs);
     Sets.SetView<Job> runJobs = Sets.difference(newJobs, oldJobs);
+
+    // step 4: add cancel jobs to removedTopicPartitionJobMap
+    cancelJobs
+        .iterator()
+        .forEachRemaining(
+            job ->
+                removedTopicPartitionJobMap.put(
+                    new TopicPartition(
+                        job.getKafkaConsumerTask().getTopic(),
+                        job.getKafkaConsumerTask().getPartition()),
+                    job));
+
     logCommands(runJobs, cancelJobs);
 
-    // step 4: Check for job assignment changes.
+    // step 5: Check for job assignment changes.
     return !runJobs.isEmpty() || !cancelJobs.isEmpty();
   }
 
@@ -559,8 +581,8 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         .forEachRemaining(
             job ->
                 LOGGER.info(
-                    String.format(
-                        "%s on kafka fetcher", CommandType.COMMAND_TYPE_RUN_JOB.toString()),
+                    "{} on kafka fetcher",
+                    CommandType.COMMAND_TYPE_RUN_JOB.toString(),
                     StructuredLogging.jobId(job.getJobId()),
                     StructuredLogging.kafkaTopic(job.getKafkaConsumerTask().getTopic()),
                     StructuredLogging.kafkaCluster(job.getKafkaConsumerTask().getCluster()),
@@ -571,8 +593,8 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         .forEachRemaining(
             job ->
                 LOGGER.info(
-                    String.format(
-                        "%s on kafka fetcher", CommandType.COMMAND_TYPE_CANCEL_JOB.toString()),
+                    "{} on kafka fetcher",
+                    CommandType.COMMAND_TYPE_CANCEL_JOB.toString(),
                     StructuredLogging.jobId(job.getJobId()),
                     StructuredLogging.kafkaTopic(job.getKafkaConsumerTask().getTopic()),
                     StructuredLogging.kafkaCluster(job.getKafkaConsumerTask().getCluster()),
@@ -580,12 +602,16 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
                     StructuredLogging.kafkaPartition(job.getKafkaConsumerTask().getPartition())));
   }
 
-  void addToThroughputTracker(Map<TopicPartition, Job> addedTopicPartitionJobMap) {
-    if (addedTopicPartitionJobMap.isEmpty()) {
-      return;
+  void adjustTracker(
+      Map<TopicPartition, Job> addedTopicPartitionJobMap,
+      Map<TopicPartition, Job> removedTopicPartitionJobMap) {
+    for (Map.Entry<TopicPartition, Job> entry : addedTopicPartitionJobMap.entrySet()) {
+      inflightMessageTracker.init(entry.getKey());
+      throughputTracker.init(entry.getValue());
     }
-    for (Job job : addedTopicPartitionJobMap.values()) {
-      throughputTracker.init(job);
+
+    for (TopicPartition tp : removedTopicPartitionJobMap.keySet()) {
+      inflightMessageTracker.revokeInflightStatsForJob(tp);
     }
   }
 
@@ -821,12 +847,19 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
           jobStatusBuilder.setState(JobState.JOB_STATE_RUNNING);
           CheckpointInfo checkpointInfo = checkpointManager.getCheckpointInfo(job);
           ThroughputTracker.Throughput throughput = throughputTracker.getThroughput(job);
+          InflightMessageTracker.InflightMessageStats inflightMessageStats =
+              inflightMessageTracker.getInflightMessageStats(
+                  new TopicPartition(
+                      job.getKafkaConsumerTask().getTopic(),
+                      job.getKafkaConsumerTask().getPartition()));
           KafkaConsumerTaskStatus kafkaConsumerTaskStatus =
               KafkaConsumerTaskStatus.newBuilder()
                   .setReadOffset(checkpointInfo.getFetchOffset())
                   .setCommitOffset(checkpointInfo.getCommittedOffset())
                   .setMessagesPerSec(throughput.messagePerSec)
                   .setBytesPerSec(throughput.bytesPerSec)
+                  .setTotalMessagesInflight(inflightMessageStats.numberOfMessages.get())
+                  .setTotalBytesInflight(inflightMessageStats.totalBytes.get())
                   .build();
           jobStatusBuilder.setKafkaConsumerTaskStatus(kafkaConsumerTaskStatus);
           builder.add(jobStatusBuilder.build());
@@ -876,6 +909,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
             pausePartitionAndSeekOffset(tp, record.offset());
             break;
           }
+          inflightMessageTracker.addMessage(tp, record.serializedValueSize());
           // process the message
           final Scope scopeWithGroupTopicPartition =
               scope.tagged(
@@ -917,6 +951,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
                       // update throughput
                       throughputTracker.record(job, 1, record.serializedValueSize());
                     }
+                    inflightMessageTracker.removeMessage(tp, record.serializedValueSize());
                     tracedRecord.complete(aLong, throwable);
                   });
         }
@@ -1074,10 +1109,12 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     try {
       // commit offsets for the last time
       Map<TopicPartition, Job> addedTopicPartitionJobMap = new HashMap<>();
+      Map<TopicPartition, Job> removedTopicPartitionJobMap = new HashMap<>();
       Map<TopicPartition, Job> allTopicPartitionJobMap = new HashMap<>();
-      // the extractTopicPartitionMap method will modify two passed-in maps, therefore, do not make
-      // those two maps immutable.
-      extractTopicPartitionMap(addedTopicPartitionJobMap, allTopicPartitionJobMap);
+      // the extractTopicPartitionMap method will modify three passed-in maps, therefore, do not
+      // make those maps immutable.
+      extractTopicPartitionMap(
+          addedTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap);
       commitOffsets(allTopicPartitionJobMap);
       // aync commit needs another poll
       Instrumentation.instrument.returnVoidCatchThrowable(
@@ -1091,6 +1128,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
       kafkaConsumer.close();
       checkpointManager.close();
       throughputTracker.clear();
+      inflightMessageTracker.clear();
       if (!scheduledExecutorService.isShutdown()) {
         scheduledExecutorService.shutdown();
       }

@@ -55,9 +55,10 @@ message Job {
   // It contains resilience queue configuration and a flag controlling if
   // resilience queue should be enabled or not
   ResqConfig resq_config = 11;
-
   // AvailabilityTask should be populated for Kafka Availability jobs
   AvailabilityTask availability_task = 12;
+  // ReplicationTask should be populated for Kafka Replication/Ingestion jobs
+  ReplicationTask replication_task = 13;
 }
 
 
@@ -278,6 +279,12 @@ enum AvailabilityJobType {
   AVAILABILITY_JOB_TYPE_PROXY_PRODUCER = 3;
   // the type of job to monitor by consuming via proxy
   AVAILABILITY_JOB_TYPE_PROXY_CONSUMER = 4;
+}
+
+// ReplicationTask is the task spec for Kafka Replication/Ingestion jobs
+message ReplicationTask {
+  // whether the source end_offset should be ignored and keep running continuously
+  bool is_continuous = 1;
 }
 
 // Represents the different types of audit that can be done in KafkaAuditTask

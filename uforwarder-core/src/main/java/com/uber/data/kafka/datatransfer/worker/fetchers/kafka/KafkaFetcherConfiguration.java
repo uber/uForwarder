@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.worker.fetchers.kafka;
 
+import com.uber.data.kafka.datatransfer.AutoOffsetResetPolicy;
 import com.uber.data.kafka.datatransfer.IsolationLevel;
 import com.uber.data.kafka.datatransfer.common.KafkaClusterResolver;
 import com.uber.data.kafka.datatransfer.common.KafkaUtils;
@@ -19,6 +20,8 @@ public final class KafkaFetcherConfiguration {
       "org.apache.kafka.common.serialization.ByteArrayDeserializer";
   // should disable the auto commit
   private static final String ENABLE_AUTO_COMMIT = "false";
+  private static final String AUTO_OFFSET_RESET_POLICY_LATEST = "latest";
+  private static final String AUTO_OFFSET_RESET_POLICY_EARLIEST = "earliest";
 
   // some topics has max message size configured 10MB, to avoid block consumer, bump up consumer
   // limit as well
@@ -30,7 +33,6 @@ public final class KafkaFetcherConfiguration {
   // Determines whether to use configuration or streaming common to resolve brokers.
   private String resolverClass = KafkaClusterResolver.class.getName();
   // The following configuration should be passed to Kafka Consumer
-  private String autoOffsetResetPolicy = "earliest"; // to guarantee no data loss
   private String bootstrapServers = "localhost:9092";
 
   // The following are internal to the fetcher.
@@ -47,10 +49,27 @@ public final class KafkaFetcherConfiguration {
       String consumerGroup,
       IsolationLevel isolationLevel,
       boolean isSecure) {
+    return getKafkaConsumerProperties(
+        bootstrapServers,
+        clientId,
+        consumerGroup,
+        AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST,
+        isolationLevel,
+        isSecure);
+  }
+
+  public Properties getKafkaConsumerProperties(
+      String bootstrapServers,
+      String clientId,
+      String consumerGroup,
+      AutoOffsetResetPolicy autoOffsetResetPolicy,
+      IsolationLevel isolationLevel,
+      boolean isSecure) {
     Properties properties = new Properties();
     properties.setProperty(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG, bootstrapServers);
     properties.setProperty(ConsumerConfig.CLIENT_ID_CONFIG, clientId);
-    properties.setProperty(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, autoOffsetResetPolicy);
+    properties.setProperty(
+        ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, toConsumerConfig(autoOffsetResetPolicy));
     properties.setProperty(ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG, KEY_DESERIALIZER_CLASS);
     properties.setProperty(
         ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG, VALUE_DESERIALIZER_CLASS);
@@ -104,16 +123,8 @@ public final class KafkaFetcherConfiguration {
     this.resolverClass = resolverClass;
   }
 
-  public void setAutoOffsetResetPolicy(String autoOffsetRestPolicy) {
-    this.autoOffsetResetPolicy = autoOffsetRestPolicy;
-  }
-
   public String getResolverClass() {
     return resolverClass;
-  }
-
-  public String getAutoOffsetResetPolicy() {
-    return autoOffsetResetPolicy;
   }
 
   public int getOffsetCommitIntervalMs() {
@@ -138,5 +149,13 @@ public final class KafkaFetcherConfiguration {
 
   public void setCommitOnIdleFetcher(Boolean commitOnIdleFetcher) {
     this.commitOnIdleFetcher = commitOnIdleFetcher;
+  }
+
+  private String toConsumerConfig(AutoOffsetResetPolicy autoOffsetResetPolicy) {
+    if (autoOffsetResetPolicy == AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST) {
+      return AUTO_OFFSET_RESET_POLICY_LATEST;
+    } else {
+      return AUTO_OFFSET_RESET_POLICY_EARLIEST;
+    }
   }
 }

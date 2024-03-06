@@ -303,10 +303,10 @@ final class StateWorking extends State {
                   this.controllerClient, heartbeatResponse.getParticipants().getMaster());
         } catch (Exception reconnectException) {
           logger.error(
-              String.format(
-                  "[%s -> %s] "
-                      + "got redirect master response but failed to reconnect to the new master",
-                  StateWorking.STATE, StateWorking.STATE),
+              "[{} -> {}] "
+                  + "got redirect master response but failed to reconnect to the new master",
+              StateWorking.STATE,
+              StateWorking.STATE,
               StructuredLogging.masterHostPort(
                   NodeUtils.getHostAndPortString(heartbeatResponse.getParticipants().getMaster())),
               reconnectException);
@@ -355,7 +355,7 @@ final class StateWorking extends State {
         //
         // in this case, master leader redirect protocol does not work.
         if (e instanceof StatusRuntimeException
-            && ((StatusRuntimeException) e).getStatus() == Status.UNAVAILABLE) {
+            && ((StatusRuntimeException) e).getStatus().getCode() == Status.UNAVAILABLE.getCode()) {
           ControllerClient newControllerClient = null;
           try {
             newControllerClient = controllerClientFactory.reconnect(controllerClient);

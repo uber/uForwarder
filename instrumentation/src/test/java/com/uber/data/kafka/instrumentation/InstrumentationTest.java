@@ -6,6 +6,7 @@ import com.uber.m3.tally.Histogram;
 import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Timer;
 import io.grpc.ClientCall;
+import io.grpc.Status;
 import io.grpc.stub.StreamObserver;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
@@ -379,6 +380,27 @@ public class InstrumentationTest extends FievelTestBase {
   }
 
   @Test
+  public void testClientExceptionWithStreamObserverFailure() throws Exception {
+    ClientCall<Boolean, Boolean> clientCall = Mockito.mock(ClientCall.class);
+    StreamObserver<Boolean> streamObserver = Mockito.mock(StreamObserver.class);
+    Instrumentation.instrument.withStreamObserver(
+        logger,
+        scope,
+        tracer,
+        (c, r, s) -> {
+          throw new NullPointerException();
+        },
+        clientCall,
+        true,
+        streamObserver,
+        "mock",
+        "key",
+        "value");
+    Mockito.verify(streamObserver, Mockito.times(1))
+        .onError(Mockito.any(NullPointerException.class));
+  }
+
+  @Test
   public void testClientWithStreamObserverFailureWithoutTracer() throws Exception {
     String name = "testClientWithStreamObserverFailureWithoutTracer";
     ClientCall<Boolean, Boolean> clientCall = Mockito.mock(ClientCall.class);
@@ -519,6 +541,27 @@ public class InstrumentationTest extends FievelTestBase {
         tracer,
         (r, s) -> {
           s.onError(new RuntimeException());
+        },
+        true,
+        streamObserver,
+        name,
+        "key",
+        "value");
+    Mockito.verify(streamObserver, Mockito.times(0)).onNext(Mockito.anyBoolean());
+    Mockito.verify(streamObserver, Mockito.times(1)).onError(Mockito.any());
+    Mockito.verify(streamObserver, Mockito.times(0)).onCompleted();
+  }
+
+  @Test
+  public void testServerWithStreamObserverErrorStatusWithoutTracer() throws Exception {
+    String name = "testServerWithStreamObserverErrorStatusWithoutTracer";
+    StreamObserver<Boolean> streamObserver = Mockito.mock(StreamObserver.class);
+    Instrumentation.instrument.withStreamObserver(
+        logger,
+        scope,
+        tracer,
+        (r, s) -> {
+          s.onError(Status.RESOURCE_EXHAUSTED.asRuntimeException());
         },
         true,
         streamObserver,

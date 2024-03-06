@@ -101,6 +101,7 @@ public class OriginalTopicKafkaFetcherTest extends FievelTestBase {
         THREAD_NAME,
         BOOTSTRAP_SERVERS,
         GROUP,
+        AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST,
         IsolationLevel.ISOLATION_LEVEL_UNSET,
         kafkaFetcherConfiguration,
         false,

@@ -1,0 +1,26 @@
+{
+  "data": [
+  {
+    "job": {
+      "job": {
+        "jobId": "814857235"
+      },
+      "state": "JOB_STATE_RUNNING",
+      "workerId": "0",
+      "scale": 0.4
+    },
+    "jobGroupId": "hp-chess-event@kloak-dca-g@kcp_test_consumer"
+  },
+  {
+    "job": {
+      "job": {
+        "jobId": "256560150"
+      },
+      "state": "JOB_STATE_RUNNING",
+      "workerId": "0",
+      "scale": 0.4
+    },
+    "jobGroupId": "hp-chess-event@kloak-dca-g@kcp_test_consumer"
+  }
+ ]
+}
