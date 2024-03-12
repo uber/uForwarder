@@ -1,0 +1,8 @@
+version: "3"
+services:
+  gradle:
+    # Run pre-built gradle image from docker library
+    image: eclipse-temurin:11.0.17_8-jdk
+    volumes:
+      - $PWD:/home/gradle/project
+    working_dir: /home/gradle/project
