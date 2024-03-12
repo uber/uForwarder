@@ -15,7 +15,7 @@ Properties and Traits:
 - Flow control / throttling
 - Head of line blocking detection and auto recovery (TODO: add link to more details)
 
-RPC protocol supported
+RPC protocol supported2
 
 - GRPC
 
