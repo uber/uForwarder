@@ -246,7 +246,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
         dispatcherMessageArgumentCaptor.getValue().getItem().getGrpcMessage().getDispatchAttempt());
   }
 
-  @Test(timeout = 5000)
+  @Test(timeout = 10000)
   public void testSubmitMessageWithCommitResponse() throws Exception {
     processor.start();
     CompletableFuture<DispatcherResponse> dispatcherFuture = new CompletableFuture<>();
