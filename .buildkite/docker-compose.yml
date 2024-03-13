@@ -5,4 +5,5 @@ services:
     image: eclipse-temurin:11.0.17_8-jdk
     volumes:
       - $PWD:/home/gradle/project
+      - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /home/gradle/project
