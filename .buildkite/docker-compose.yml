@@ -2,7 +2,7 @@ version: "3"
 services:
   gradle:
     # Run pre-built gradle image from docker library
-    image: eclipse-temurin:11.0.17_8-jdk
+    image: gradle:8.6.0-jdk11-focal
     volumes:
       - $PWD:/home/gradle/project
       - /var/run/docker.sock:/var/run/docker.sock
