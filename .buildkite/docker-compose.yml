@@ -5,4 +5,5 @@ services:
     image: gradle:8.6.0-jdk11-focal
     volumes:
       - $PWD:/home/gradle/project
+      - /var/run/docker.sock:/var/run/docker.sock
     working_dir: /home/gradle/project
