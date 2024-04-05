@@ -22,5 +22,6 @@ class SampleConsumerHandler implements ServerCalls.UnaryMethod<ByteString, Empty
         topic,
         partition,
         offset);
+    ConsumerResponse.commit(responseObserver);
   }
 }
