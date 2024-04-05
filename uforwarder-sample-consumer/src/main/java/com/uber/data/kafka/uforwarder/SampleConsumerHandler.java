@@ -3,6 +3,7 @@ package com.uber.data.kafka.uforwarder;
 import com.google.protobuf.ByteString;
 import com.google.protobuf.Empty;
 import com.uber.data.kafka.consumerproxy.client.grpc.ConsumerMetadata;
+import com.uber.data.kafka.consumerproxy.client.grpc.ConsumerResponse;
 import io.grpc.stub.ServerCalls;
 import io.grpc.stub.StreamObserver;
 import org.slf4j.Logger;
