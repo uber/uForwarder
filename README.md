@@ -86,6 +86,7 @@ docker run --env ALLOW_ANONYMOUS_LOGIN=yes --network docker-network -p 2181:2181
 ```
 
 3. Start Kafka broker
+
 ```
 docker run --env KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181 --env KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 --env KAFKA_LISTENERS=DOCKER://0.0.0.0:9092,HOSTER://0.0.0.0:9093 --env KAFKA_ADVERTISED_LISTENERS=DOCKER://kafka:9092,HOSTER://localhost:9093 -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=DOCKER:PLAINTEXT,HOSTER:PLAINTEXT -e KAFKA_INTER_BROKER_LISTENER_NAME=DOCKER --network docker-network -p 9093:9093 --name kafka confluentinc/cp-kafka:5.2.1
 ```
@@ -97,11 +98,12 @@ docker run --env UFORWARDER_PROFILE=uforwarder-controller --env UFORWARDER_KAFKA
 ```
 
 5. Run UForwarder worker
+
 ```
 docker run --env UFORWARDER_PROFILE=uforwarder-worker --env UFORWARDER_KAFKA_CONNECT=kafka:9092 --env UFORWARDER_CONTROLLER_CONNECT=controller:8087 --network docker-network --name worker uforwarder:0.1
 ```
 
-4. Run Sample Consumer
+6. Run Sample Consumer
 
 ```
 ./gradlew uforwarder-sample-consumer:bootRun
