@@ -10,7 +10,7 @@ plugins {
     id 'org.gradle.toolchains.foojay-resolver-convention' version '0.7.0'
 }
 
-rootProject.name = 'uforwarder'
+rootProject.name = 'uForwarder'
 include('fievel-common', 'instrumentation', 'idl', 'uforwarder-client', 'uforwarder-core', 'uforwarder', 'uforwarder-image', 'uforwarder-container', 'uforwarder-sample-consumer')
 
 dependencyResolutionManagement {
