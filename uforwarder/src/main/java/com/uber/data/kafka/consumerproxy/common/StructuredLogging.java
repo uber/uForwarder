@@ -29,6 +29,8 @@ public class StructuredLogging extends com.uber.data.kafka.datatransfer.common.S
 
   private static final String WORKER_ID = "worker_id";
 
+  private static final String SKIPPED_VIRTUAL_PARTITION = "skipped_virtual_partition";
+
   public static StructuredArgument rpcRoutingKey(String rpcRoutingKey) {
     return StructuredArguments.keyValue(RPC_ROUTING_KEY, rpcRoutingKey);
   }
@@ -55,6 +57,10 @@ public class StructuredLogging extends com.uber.data.kafka.datatransfer.common.S
 
   public static StructuredArgument virtualPartition(long partitionIdx) {
     return StructuredArguments.keyValue(VIRTUAL_PARTITION, partitionIdx);
+  }
+
+  public static StructuredArgument skippedVirtualPartition(long partitionIdx) {
+    return StructuredArguments.keyValue(SKIPPED_VIRTUAL_PARTITION, partitionIdx);
   }
 
   public static StructuredArgument workloadBasedWorkerCount(int workerCount) {

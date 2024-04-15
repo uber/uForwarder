@@ -80,7 +80,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
 
     // we have to clear all in-memory job object first, which will be rebuilt in
     // assignJobsToCorrectVirtualPartition
-    rebalancingCache.resetWorkerJobs();
+    rebalancingCache.clear();
 
     Map<String, Integer> jobGroupToPartitionMap = new HashMap<>();
     List<Integer> workerNeededPerPartition =
@@ -111,9 +111,6 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     emitMetrics(workerNeededPerPartition);
   }
 
-  // Right now, cache is storing the partition to worker mapping so it is needed to be exposed in
-  // unit test.
-  // KAFEP-4649 to remove cache and use ZK instead.
   protected RebalancingCache getRebalancingCache() {
     return rebalancingCache;
   }
@@ -408,14 +405,12 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     private final Map<Long, Set<Long>> virtualPartitionToWorkerIdMap = new HashMap<>();
     private final Map<Long, RebalancingWorkerWithSortedJobs> workerIdToWorkerMap = new HashMap<>();
 
-    private long cachedExpiredTimestamp = -1L;
-
     RebalancingCache() {}
 
-    void resetWorkerJobs() {
-      workerIdToWorkerMap.replaceAll(
-          (workerId, worker) ->
-              new RebalancingWorkerWithSortedJobs(workerId, 0, ImmutableList.of()));
+    void clear() {
+      workerIdToVirtualPartitionMap.clear();
+      virtualPartitionToWorkerIdMap.clear();
+      workerIdToWorkerMap.clear();
     }
 
     boolean isWorkerIdValid(long workerId) {
@@ -428,6 +423,21 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
       virtualPartitionToWorkerIdMap.get(rangeIndex).add(workerId);
       workerIdToWorkerMap.put(
           workerId, new RebalancingWorkerWithSortedJobs(workerId, 0, ImmutableList.of()));
+    }
+
+    boolean putIfAbsent(long workerId, long rangeIndex) {
+      Long workerVirtualPartition = workerIdToVirtualPartitionMap.get(workerId);
+      if (workerVirtualPartition == null) {
+        put(workerId, rangeIndex);
+        return true;
+      } else if (workerVirtualPartition != rangeIndex) {
+        logger.warn(
+                "Worker is already assigned to a different virtual partition, skipping.",
+                StructuredLogging.workerId(workerId),
+                StructuredLogging.virtualPartition(workerVirtualPartition),
+                StructuredLogging.skippedVirtualPartition(rangeIndex));
+      }
+      return false;
     }
 
     List<RebalancingWorkerWithSortedJobs> getAllWorkersForPartition(long partitionIdx) {
@@ -473,22 +483,6 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
         virtualPartitionToWorkerIdMap.get(partitionId).remove(workerId);
         workerIdToWorkerMap.remove(workerId);
       }
-    }
-
-    boolean refreshIfStale() {
-      // if the controller is switched from follower to leader, or it's newly deployed, then we need
-      // to clear the cache
-      long currentCacheExpiredTimestamp = cachedExpiredTimestamp;
-      cachedExpiredTimestamp = System.currentTimeMillis() + TimeUnit.MINUTES.toMillis(5);
-      if (currentCacheExpiredTimestamp == -1L
-          || System.currentTimeMillis() > currentCacheExpiredTimestamp) {
-        workerIdToVirtualPartitionMap.clear();
-        virtualPartitionToWorkerIdMap.clear();
-        workerIdToWorkerMap.clear();
-        return true;
-      }
-
-      return false;
     }
   }
 

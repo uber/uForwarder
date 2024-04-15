@@ -26,15 +26,7 @@ import com.uber.m3.tally.Scope;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.Reader;
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.Comparator;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
@@ -170,20 +162,24 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   }
 
   RebalancingJobGroup buildRebalancingJobGroup(JobState jobGroupState, StoredJob... jobs) {
+    return buildRebalancingJobGroup(Optional.empty(), jobGroupState, jobs);
+  }
+
+  RebalancingJobGroup buildRebalancingJobGroup(Optional<String> maybeGroupId, JobState jobGroupState, StoredJob... jobs) {
     StoredJobGroup.Builder jobGroupBuilder = StoredJobGroup.newBuilder();
     double totalRps = 0d;
     for (StoredJob job : jobs) {
       jobGroupBuilder.addJobs(job.toBuilder().setState(jobGroupState).build());
       totalRps += job.getJob().getFlowControl().getMessagesPerSec();
     }
-    StoredJobGroup jobGroup =
-        jobGroupBuilder
-            .setJobGroup(
-                JobGroup.newBuilder()
-                    .setFlowControl(FlowControl.newBuilder().setMessagesPerSec(totalRps).build())
-                    .buildPartial())
-            .setState(jobGroupState)
-            .build();
+
+
+    JobGroup.Builder jgBuilder = JobGroup.newBuilder();
+    jgBuilder.setFlowControl(FlowControl.newBuilder().setMessagesPerSec(totalRps));
+    maybeGroupId.ifPresent(jgBuilder::setJobGroupId);
+    StoredJobGroup jobGroup = jobGroupBuilder
+        .setJobGroup(jgBuilder.buildPartial())
+        .setState(jobGroupState).build();
     RebalancingJobGroup result =
         RebalancingJobGroup.of(Versioned.from(jobGroup, 1), ImmutableMap.of());
     return RebalancingJobGroup.of(result.toStoredJobGroup(), ImmutableMap.of());
