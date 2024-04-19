@@ -1,7 +1,10 @@
 package com.uber.data.kafka.datatransfer.common;
 
+import com.timgroup.statsd.NonBlockingStatsDClientBuilder;
+import com.timgroup.statsd.StatsDClient;
 import com.uber.m3.tally.RootScopeBuilder;
 import com.uber.m3.tally.Scope;
+import com.uber.m3.tally.statsd.StatsdReporter;
 import com.uber.m3.util.Duration;
 import com.uber.m3.util.ImmutableMap;
 import java.util.Objects;
@@ -29,8 +32,13 @@ public class MetricsConfiguration {
   @ConditionalOnMissingBean
   public Scope rootScope(@Value("${tally.publish.interval.sec:5}") int tallyPublishIntervalSec) {
     if (INSTANCE == null) {
+      StatsDClient statsd = new NonBlockingStatsDClientBuilder()
+              .prefix("kforwarder")
+              .hostname("localhost")
+              .port(8125)
+              .build();
       INSTANCE =
-          new RootScopeBuilder()
+          new RootScopeBuilder().reporter(new StatsdReporter(statsd))
               .tags(new ImmutableMap.Builder<String, String>().build())
               .reportEvery(Duration.ofSeconds(tallyPublishIntervalSec));
     }

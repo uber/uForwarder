@@ -29,7 +29,7 @@ dependencies {
         implementation 'com.netflix.concurrency-limits:concurrency-limits-core:0.3.6'
         implementation 'com.uber.concurrency-loadbalancer:concurrency-loadbalancer-core:0.1.5'
         implementation 'com.uber.m3:tally-core:0.13.0'
-        implementation 'com.uber.m3:tally-m3:0.13.0'
+        implementation 'com.uber.m3:tally-statsd:0.13.0'
         implementation 'io.grpc:grpc-core:1.49.2'
         implementation 'io.grpc:grpc-netty-shaded:1.49.2'
         implementation 'io.grpc:grpc-protobuf:1.49.2'
