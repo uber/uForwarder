@@ -247,6 +247,20 @@ public class TracedConsumerRecordTest extends FievelTestBase {
         header.getValue());
   }
 
+  @Test
+  public void testUrlDecodingFailureForHeaders() {
+    Headers headers = new RecordHeaders();
+    String invalidHeaderValue = "%%";
+    headers.add("test_invalid_header", invalidHeaderValue.getBytes());
+
+    TracedConsumerRecord.HeadersMapExtractAdapter headersMapExtractAdapter =
+        new TracedConsumerRecord.HeadersMapExtractAdapter(headers);
+    Map.Entry<String, String> header = headersMapExtractAdapter.iterator().next();
+    assertNotNull(header);
+    assertEquals(header.getKey(), "test_invalid_header");
+    assertEquals(header.getValue(), "%%");
+  }
+
   @Test(expected = UnsupportedOperationException.class)
   public void testPut() {
     new TracedConsumerRecord.HeadersMapExtractAdapter(new RecordHeaders()).put("key", "value");

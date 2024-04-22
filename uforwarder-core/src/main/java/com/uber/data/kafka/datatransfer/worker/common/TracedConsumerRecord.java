@@ -1,6 +1,7 @@
 package com.uber.data.kafka.datatransfer.worker.common;
 
 import com.google.common.collect.ImmutableMap;
+import com.uber.data.kafka.datatransfer.common.StructuredLogging;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
@@ -22,6 +23,8 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Header;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * ConsumerRecord with tracing span context. Span created by constructor should be finished by
@@ -34,6 +37,7 @@ import org.apache.kafka.common.header.internals.RecordHeader;
  * @param <V> the type parameter
  */
 public class TracedConsumerRecord<K, V> extends ConsumerRecord<K, V> {
+  public static final Logger LOGGER = LoggerFactory.getLogger(TracedConsumerRecord.class);
   public static final String TAG_TOPIC = "topic";
   public static final String TAG_CONSUMER_GROUP = "consumerGroup";
   private static final String OPERATION_NAME = "TransferMessage";
@@ -193,7 +197,7 @@ public class TracedConsumerRecord<K, V> extends ConsumerRecord<K, V> {
 
     HeadersMapExtractAdapter(Iterable<Header> headers) {
       for (Header header : headers) {
-        map.put(header.key(), decodeHeaderValue(header.value()));
+        map.put(header.key(), decodeHeaderValue(header.key(), header.value()));
       }
     }
 
@@ -209,7 +213,7 @@ public class TracedConsumerRecord<K, V> extends ConsumerRecord<K, V> {
     }
 
     @Nullable
-    private String decodeHeaderValue(byte[] headerValue) {
+    private String decodeHeaderValue(String headerKey, byte[] headerValue) {
       if (headerValue == null) {
         return null;
       }
@@ -219,7 +223,11 @@ public class TracedConsumerRecord<K, V> extends ConsumerRecord<K, V> {
       try {
         return new String(URLCodec.decodeUrl(headerValue), StandardCharsets.UTF_8);
       } catch (Exception e) {
-        // Do nothing
+        LOGGER.error(
+            "Failed to decode header value",
+            e,
+            StructuredLogging.headerKey(headerKey),
+            StructuredLogging.headerValue(headerValue));
       }
       return new String(headerValue, StandardCharsets.UTF_8);
     }
