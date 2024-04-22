@@ -16,6 +16,7 @@ dependencies {
     implementation 'com.netflix.concurrency-limits:concurrency-limits-core'
     implementation 'com.uber.concurrency-loadbalancer:concurrency-loadbalancer-core'
     implementation 'com.uber.m3:tally-core'
+    implementation 'com.uber.m3:tally-m3'
     implementation 'com.uber.m3:tally-statsd'
     implementation 'io.grpc:grpc-core'
     implementation 'io.grpc:grpc-netty-shaded'
