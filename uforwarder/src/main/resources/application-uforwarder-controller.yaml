@@ -23,7 +23,7 @@ metrics:
   # we add host tags manually to only metrics that require it.
   # The majority of host level information should leverage the debug pages.
   includeHostTag: false
-  metricsReporter: statsd
+  metricsReporter: m3
 
 # Enable async-profiler debug pages.
 jvm:
