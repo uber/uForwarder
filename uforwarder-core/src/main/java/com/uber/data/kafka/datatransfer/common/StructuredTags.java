@@ -67,7 +67,7 @@ public final class StructuredTags extends StructuredFields {
   }
 
   public StructuredTags setHeader(String header) {
-    mapBuilder.put(HEADER, header);
+    mapBuilder.put(HEADER_KEY, header);
     return this;
   }
 

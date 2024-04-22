@@ -272,4 +272,12 @@ public class StructuredLogging extends StructuredFields {
   public static StructuredArgument workloadScale(double scale) {
     return StructuredArguments.keyValue(WORKLOAD_SCALE, scale);
   }
+
+  public static StructuredArgument headerKey(String headerKey) {
+    return StructuredArguments.keyValue(HEADER_KEY, headerKey);
+  }
+
+  public static StructuredArgument headerValue(byte[] headerValue) {
+    return StructuredArguments.keyValue(HEADER_VALUE, new String(headerValue));
+  }
 }

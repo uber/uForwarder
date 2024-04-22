@@ -16,7 +16,8 @@ public class StructuredFields {
   public static final String ERROR_TYPE = "error_type";
   public static final String JOB_GROUP = "job_group";
   public static final String JOB_ID = "job_id";
-  public static final String HEADER = "header";
+  public static final String HEADER_KEY = "header_key";
+  public static final String HEADER_VALUE = "header_value";
   public static final String FETCHER_TYPE = "fetcher_type";
   public static final String PIPELINE = "pipeline";
   public static final String RETRY_COUNT = "retry_count";
