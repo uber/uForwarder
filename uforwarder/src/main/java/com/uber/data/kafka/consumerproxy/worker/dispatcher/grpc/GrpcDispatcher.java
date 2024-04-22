@@ -128,6 +128,9 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
     MetricsUtils.jobScope(infra.scope(), job, calleeAddress)
         .gauge(MetricNames.CHANNEL_USAGE)
         .update(channel.getMetrics().usage());
+    MetricsUtils.jobScope(infra.scope(), job, calleeAddress)
+        .gauge(MetricNames.CHANNEL_SIZE)
+        .update(channel.getMetrics().size());
 
     String[] tags = extractDispatchMetricsTags(item);
     return attempt.complete(
@@ -372,6 +375,7 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
     static final String ADJUSTED_RPC_TIMEOUT = "dispatcher.grpc.adjusted-rpc-timeout";
     static final String CALL = "dispatcher.grpc.call";
     static final String CHANNEL_USAGE = "dispatcher.grpc.channel.usage";
+    static final String CHANNEL_SIZE = "dispatcher.grpc.channel.size";
     static final String DISPATCH = "dispatcher.grpc.dispatch";
   }
 }
