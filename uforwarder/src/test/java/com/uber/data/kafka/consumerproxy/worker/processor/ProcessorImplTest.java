@@ -246,7 +246,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
         dispatcherMessageArgumentCaptor.getValue().getItem().getGrpcMessage().getDispatchAttempt());
   }
 
-  @Test(timeout = 10000)
+  @Test(timeout = 5000)
   public void testSubmitMessageWithCommitResponse() throws Exception {
     processor.start();
     CompletableFuture<DispatcherResponse> dispatcherFuture = new CompletableFuture<>();
@@ -275,7 +275,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
         2,
         processor.dlqDispatchManager.getTokens(
             new TopicPartition(ProcessorTestBase.TOPIC, ProcessorTestBase.PARTITION)));
-    processor.cancel(job);
+    processor.cancel(job).toCompletableFuture().get(); // wait for actual cancel to complete
     offsetFuture = processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
     Assert.assertEquals(-1, (long) offsetFuture.get());
   }
