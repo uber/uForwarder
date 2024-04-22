@@ -111,7 +111,8 @@ public class DispatcherMessage {
           physicalOffset,
           headers,
           value,
-          key);
+          key,
+          consumerRecordTimestamp);
     }
     return new GrpcRequest(
         group,
@@ -127,7 +128,8 @@ public class DispatcherMessage {
         physicalCluster,
         physicalPartition,
         physicalOffset,
-        headers);
+        headers,
+        consumerRecordTimestamp);
   }
 
   public Type getType() {

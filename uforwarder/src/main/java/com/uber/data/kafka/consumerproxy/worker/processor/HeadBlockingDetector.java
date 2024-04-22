@@ -94,7 +94,7 @@ public class HeadBlockingDetector {
   }
 
   /** percentage of messages has been acked */
-  protected double ackPercent(AckTrackingQueue.Stats stats) {
+  protected static double ackPercent(AckTrackingQueue.Stats stats) {
     int size = stats.size();
     if (size == 0) {
       return 0.0d;

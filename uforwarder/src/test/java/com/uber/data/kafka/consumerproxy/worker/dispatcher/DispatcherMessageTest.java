@@ -90,7 +90,8 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             HEADERS,
             VALUE.getBytes(),
-            KEY.getBytes());
+            KEY.getBytes(),
+            CONSUMER_RECORD_TIMESTAMP);
     kafkaDispatcherMessage =
         new DispatcherMessage(
             DispatcherMessage.Type.KAFKA,
@@ -151,7 +152,8 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_CLUSTER,
             PHYSICAL_PARTITION,
             PHYSICAL_OFFSET,
-            HEADERS);
+            HEADERS,
+            CONSUMER_RECORD_TIMESTAMP);
     Assert.assertEquals(
         expected,
         new DispatcherMessage(
