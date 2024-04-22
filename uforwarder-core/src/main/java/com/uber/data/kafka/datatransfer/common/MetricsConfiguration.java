@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Bean;
 public class MetricsConfiguration {
   @Nullable static Scope INSTANCE;
 
+  private static final String DOCKER_HOST_INTERNAL_ADDRESS = "host.docker.internal";
   private static final String METRICS_REPORTER_STATSD = "statsd";
   private static final String METRICS_REPORTER_M3 = "m3";
 
@@ -53,7 +54,7 @@ public class MetricsConfiguration {
       if (metricsReporter.equals(METRICS_REPORTER_STATSD)) {
         StatsDClient statsd = new NonBlockingStatsDClientBuilder()
                 .prefix(METRICS_REPORTER_STATSD)
-                .hostname("localhost")
+                .hostname(DOCKER_HOST_INTERNAL_ADDRESS)
                 .port(8125)
                 .build();
         statsReporter = new StatsdReporter(statsd);
