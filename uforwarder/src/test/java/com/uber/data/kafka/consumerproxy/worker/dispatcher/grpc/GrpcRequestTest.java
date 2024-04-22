@@ -46,7 +46,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes());
+            "key".getBytes(),
+            0);
     emptyRequest =
         new GrpcRequest(
             "group",
@@ -63,7 +64,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             null,
-            "key".getBytes());
+            "key".getBytes(),
+            0);
     retryTopicRequest =
         new GrpcRequest(
             "group",
@@ -80,7 +82,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes());
+            "key".getBytes(),
+            0);
     nullKeyRequest =
         new GrpcRequest(
             "group",
@@ -96,17 +99,18 @@ public class GrpcRequestTest extends FievelTestBase {
             "physicalCluster",
             0,
             0,
-            emptyHeaders);
+            emptyHeaders,
+            0);
   }
 
   @Test
   public void metadataInterceptors() {
-    Assert.assertEquals(7, request.metadataInterceptors().length);
+    Assert.assertEquals(8, request.metadataInterceptors().length);
   }
 
   @Test
   public void metadataInterceptorsForRetryTopic() {
-    Assert.assertEquals(8, retryTopicRequest.metadataInterceptors().length);
+    Assert.assertEquals(9, retryTopicRequest.metadataInterceptors().length);
   }
 
   @Test
@@ -150,6 +154,11 @@ public class GrpcRequestTest extends FievelTestBase {
   }
 
   @Test
+  public void testGetConsumerRecordTimestamp() {
+    Assert.assertEquals(0, request.getConsumerRecordTimestamp());
+  }
+
+  @Test
   public void testGetPhysicalCluster() {
     Assert.assertEquals("cluster", request.getPhysicalCluster());
   }
@@ -179,7 +188,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(request, null);
     Assert.assertNotEquals(null, request);
     Assert.assertNotEquals(request, new Object());
@@ -201,7 +211,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(
         request,
         new GrpcRequest(
@@ -219,7 +230,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(
         request,
         new GrpcRequest(
@@ -237,7 +249,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(
         request,
         new GrpcRequest(
@@ -255,7 +268,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(
         request,
         new GrpcRequest(
@@ -273,7 +287,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(
         request,
         new GrpcRequest(
@@ -291,7 +306,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(
         request,
         new GrpcRequest(
@@ -309,7 +325,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(
         request,
         new GrpcRequest(
@@ -327,7 +344,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "".getBytes()));
+            "".getBytes(),
+            0));
     Assert.assertNotEquals(
         request,
         new GrpcRequest(
@@ -345,7 +363,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(
         request,
         new GrpcRequest(
@@ -363,7 +382,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             new RecordHeaders().add("key", "value".getBytes(StandardCharsets.UTF_8)),
             "value".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(
         request,
         new GrpcRequest(
@@ -381,7 +401,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(
         request,
         new GrpcRequest(
@@ -399,7 +420,8 @@ public class GrpcRequestTest extends FievelTestBase {
             0,
             emptyHeaders,
             "value".getBytes(),
-            "key".getBytes()));
+            "key".getBytes(),
+            0));
     Assert.assertNotEquals(request, nullKeyRequest);
   }
 

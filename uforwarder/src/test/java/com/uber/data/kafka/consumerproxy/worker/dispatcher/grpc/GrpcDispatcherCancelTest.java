@@ -162,7 +162,8 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
         0,
         new RecordHeaders(),
         "value".getBytes(),
-        "key".getBytes());
+        "key".getBytes(),
+        0);
   }
 
   private static <Req> MethodDescriptor<Req, Empty> methodDescriptor(
