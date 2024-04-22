@@ -19,8 +19,8 @@ import com.uber.data.kafka.instrumentation.Instrumentation;
 import com.uber.data.kafka.instrumentation.Utils;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
-import io.grpc.ClientCall;
 import io.grpc.ClientInterceptors;
+import io.grpc.Context;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
@@ -40,6 +40,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.function.Supplier;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -133,38 +134,44 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
         .update(channel.getMetrics().size());
 
     String[] tags = extractDispatchMetricsTags(item);
+    Context.CancellableContext context = Context.current().withCancellation();
+    attempt.onCancel(() -> context.cancel(null));
     return attempt.complete(
         Instrumentation.instrument
             .withExceptionalCompletion(
                 LOGGER,
                 infra.scope(),
-                () -> {
-                  Optional<Status> status = grpcFilter.tryHandleRequest(message, job);
-                  if (status.isPresent()) {
-                    return CompletableFuture.completedFuture(GrpcResponse.of(status.get()));
-                  }
+                wrapInContext(
+                    context,
+                    () -> {
+                      Optional<Status> status = grpcFilter.tryHandleRequest(message, job);
+                      if (status.isPresent()) {
+                        return CompletableFuture.completedFuture(GrpcResponse.of(status.get()));
+                      }
 
-                  long timeoutMs =
-                      GrpcUtils.getTimeout(
-                          job, configuration, message.getTimeoutCount(), infra.scope());
-                  ClientCall clientCall =
-                      channelWithMetadata(message)
-                          .newCall(methodDescriptor, extractCallOptions(item));
+                      long timeoutMs =
+                          GrpcUtils.getTimeout(
+                              job, configuration, message.getTimeoutCount(), infra.scope());
 
-                  attempt.onCancel(() -> clientCall.cancel(ERROR_MESSAGE_CANCEL, null));
-                  Instrumentation.instrument.withStreamObserver(
-                      LOGGER,
-                      infra.scope(),
-                      ClientCalls::asyncUnaryCall,
-                      clientCall,
-                      message.payload(),
-                      newStreamObserver(completableFuture, timeoutMs, message, tags),
-                      MetricNames.CALL,
-                      tags);
-                  return completableFuture;
-                },
+                      Instrumentation.instrument.withStreamObserver(
+                          LOGGER,
+                          infra.scope(),
+                          ClientCalls::asyncUnaryCall,
+                          channelWithMetadata(message)
+                              .newCall(methodDescriptor, extractCallOptions(item)),
+                          message.payload(),
+                          newStreamObserver(completableFuture, timeoutMs, message, tags),
+                          MetricNames.CALL,
+                          tags);
+                      return completableFuture;
+                    }),
                 MetricNames.DISPATCH,
                 tags)
+            .whenComplete(
+                (r, t) -> {
+                  // close context to avoid memory leak
+                  context.close();
+                })
             .thenApply(
                 response -> {
                   message.getFuture().complete(response);
@@ -292,6 +299,17 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
       tagsList.add(Long.toString(retryCount));
     }
     return tagsList.stream().toArray(String[]::new);
+  }
+
+  private static <T> Supplier<T> wrapInContext(Context context, Supplier<T> supplier) {
+    return () -> {
+      Context previous = context.attach();
+      try {
+        return supplier.get();
+      } finally {
+        context.detach(previous);
+      }
+    };
   }
 
   @VisibleForTesting

@@ -17,6 +17,7 @@ import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
+import io.grpc.Context;
 import io.grpc.Metadata;
 import io.grpc.MethodDescriptor;
 import io.grpc.Status;
@@ -34,6 +35,7 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
@@ -177,6 +179,10 @@ public class GrpcDispatcherTest extends FievelTestBase {
 
   @Test
   public void testCancelDispatch() {
+    MockedStatic<Context> staticContext = Mockito.mockStatic(Context.class);
+    Context.CancellableContext mockContext = Mockito.mock(Context.CancellableContext.class);
+    staticContext.when(() -> Context.current()).thenReturn(mockContext);
+    Mockito.when(mockContext.withCancellation()).thenReturn(mockContext);
     ClientCall<ByteString, Empty> clientCall = Mockito.mock(ClientCall.class);
     MessageStub messageStub = new MessageStub();
     final String serviceIdentity = "spiffe://kafka-consumer/test/proxy";
@@ -207,7 +213,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
     Assert.assertFalse(
         dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture().isDone());
     messageStub.cancel(DispatcherResponse.Code.RETRY);
-    Mockito.verify(clientCall, Mockito.times(1)).cancel(Mockito.anyString(), Mockito.any());
+    Mockito.verify(mockContext, Mockito.times(1)).cancel(null);
   }
 
   @Test
