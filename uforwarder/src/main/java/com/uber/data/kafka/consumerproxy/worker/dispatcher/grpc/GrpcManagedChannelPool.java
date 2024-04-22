@@ -191,6 +191,20 @@ public class GrpcManagedChannelPool extends ManagedChannel {
      * @return the double indicates ratio of active calls in max active calls the pool can support
      */
     double usage();
+
+    /**
+     * Gets inflight request count
+     *
+     * @return the int indicates inflight request count
+     */
+    int inflight();
+
+    /**
+     * Gets channel pool size
+     *
+     * @return the channel pool size
+     */
+    int size();
   }
 
   /** Threadsafe channel pool */
@@ -247,6 +261,16 @@ public class GrpcManagedChannelPool extends ManagedChannel {
       return Math.min(
           1.0, (double) concurrentCalls.get() / (channelPool.size() * maxConcurrentStreams));
     }
+
+    @Override
+    public int inflight() {
+      return concurrentCalls.get();
+    }
+
+    @Override
+    public int size() {
+      return channelPool.size();
+    }
   }
 
   private class GrpcManagedChannelPoolClientCall<ReqT, RespT> extends ClientCall<ReqT, RespT> {
@@ -258,7 +282,15 @@ public class GrpcManagedChannelPool extends ManagedChannel {
 
     @Override
     public void start(Listener<RespT> listener, Metadata metadata) {
-      delegator.start(new GrpcManagedChannelPoolListener(listener), metadata);
+      ListenerAdapter poolListener = new ListenerAdapter(listener);
+      try {
+        delegator.start(poolListener, metadata);
+      } catch (Throwable t) {
+        // start client call could fail with exception when call already canceled
+        // need to close listener to avoid inflight leaking
+        poolListener.close();
+        throw t;
+      }
     }
 
     @Override
@@ -282,12 +314,14 @@ public class GrpcManagedChannelPool extends ManagedChannel {
     }
   }
 
-  private class GrpcManagedChannelPoolListener<T> extends ClientCall.Listener<T> {
+  private class ListenerAdapter<T> extends ClientCall.Listener<T> {
     private final ClientCall.Listener<T> delegator;
+    private final AtomicBoolean closed;
 
-    GrpcManagedChannelPoolListener(ClientCall.Listener<T> delegator) {
+    ListenerAdapter(ClientCall.Listener<T> delegator) {
       super();
       this.delegator = delegator;
+      this.closed = new AtomicBoolean(false);
       concurrentCalls.incrementAndGet();
     }
 
@@ -300,12 +334,20 @@ public class GrpcManagedChannelPool extends ManagedChannel {
     }
 
     public void onClose(Status status, Metadata trailers) {
-      concurrentCalls.decrementAndGet();
+      close();
       delegator.onClose(status, trailers);
     }
 
     public void onReady() {
       delegator.onReady();
+    }
+
+    private boolean close() {
+      if (closed.compareAndSet(false, true)) {
+        concurrentCalls.decrementAndGet();
+        return true;
+      }
+      return false;
     }
   }
 }

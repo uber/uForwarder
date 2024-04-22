@@ -154,4 +154,20 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
     usage = poolWithTwoChannels.getMetrics().usage();
     Assert.assertEquals(0.66666, usage, 0.0001);
   }
+
+  @Test(expected = IllegalStateException.class)
+  public void testStartCallThrowException() {
+    Assert.assertEquals(0, poolWithTwoChannels.getMetrics().inflight());
+    Mockito.doThrow(new IllegalStateException())
+        .when(clientCall)
+        .start(Mockito.any(), Mockito.any());
+    ClientCall poolCall = poolWithTwoChannels.newCall(methodDescriptor, callOptions);
+    // Assert.assertEquals(1, poolWithTwoChannels.getMetrics().inflight());
+    try {
+      poolCall.start(Mockito.mock(ClientCall.Listener.class), new Metadata());
+    } catch (Exception e) {
+      Assert.assertEquals(0, poolWithTwoChannels.getMetrics().inflight());
+      throw e;
+    }
+  }
 }
