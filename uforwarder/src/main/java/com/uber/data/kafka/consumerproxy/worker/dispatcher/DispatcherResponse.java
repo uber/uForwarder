@@ -43,6 +43,7 @@ public class DispatcherResponse {
     RETRY,
     RESQ,
     BACKOFF,
+    OVERLOADED, // handler is shedding load
     INVALID,
     SKIP,
     COMMIT
