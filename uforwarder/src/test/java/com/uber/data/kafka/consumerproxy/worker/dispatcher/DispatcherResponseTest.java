@@ -42,8 +42,9 @@ public class DispatcherResponseTest extends FievelTestBase {
     Assert.assertEquals(1, DispatcherResponse.Code.RETRY.ordinal());
     Assert.assertEquals(2, DispatcherResponse.Code.RESQ.ordinal());
     Assert.assertEquals(3, DispatcherResponse.Code.BACKOFF.ordinal());
-    Assert.assertEquals(4, DispatcherResponse.Code.INVALID.ordinal());
-    Assert.assertEquals(5, DispatcherResponse.Code.SKIP.ordinal());
-    Assert.assertEquals(6, DispatcherResponse.Code.COMMIT.ordinal());
+    Assert.assertEquals(4, DispatcherResponse.Code.OVERLOADED.ordinal());
+    Assert.assertEquals(5, DispatcherResponse.Code.INVALID.ordinal());
+    Assert.assertEquals(6, DispatcherResponse.Code.SKIP.ordinal());
+    Assert.assertEquals(7, DispatcherResponse.Code.COMMIT.ordinal());
   }
 }
