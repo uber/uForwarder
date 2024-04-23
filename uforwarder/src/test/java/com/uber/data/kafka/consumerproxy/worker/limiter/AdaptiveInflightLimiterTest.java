@@ -4,12 +4,8 @@ import com.netflix.concurrency.limits.Limiter;
 import com.netflix.concurrency.limits.limit.VegasLimit;
 import com.netflix.concurrency.limits.limiter.SimpleLimiter;
 import com.uber.fievel.testing.base.FievelTestBase;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Optional;
-import java.util.concurrent.CancellationException;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.awaitility.Awaitility;
@@ -185,112 +181,5 @@ public class AdaptiveInflightLimiterTest extends FievelTestBase {
     Assert.assertFalse(false);
     adaptiveInflightLimiter.setDryRun(true);
     Assert.assertTrue(adaptiveInflightLimiter.isDryRun());
-  }
-
-  @Test
-  public void testAcquireAsync() throws ExecutionException, InterruptedException {
-    CompletableFuture<InflightLimiter.Permit> futurePermit1 =
-        adaptiveInflightLimiter.acquireAsync();
-    Assert.assertTrue(futurePermit1.isDone());
-    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
-    CompletableFuture<InflightLimiter.Permit> futurePermit2 =
-        adaptiveInflightLimiter.acquireAsync();
-    Assert.assertTrue(futurePermit2.isDone());
-    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
-    CompletableFuture<InflightLimiter.Permit> futurePermit3 =
-        adaptiveInflightLimiter.acquireAsync();
-    Assert.assertFalse(futurePermit3.isDone());
-    Assert.assertEquals(1, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
-    Assert.assertTrue(futurePermit2.get().complete(InflightLimiter.Result.Succeed));
-    Assert.assertTrue(futurePermit3.isDone());
-    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
-  }
-
-  @Test
-  public void testCloseRelease() {
-    List<CompletableFuture<InflightLimiter.Permit>> permits = new ArrayList<>();
-    for (int i = 0; i < 3; ++i) {
-      permits.add(adaptiveInflightLimiter.acquireAsync());
-    }
-    int done = 0;
-    for (CompletableFuture<InflightLimiter.Permit> permit : permits) {
-      done += permit.isDone() ? 1 : 0;
-    }
-    Assert.assertEquals(2, done);
-    adaptiveInflightLimiter.close();
-    done = 0;
-    for (CompletableFuture<InflightLimiter.Permit> permit : permits) {
-      done += permit.isDone() ? 1 : 0;
-    }
-    Assert.assertEquals(3, done);
-  }
-
-  @Test
-  public void testAcquireSucceedAndCancel() {
-    CompletableFuture<InflightLimiter.Permit> futurePermit = adaptiveInflightLimiter.acquireAsync();
-    Assert.assertFalse(futurePermit.cancel(false));
-  }
-
-  @Test
-  public void testAcquireFailedAndCancel() {
-    for (int i = 0; i < 2; ++i) {
-      adaptiveInflightLimiter.acquireAsync();
-    }
-    CompletableFuture<InflightLimiter.Permit> futurePermit = adaptiveInflightLimiter.acquireAsync();
-    Assert.assertEquals(1, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
-    futurePermit.cancel(false);
-    Assert.assertTrue(futurePermit.isDone());
-    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
-  }
-
-  @Test
-  public void testCompletePermitDequeFuturePermit()
-      throws ExecutionException, InterruptedException {
-    CompletableFuture<InflightLimiter.Permit> acquiredPermit = null;
-    for (int i = 0; i < 2; ++i) {
-      acquiredPermit = adaptiveInflightLimiter.acquireAsync();
-    }
-    CompletableFuture<InflightLimiter.Permit> futurePermit = adaptiveInflightLimiter.acquireAsync();
-    Assert.assertEquals(1, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
-    acquiredPermit.get().complete(InflightLimiter.Result.Succeed);
-    Assert.assertTrue(futurePermit.isDone());
-    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
-  }
-
-  @Test
-  public void testCompletePermitCompletableFuture() {
-    for (int i = 0; i < 2; ++i) {
-      adaptiveInflightLimiter.acquireAsync();
-    }
-    CompletableFuture<InflightLimiter.Permit> futurePermit = adaptiveInflightLimiter.acquireAsync();
-    Assert.assertFalse(futurePermit.isDone());
-    futurePermit.completeExceptionally(new CancellationException());
-    AtomicBoolean complected = new AtomicBoolean(false);
-    futurePermit.complete(
-        new InflightLimiter.AbstractPermit() {
-          @Override
-          protected boolean doComplete(InflightLimiter.Result result) {
-            return complected.compareAndSet(false, true);
-          }
-        });
-    Assert.assertEquals(true, complected.get());
-  }
-
-  @Test
-  public void testCompletePermitDequeCompletedFuturePermit()
-      throws ExecutionException, InterruptedException {
-    CompletableFuture<InflightLimiter.Permit> acquiredPermit = null;
-    for (int i = 0; i < 2; ++i) {
-      acquiredPermit = adaptiveInflightLimiter.acquireAsync();
-    }
-    CompletableFuture<InflightLimiter.Permit> futurePermit = adaptiveInflightLimiter.acquireAsync();
-    Assert.assertFalse(futurePermit.isDone());
-    futurePermit.completeExceptionally(new CancellationException()); // complete a future permit
-    Assert.assertTrue(futurePermit.isDone());
-    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
-    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().availablePermits());
-    acquiredPermit.get().complete(InflightLimiter.Result.Succeed); // it should return permit
-    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
-    Assert.assertEquals(1, adaptiveInflightLimiter.getMetrics().availablePermits());
   }
 }

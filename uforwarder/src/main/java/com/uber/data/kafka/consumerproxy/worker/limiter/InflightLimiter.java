@@ -3,7 +3,6 @@ package com.uber.data.kafka.consumerproxy.worker.limiter;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
@@ -33,13 +32,6 @@ public interface InflightLimiter extends AutoCloseable {
    * @return optional.Empty if failed to get permit
    */
   Optional<Permit> tryAcquire();
-
-  /**
-   * Acquires a permit asynchronously
-   *
-   * @return
-   */
-  CompletableFuture<Permit> acquireAsync();
 
   /**
    * Gets if the limiter is closed
@@ -95,13 +87,6 @@ public interface InflightLimiter extends AutoCloseable {
      * @return the blocked requests length;
      */
     long getBlockingQueueSize();
-
-    /**
-     * Gets number of async requests in the queue
-     *
-     * @return
-     */
-    long getAsyncQueueSize();
 
     /**
      * Gets extra metrics

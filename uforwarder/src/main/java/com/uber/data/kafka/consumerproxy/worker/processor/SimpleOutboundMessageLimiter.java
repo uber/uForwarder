@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.common.StructuredTags;
 import com.uber.data.kafka.consumerproxy.worker.limiter.AdaptiveInflightLimiter;
+import com.uber.data.kafka.consumerproxy.worker.limiter.AsyncInflightLimiterAdapter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.InflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.LongFixedInflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.WindowedAggregator;
@@ -42,13 +43,20 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   private final CoreInfra infra;
   private final Map<TopicPartition, ScopeAndInflight> topicPartitionToScopeAndInflight;
   private final InflightTracker inflightTracker;
+  private final AsyncInflightLimiterAdapter asyncStaticLimiterAdapter;
+  private final AsyncInflightLimiterAdapter asyncAdaptiveLimiterAdapter;
+  private final AsyncInflightLimiterAdapter asyncShadowAdaptiveLimiterAdapter;
 
   protected SimpleOutboundMessageLimiter(Builder builder, Job jobTemplate) {
     this.longFixedInflightLimiter = new LongFixedInflightLimiter(0);
+    this.asyncStaticLimiterAdapter = AsyncInflightLimiterAdapter.of(longFixedInflightLimiter);
     this.adaptiveInfligtLimiterBuilder = builder.adaptiveInfligtLimiterBuilder;
     this.infra = builder.infra;
     this.adaptiveInflightLimiter = buildLimiter(true);
+    this.asyncAdaptiveLimiterAdapter = AsyncInflightLimiterAdapter.of(adaptiveInflightLimiter);
     this.shadowAdaptiveInflightLimiter = buildLimiter(false);
+    this.asyncShadowAdaptiveLimiterAdapter =
+        AsyncInflightLimiterAdapter.of(shadowAdaptiveInflightLimiter);
     this.topicPartitionToScopeAndInflight = new ConcurrentHashMap<>();
     this.inflightTracker = new InflightTracker();
     this.jobTemplate = jobTemplate;
@@ -59,6 +67,9 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   public void close() {
     adaptiveInflightLimiter.close();
     longFixedInflightLimiter.close();
+    asyncStaticLimiterAdapter.close();
+    asyncAdaptiveLimiterAdapter.close();
+
     LOGGER.info(MetricNames.OUTBOUND_CACHE_CLOSE_SUCCESS);
   }
 
@@ -97,7 +108,8 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
               .scope
               .gauge(MetricNames.OUTBOUND_CACHE_QUEUE)
               .update(
-                  longFixedInflightLimiter.getMetrics().getAsyncQueueSize() / (double) nPartitions);
+                  asyncStaticLimiterAdapter.getMetrics().getAsyncQueueSize()
+                      / (double) nPartitions);
           scopeAndInflight
               .scope
               .gauge(MetricNames.OUTBOUND_CACHE_ADAPTIVE_LIMIT)
@@ -261,13 +273,13 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     // effect
     // else, adaptiveInflightLimiter returns NoopPermit, fixedInflightLimiter takes effect
     // shadowAdaptiveInflightLimiter always run in dryrun mode for algorithm performance tuning
-    return acquireAsync(processorMessage, longFixedInflightLimiter)
+    return acquireAsync(processorMessage, asyncStaticLimiterAdapter)
         .thenCompose(
             longPermit ->
-                acquireAsync(processorMessage, adaptiveInflightLimiter)
+                acquireAsync(processorMessage, asyncAdaptiveLimiterAdapter)
                     .thenCompose(
                         adaptivePermit ->
-                            acquireAsync(processorMessage, shadowAdaptiveInflightLimiter)
+                            acquireAsync(processorMessage, asyncShadowAdaptiveLimiterAdapter)
                                 .thenApply(
                                     shadowPermit ->
                                         permitBuilder
@@ -279,7 +291,7 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   }
 
   private CompletableFuture<InflightLimiter.Permit> acquireAsync(
-      ProcessorMessage processorMessage, InflightLimiter limiter) {
+      ProcessorMessage processorMessage, AsyncInflightLimiterAdapter limiter) {
     return infra
         .contextManager()
         .wrap(processorMessage.getStub().withFuturePermit(limiter.acquireAsync()));
