@@ -16,6 +16,7 @@ import com.uber.data.kafka.datatransfer.JobType;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTaskGroup;
 import com.uber.data.kafka.datatransfer.KafkaDispatcherTask;
 import com.uber.data.kafka.datatransfer.KafkaDispatcherTaskGroup;
+import com.uber.data.kafka.datatransfer.MiscConfig;
 import com.uber.data.kafka.datatransfer.ResqConfig;
 import com.uber.data.kafka.datatransfer.RetryConfig;
 import com.uber.data.kafka.datatransfer.RetryQueue;
@@ -392,6 +393,7 @@ public class JobUtilsTest extends FievelTestBase {
             .setSecurityConfig(SecurityConfig.newBuilder().build())
             .setRetryConfig(RetryConfig.newBuilder().build())
             .setResqConfig(ResqConfig.newBuilder().build())
+            .setMiscConfig(MiscConfig.newBuilder().build())
             .setType(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER);
 
     Assert.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
@@ -412,6 +414,7 @@ public class JobUtilsTest extends FievelTestBase {
             .setSecurityConfig(SecurityConfig.newBuilder().build())
             .setRetryConfig(RetryConfig.newBuilder().build())
             .setResqConfig(ResqConfig.newBuilder().build())
+            .setMiscConfig(MiscConfig.newBuilder().build())
             .setType(JobType.JOB_TYPE_KAFKA_AUDIT);
 
     Assert.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
@@ -502,5 +505,17 @@ public class JobUtilsTest extends FievelTestBase {
 
     Assert.assertEquals(
         availabilityTask, JobUtils.newJobBuilder(jobGroup).build().getAvailabilityTask());
+  }
+
+  @Test
+  public void testMiscConfigPropagatedToJobFromJobGroup() {
+    JobGroup jobGroup =
+        JobGroup.newBuilder()
+            .setType(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER)
+            .setMiscConfig(MiscConfig.newBuilder().setOwnerServiceName("owner-service").build())
+            .build();
+    Job.Builder jobBuilder = JobUtils.newJobBuilder(jobGroup);
+    Assert.assertNotNull(jobBuilder.getMiscConfig());
+    Assert.assertEquals("owner-service", jobBuilder.getMiscConfig().getOwnerServiceName());
   }
 }
