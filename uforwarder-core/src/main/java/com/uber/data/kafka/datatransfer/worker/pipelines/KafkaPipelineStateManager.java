@@ -383,6 +383,9 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
         if (job.hasRpcDispatcherTask()) {
           structuredTags.setURI(RoutingUtils.extractAddress(job.getRpcDispatcherTask().getUri()));
         }
+        if (job.hasMiscConfig()) {
+          structuredTags.setConsumerService(job.getMiscConfig().getOwnerServiceName());
+        }
         Scope jobScope = scope.tagged(structuredTags.build());
         jobScope
             .gauge(MetricNames.TOPIC_PARTITION_MESSAGE_QUOTA)

@@ -419,4 +419,6 @@ message StoredJob {
 message MiscConfig {
   // enables extra logging for debugging purpose
   bool enable_debug = 1;
+    // the service name which owns this consumer
+  string owner_service_name = 2;
 }

@@ -5,6 +5,7 @@ import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobStatus;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
+import com.uber.data.kafka.datatransfer.MiscConfig;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
@@ -26,6 +27,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
   private final String TOPIC = "topic";
   private final String GROUP = "group";
   private final String GROUP2 = "group2";
+  private final String CONSUMER_SERVICE_NAME = "consumer-service";
 
   private PipelineStateManager pipelineStateManager;
   private Scope scope;
@@ -53,6 +55,8 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
             Job.newBuilder()
                 .setKafkaConsumerTask(
                     KafkaConsumerTask.newBuilder().setConsumerGroup(GROUP).setTopic(TOPIC).build())
+                .setMiscConfig(
+                    MiscConfig.newBuilder().setOwnerServiceName(CONSUMER_SERVICE_NAME).build())
                 .build(),
             scope);
   }
@@ -70,6 +74,8 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
         Job.newBuilder()
             .setKafkaConsumerTask(
                 KafkaConsumerTask.newBuilder().setConsumerGroup(GROUP).setTopic(TOPIC).build())
+            .setMiscConfig(
+                MiscConfig.newBuilder().setOwnerServiceName(CONSUMER_SERVICE_NAME).build())
             .build();
     Assert.assertEquals(jobDefinitionTemplate, pipelineStateManager.getJobTemplate());
     validateMap(0);
@@ -381,6 +387,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
                 .setBytesPerSec(byteRateQuota)
                 .setMaxInflightMessages(maxInflightQuota)
                 .build())
+        .setMiscConfig(MiscConfig.newBuilder().setOwnerServiceName(CONSUMER_SERVICE_NAME).build())
         .build();
   }
 

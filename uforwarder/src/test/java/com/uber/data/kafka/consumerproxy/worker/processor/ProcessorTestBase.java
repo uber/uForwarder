@@ -4,6 +4,7 @@ import com.uber.data.kafka.consumer.DLQMetadata;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
+import com.uber.data.kafka.datatransfer.MiscConfig;
 import com.uber.data.kafka.datatransfer.ResqConfig;
 import com.uber.data.kafka.datatransfer.RetryConfig;
 import com.uber.data.kafka.datatransfer.RetryQueue;
@@ -28,6 +29,7 @@ public abstract class ProcessorTestBase extends FievelTestBase {
   protected static String DLQ_TOPIC = "topic__dlq";
   protected static String RESQ_TOPIC = "topic_resq";
   protected static String MUTTLEY_ROUTING_KEY = "muttley://routing-key";
+  protected static String CONSUMER_SERVICE_NAME = "test-ingester";
   protected static long TIMESTAMP = 0L;
   protected static TimestampType TIMESTAMP_TYPE = TimestampType.CREATE_TIME;
   protected static byte[] TRACE_ID = "0".getBytes(StandardCharsets.UTF_8);
@@ -122,6 +124,7 @@ public abstract class ProcessorTestBase extends FievelTestBase {
                 .setResqTopic(RESQ_TOPIC)
                 .setResqCluster(CLUSTER)
                 .build())
+        .setMiscConfig(MiscConfig.newBuilder().setOwnerServiceName(CONSUMER_SERVICE_NAME).build())
         .build();
   }
 

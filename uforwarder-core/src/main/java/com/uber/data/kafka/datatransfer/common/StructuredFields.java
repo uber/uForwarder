@@ -11,6 +11,7 @@ public class StructuredFields {
   public static final String URI = "uri";
   public static final String HOST = "host";
   public static final String PORT = "port";
+  public static final String CONSUMER_SERVICE_NAME = "consumer_service";
   public static final String INSTANCE_ID = "instanceId";
   public static final String JOB_TYPE = "job_type";
   public static final String ERROR_TYPE = "error_type";

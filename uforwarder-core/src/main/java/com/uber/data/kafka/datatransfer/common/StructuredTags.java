@@ -82,6 +82,11 @@ public final class StructuredTags extends StructuredFields {
     return this;
   }
 
+  public StructuredTags setConsumerService(String consumerService) {
+    this.mapBuilder.put(CONSUMER_SERVICE_NAME, consumerService);
+    return this;
+  }
+
   public Map<String, String> build() {
     return this.mapBuilder.build();
   }

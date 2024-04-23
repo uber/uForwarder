@@ -39,6 +39,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
+import java.util.stream.Stream;
 import javax.annotation.Nullable;
 import net.jodah.failsafe.Failsafe;
 import net.jodah.failsafe.Fallback;
@@ -207,21 +208,7 @@ public class ProcessorImpl
 
               final Job finalJob = getJob(job.getJobId(), job);
               // GRPC dispatch byte rate
-              Scope subScope =
-                  infra
-                      .scope()
-                      .tagged(
-                          ImmutableMap.of(
-                              StructuredFields.URI,
-                              addressFromUri,
-                              StructuredFields.KAFKA_GROUP,
-                              finalJob.getKafkaConsumerTask().getConsumerGroup(),
-                              StructuredFields.KAFKA_CLUSTER,
-                              finalJob.getKafkaConsumerTask().getCluster(),
-                              StructuredFields.KAFKA_TOPIC,
-                              finalJob.getKafkaConsumerTask().getTopic(),
-                              StructuredFields.KAFKA_PARTITION,
-                              Integer.toString(finalJob.getKafkaConsumerTask().getPartition())));
+              Scope subScope = infra.scope().tagged(getMetricsTags(finalJob));
               subScope.counter(MetricNames.BYTES_RATE).inc(processorMessage.getValueByteSize());
               // The response distribution is used to calculate the distribution of response codes.
               // It leverages the Histogram metrics so that the distribution will be pre-aggregated
@@ -934,34 +921,18 @@ public class ProcessorImpl
               StructuredFields.KAFKA_PARTITION,
               Integer.toString(job.getKafkaConsumerTask().getPartition()))
         };
+    Map<String, String> metricsTags = getMetricsTags(job);
     final String[] tags =
-        new String[] {
-          StructuredFields.URI, addressFromUri,
-          StructuredFields.KAFKA_GROUP, job.getKafkaConsumerTask().getConsumerGroup(),
-          StructuredFields.KAFKA_CLUSTER, job.getKafkaConsumerTask().getCluster(),
-          StructuredFields.KAFKA_TOPIC, job.getKafkaConsumerTask().getTopic(),
-          StructuredFields.KAFKA_PARTITION,
-              Integer.toString(job.getKafkaConsumerTask().getPartition())
-        };
+        metricsTags
+            .entrySet()
+            .stream()
+            .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
+            .toArray(String[]::new);
 
     infra.contextManager().createRootContext();
 
     // TODO (gteo): cleanup / deprecate processing scope
-    Scope processingScope =
-        infra
-            .scope()
-            .tagged(
-                ImmutableMap.of(
-                    StructuredFields.URI,
-                    addressFromUri,
-                    StructuredFields.KAFKA_GROUP,
-                    job.getKafkaConsumerTask().getConsumerGroup(),
-                    StructuredFields.KAFKA_CLUSTER,
-                    job.getKafkaConsumerTask().getCluster(),
-                    StructuredFields.KAFKA_TOPIC,
-                    job.getKafkaConsumerTask().getTopic(),
-                    StructuredFields.KAFKA_PARTITION,
-                    Integer.toString(job.getKafkaConsumerTask().getPartition())));
+    Scope processingScope = infra.scope().tagged(metricsTags);
 
     // use completable future chaining so that any exception thrown by an earlier stage
     // will automatically terminate the chain.
@@ -1302,6 +1273,23 @@ public class ProcessorImpl
     ackManager.publishMetrics();
     outboundMessageLimiter.publishMetrics();
     dlqDispatchManager.publishMetrics();
+  }
+
+  @VisibleForTesting
+  protected Map<String, String> getMetricsTags(Job job) {
+    ImmutableMap.Builder<String, String> tagsBuilder = ImmutableMap.builder();
+    tagsBuilder.put(StructuredFields.URI, addressFromUri);
+    tagsBuilder.put(StructuredFields.KAFKA_GROUP, job.getKafkaConsumerTask().getConsumerGroup());
+    tagsBuilder.put(StructuredFields.KAFKA_CLUSTER, job.getKafkaConsumerTask().getCluster());
+    tagsBuilder.put(StructuredFields.KAFKA_TOPIC, job.getKafkaConsumerTask().getTopic());
+    tagsBuilder.put(
+        StructuredFields.KAFKA_PARTITION,
+        Integer.toString(job.getKafkaConsumerTask().getPartition()));
+    if (job.hasMiscConfig()) {
+      tagsBuilder.put(
+          StructuredFields.CONSUMER_SERVICE_NAME, job.getMiscConfig().getOwnerServiceName());
+    }
+    return tagsBuilder.build();
   }
 
   @VisibleForTesting
