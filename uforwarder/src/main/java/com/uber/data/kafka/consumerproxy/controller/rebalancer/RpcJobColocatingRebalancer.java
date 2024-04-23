@@ -58,7 +58,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
   private final Scope scope;
 
   private final boolean shadowRun;
-  private final RebalancingCache rebalancingCache;
+  private final RebalancingWorkerTable rebalancingWorkerTable;
 
   public RpcJobColocatingRebalancer(
       Scope scope,
@@ -70,14 +70,14 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     this.rebalancerConfiguration = rebalancerConfiguration;
     this.scope = scope;
     this.shadowRun = shadowRun;
-    this.rebalancingCache = new RebalancingCache();
+    this.rebalancingWorkerTable = new RebalancingWorkerTable();
   }
 
   @Override
   public void computeWorkerId(
       final Map<String, RebalancingJobGroup> jobGroupMap, final Map<Long, StoredWorker> workerMap) {
     // reset all in memory job and worker data
-    rebalancingCache.clear();
+    rebalancingWorkerTable.clear();
 
     Map<String, Integer> jobGroupToPartitionMap = new HashMap<>();
     List<Integer> workerNeededPerPartition =
@@ -86,7 +86,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
             workerMap,
             rebalancerConfiguration,
             jobGroupToPartitionMap,
-            rebalancingCache);
+            rebalancingWorkerTable);
 
     // step 1: move job/jobGroup to correct virtual partitions first
     List<StaleWorkerReplacement> toBeMovedStaleJobs = new ArrayList<>();
@@ -99,7 +99,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     ensureWorkersLoadBalanced();
 
     // step 4: convert to the final result
-    for (RebalancingWorkerWithSortedJobs worker : rebalancingCache.getAllWorkers()) {
+    for (RebalancingWorkerWithSortedJobs worker : rebalancingWorkerTable.getAllWorkers()) {
       List<RebalancingJob> jobs = worker.getAllJobs();
       jobs.forEach(job -> job.setWorkerId(worker.getWorkerId()));
     }
@@ -108,8 +108,8 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     emitMetrics(workerNeededPerPartition);
   }
 
-  protected RebalancingCache getRebalancingCache() {
-    return rebalancingCache;
+  protected RebalancingWorkerTable getRebalancingTable() {
+    return rebalancingWorkerTable;
   }
 
   private void assignJobsToCorrectVirtualPartition(
@@ -131,13 +131,13 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
 
         long currentWorkerId = job.getWorkerId();
         // job is not on the correct worker
-        if (!rebalancingCache.isWorkerIdValid(currentWorkerId)
-            || !rebalancingCache
+        if (!rebalancingWorkerTable.isWorkerIdValid(currentWorkerId)
+            || !rebalancingWorkerTable
                 .getAllWorkerIdsForPartition(partitionIdx)
                 .contains(currentWorkerId)) {
           staleWorkerReplacement.addStoredJob(job);
         } else {
-          rebalancingCache
+          rebalancingWorkerTable
               .getRebalancingWorkerWithSortedJobs(currentWorkerId)
               .addJob(new RebalancingJob(job, jobGroup));
         }
@@ -155,7 +155,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
       // always start from the least loaded worker
       PriorityQueue<RebalancingWorkerWithSortedJobs> candidateWorkers = new PriorityQueue<>();
       candidateWorkers.addAll(
-          rebalancingCache.getAllWorkersForPartition(replacement.virtualPartitionIndex));
+          rebalancingWorkerTable.getAllWorkersForPartition(replacement.virtualPartitionIndex));
       // TODO emit metric if candidate worker for a partition is empty
       // TODO: can consider move these jobs to other workers for short mitigation
       if (candidateWorkers.isEmpty()) {
@@ -184,9 +184,9 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
   }
 
   private void ensureWorkersLoadBalanced() {
-    for (long partitionIdx : rebalancingCache.getAllPartitions()) {
+    for (long partitionIdx : rebalancingWorkerTable.getAllPartitions()) {
       List<RebalancingWorkerWithSortedJobs> allWorkersInPartition =
-          rebalancingCache.getAllWorkersForPartition(partitionIdx);
+          rebalancingWorkerTable.getAllWorkersForPartition(partitionIdx);
       // TODO: emit metric if the workers within partition is empty
       List<RebalancingWorkerWithSortedJobs> allWorkers = new ArrayList<>(allWorkersInPartition);
       allWorkers.sort(RebalancingWorkerWithSortedJobs::compareTo);
@@ -258,7 +258,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
       // and we shouldn't move the jobs to overload other workers.
       if (newWorkerId != -1L) {
         adjustedWorker.removeJob(toBeMovedJob);
-        rebalancingCache.getRebalancingWorkerWithSortedJobs(newWorkerId).addJob(toBeMovedJob);
+        rebalancingWorkerTable.getRebalancingWorkerWithSortedJobs(newWorkerId).addJob(toBeMovedJob);
         scope.subScope(COLOCATING_REBALANCER_SUB_SCOPE).counter(MetricNames.JOB_MOVEMENT).inc(1);
       }
 
@@ -277,7 +277,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
 
   private void emitMetrics(List<Integer> workerNeededPerPartition) {
     int usedWorkers = 0;
-    for (RebalancingWorkerWithSortedJobs worker : rebalancingCache.getAllWorkers()) {
+    for (RebalancingWorkerWithSortedJobs worker : rebalancingWorkerTable.getAllWorkers()) {
       if (worker.getNumberOfJobs() != 0) {
         usedWorkers += 1;
       }
@@ -285,13 +285,13 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     scope.gauge(MetricNames.USED_WORKER_COUNT).update(usedWorkers);
 
     int totalNumberOfWorkersStillNeeded = 0;
-    for (long partitionIdx : rebalancingCache.getAllPartitions()) {
+    for (long partitionIdx : rebalancingWorkerTable.getAllPartitions()) {
       usedWorkers = 0;
       Map<String, String> partitionTags =
           ImmutableMap.of(VIRTUAL_PARTITION_TAG, Long.toString(partitionIdx));
       DoubleSummaryStatistics stats = new DoubleSummaryStatistics();
       List<RebalancingWorkerWithSortedJobs> allWorkersWithinPartition =
-          rebalancingCache.getAllWorkersForPartition(partitionIdx);
+          rebalancingWorkerTable.getAllWorkersForPartition(partitionIdx);
       scope
           .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
           .tagged(partitionTags)
@@ -343,7 +343,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
 
       double standardDeviation = 0.0;
       for (RebalancingWorkerWithSortedJobs worker :
-          rebalancingCache.getAllWorkersForPartition(partitionIdx)) {
+          rebalancingWorkerTable.getAllWorkersForPartition(partitionIdx)) {
         if (worker.getNumberOfJobs() == 0) {
           continue;
         }
@@ -397,12 +397,12 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
    * corresponding virtual node, as well as the jobs on each worker
    */
   @VisibleForTesting
-  protected static class RebalancingCache {
+  protected static class RebalancingWorkerTable {
     private final Map<Long, Long> workerIdToVirtualPartitionMap = new HashMap<>();
     private final Map<Long, Set<Long>> virtualPartitionToWorkerIdMap = new HashMap<>();
     private final Map<Long, RebalancingWorkerWithSortedJobs> workerIdToWorkerMap = new HashMap<>();
 
-    RebalancingCache() {}
+    RebalancingWorkerTable() {}
 
     boolean isWorkerIdValid(long workerId) {
       return workerIdToWorkerMap.containsKey(workerId);
