@@ -169,10 +169,6 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     }
   }
 
-  RebalancingJobGroup buildRebalancingJobGroup(JobState jobGroupState, StoredJob... jobs) {
-    return buildRebalancingJobGroup("", jobGroupState, jobs);
-  }
-
   RebalancingJobGroup buildRebalancingJobGroup(
       String jobGroupId, JobState jobGroupState, StoredJob... jobs) {
     StoredJobGroup.Builder jobGroupBuilder = StoredJobGroup.newBuilder();
@@ -541,7 +537,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     Assert.assertTrue(usedWorkers.size() < workers.size());
 
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 0, "a", 12));
+        buildRebalancingJobGroup("newGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0, "a", 12));
     jobs.put("newGroup", rebalancingJobGroup);
 
     Map<Long, Long> jobToWorkerId =
@@ -567,7 +563,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerIdNoChangeIfJobGroupCanceled() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_CANCELED, buildJob(1, 0), buildJob(2, 0));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_CANCELED, buildJob(1, 0), buildJob(2, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertFalse(rebalancingJobGroup.isChanged());
@@ -577,7 +574,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerIdNoChangeIfJobGroupInvalid() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_INVALID, buildJob(1, 0), buildJob(2, 0));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_INVALID, buildJob(1, 0), buildJob(2, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertFalse(rebalancingJobGroup.isChanged());
@@ -587,7 +585,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerIdNoChangeIfJobGroupUnimplemented() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_UNIMPLEMENTED, buildJob(1, 0), buildJob(2, 0));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_UNIMPLEMENTED, buildJob(1, 0), buildJob(2, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertFalse(rebalancingJobGroup.isChanged());
@@ -597,7 +596,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerIdNoChangeIfJobGroupFailed() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_FAILED, buildJob(1, 0), buildJob(2, 0));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_FAILED, buildJob(1, 0), buildJob(2, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertFalse(rebalancingJobGroup.isChanged());
@@ -607,7 +607,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerIdNoChangeIfNoWorkers() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 0));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap();
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertFalse(rebalancingJobGroup.isChanged());
@@ -617,7 +618,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerIdNoChangeIfStable() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertFalse(rebalancingJobGroup.isChanged());
@@ -627,7 +629,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerRebalanceBothJobsToNewWorkers() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(3, 4);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertTrue(rebalancingJobGroup.isChanged());
@@ -637,7 +640,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerUnassignWorkerIds() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
     Map<Long, StoredWorker> workerMap = buildWorkerMap();
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertTrue(rebalancingJobGroup.isChanged());
@@ -647,7 +651,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerPartialRebalance() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(2, 3);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertTrue(rebalancingJobGroup.isChanged());
@@ -657,7 +662,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeLoad() {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
     rpcUriJobAssigner.computeLoad(ImmutableMap.of("jobGroup", rebalancingJobGroup));
     Assert.assertEquals(1.2, rebalancingJobGroup.getScale().get(), 0.0001);
   }
@@ -665,7 +671,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerForUnassignedJob() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 2));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 2));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertTrue(rebalancingJobGroup.isChanged());
@@ -688,7 +695,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   public void testComputeWorkerIdMergeWorkersIfPossible() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
-            JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2), buildJob(3, 3));
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2), buildJob(3, 3));
     rpcUriJobAssigner.config.setMessagesPerSecPerWorker(15);
     Map<String, RebalancingJobGroup> jobGroupMap = ImmutableMap.of("jobGroup", rebalancingJobGroup);
     updateScale(rebalancingJobGroup);
@@ -701,7 +708,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerIdSelectsLargestWorkerId() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 1));
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 1));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2, 3);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertTrue(rebalancingJobGroup.isChanged());
@@ -712,7 +720,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   public void testComputeWorkerIdUsesThreeWorkersIfCapacitySpillover() throws Exception {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
-            JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 0), buildJob(3, 0));
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 0), buildJob(3, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2, 3);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertTrue(rebalancingJobGroup.isChanged());
@@ -724,7 +732,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     StoredJob.Builder jobBuilder = buildJob(1, 0).toBuilder();
     jobBuilder.getJobBuilder().getFlowControlBuilder().setMessagesPerSec(20);
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, jobBuilder.build());
+        buildRebalancingJobGroup("jobGroup", JobState.JOB_STATE_RUNNING, jobBuilder.build());
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertTrue(rebalancingJobGroup.isChanged());
@@ -734,10 +742,13 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerIdAssignsLargeJobMixSmallJob() {
     RebalancingJobGroup rebalancingJobGroup1 =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 3, "a", 12));
+        buildRebalancingJobGroup("jobGroup1", JobState.JOB_STATE_RUNNING, buildJob(1, 3, "a", 12));
     RebalancingJobGroup rebalancingJobGroup2 =
         buildRebalancingJobGroup(
-            JobState.JOB_STATE_RUNNING, buildJob(2, 0, "b", 6), buildJob(3, 0, "b", 6));
+            "jobGroup2",
+            JobState.JOB_STATE_RUNNING,
+            buildJob(2, 0, "b", 6),
+            buildJob(3, 0, "b", 6));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2, 3, 4);
     rpcUriJobAssigner.computeWorkerId(
         ImmutableMap.of("jobGroup1", rebalancingJobGroup1, "jobGroup2", rebalancingJobGroup2),
@@ -749,7 +760,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   @Test
   public void testComputeWorkerIdAssignsLargeJobStableAssignment() {
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 0, "a", 12));
+        buildRebalancingJobGroup("jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0, "a", 12));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2, 3, 4, 5);
     Map<Long, Long> jobToWorkerId = jobToWorkerId(rebalancingJobGroup.getJobs().values());
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
@@ -758,7 +769,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
         1, calcDiff(jobToWorkerId, jobToWorkerId(rebalancingJobGroup.getJobs().values())));
     for (int i = 0; i < 5; ++i) {
       rebalancingJobGroup =
-          buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, i + 1, "a", 12));
+          buildRebalancingJobGroup(
+              "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, i + 1, "a", 12));
 
       jobToWorkerId = jobToWorkerId(rebalancingJobGroup.getJobs().values());
       rpcUriJobAssigner.computeWorkerId(
@@ -776,12 +788,14 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   public void testComputeWorkerIdOverloadResolveWithSpareWorker() {
     RebalancingJobGroup rebalancingJobGroup1 =
         buildRebalancingJobGroup(
+            "jobGroup1",
             JobState.JOB_STATE_RUNNING,
             buildJob(1, 0, "a", 6),
             buildJob(2, 0, "a", 6),
             buildJob(3, 0, "a", 6));
     RebalancingJobGroup rebalancingJobGroup2 =
         buildRebalancingJobGroup(
+            "jobGroup2",
             JobState.JOB_STATE_RUNNING,
             buildJob(4, 0, "b", 6),
             buildJob(5, 0, "b", 6),
@@ -824,6 +838,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   public void testComputeWorkerIdActiveWorkerWithoutAssignment() {
     RebalancingJobGroup rebalancingJobGroup1 =
         buildRebalancingJobGroup(
+            "jobGroup1",
             JobState.JOB_STATE_RUNNING,
             buildJob(1, 0, "a", 3),
             buildJob(2, 0, "a", 3),
@@ -901,9 +916,14 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   public void testComputeWorkerIdAssignsToSpareWorkerNewJobfirst() {
     RebalancingJobGroup rebalancingJobGroup1 =
         buildRebalancingJobGroup(
-            JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 1), buildJob(3, 1));
+            "jobGroup1",
+            JobState.JOB_STATE_RUNNING,
+            buildJob(1, 1),
+            buildJob(2, 1),
+            buildJob(3, 1));
     RebalancingJobGroup rebalancingJobGroup2 =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(4, 0), buildJob(5, 0));
+        buildRebalancingJobGroup(
+            "jobGroup2", JobState.JOB_STATE_RUNNING, buildJob(4, 0), buildJob(5, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2, 3);
     rpcUriJobAssigner.computeWorkerId(
         ImmutableMap.of("jobGroup1", rebalancingJobGroup1, "jobGroup2", rebalancingJobGroup2),
@@ -918,7 +938,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   public void testComputeWorkerIdAssignsToSpareWorker() {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
-            JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 1), buildJob(3, 1));
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 1), buildJob(3, 1));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2, 3);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
     Assert.assertTrue(rebalancingJobGroup.isChanged());

@@ -90,14 +90,14 @@ class RebalancerCommon {
       final Map<Long, StoredWorker> workerMap,
       RebalancerConfiguration rebalancerConfiguration,
       Map<String, Integer> jobGroupToPartitionMap,
-      RpcJobColocatingRebalancer.RebalancingCache rebalancingCache) {
+      RpcJobColocatingRebalancer.RebalancingWorkerTable rebalancingWorkerTable) {
     int numberOfPartition = rebalancerConfiguration.getNumberOfVirtualPartitions();
     // calculate how many workers are needed per partition based on workload
     List<Integer> workerNeededPerPartition =
         calculateWorkerNeededPerPartition(
             rebalancerConfiguration, jobGroupToPartitionMap, jobGroupMap, workerMap);
     insertWorkersIntoRebalancingTable(
-        rebalancingCache,
+        rebalancingWorkerTable,
         workerNeededPerPartition,
         workerMap,
         numberOfPartition,
@@ -193,7 +193,7 @@ class RebalancerCommon {
 
   @VisibleForTesting
   protected static void insertWorkersIntoRebalancingTable(
-      RpcJobColocatingRebalancer.RebalancingCache rebalancingCache,
+      RpcJobColocatingRebalancer.RebalancingWorkerTable rebalancingWorkerTable,
       List<Integer> workersNeededPerPartition,
       final Map<Long, StoredWorker> workerMap,
       int numberOfPartition,
@@ -214,19 +214,19 @@ class RebalancerCommon {
         long workerId = job.getWorkerId();
         if (workerMap.containsKey(workerId)) {
           // putIfAbsent to avoid worker accidentally being in 2 different partitions
-          rebalancingCache.putIfAbsent(workerId, partitionIdx);
+          rebalancingWorkerTable.putIfAbsent(workerId, partitionIdx);
         }
       }
     }
 
     // 2.) "availableWorkers" not in rebalancing table are free to be used where needed
     Set<Long> allWorkerIds = new HashSet<>(workerMap.keySet());
-    allWorkerIds.removeAll(rebalancingCache.getAllWorkerIds());
+    allWorkerIds.removeAll(rebalancingWorkerTable.getAllWorkerIds());
     List<Long> availableWorkers = new ArrayList<>(allWorkerIds);
 
     // 3.) remove workers from partition if there are too many
     freeExtraWorkers(
-        rebalancingCache,
+        rebalancingWorkerTable,
         workersNeededPerPartition,
         numberOfPartition,
         rebalancerConfiguration,
@@ -236,22 +236,22 @@ class RebalancerCommon {
     int totalExtraWorkersNeeded = 0;
     for (int partitionIdx = 0; partitionIdx < numberOfPartition; partitionIdx++) {
       if (workersNeededPerPartition.get(partitionIdx)
-          > rebalancingCache.getAllWorkerIdsForPartition(partitionIdx).size()) {
+          > rebalancingWorkerTable.getAllWorkerIdsForPartition(partitionIdx).size()) {
         totalExtraWorkersNeeded +=
             (workersNeededPerPartition.get(partitionIdx)
-                - rebalancingCache.getAllWorkerIdsForPartition(partitionIdx).size());
+                - rebalancingWorkerTable.getAllWorkerIdsForPartition(partitionIdx).size());
       }
     }
     roundRobinAssignWorkers(
         totalExtraWorkersNeeded,
         workersNeededPerPartition,
-        rebalancingCache,
+        rebalancingWorkerTable,
         availableWorkers,
         numberOfPartition);
   }
 
   private static void freeExtraWorkers(
-      RpcJobColocatingRebalancer.RebalancingCache rebalancingCache,
+      RpcJobColocatingRebalancer.RebalancingWorkerTable rebalancingWorkerTable,
       List<Integer> workersNeededPerPartition,
       int numberOfPartition,
       RebalancerConfiguration rebalancerConfiguration,
@@ -259,7 +259,7 @@ class RebalancerCommon {
     for (int parititionIdx = 0; parititionIdx < numberOfPartition; parititionIdx++) {
       // for partitions that have more workers than expected, we gradually reduce in batch of 10%
       int diff =
-          rebalancingCache.getAllWorkersForPartition(parititionIdx).size()
+          rebalancingWorkerTable.getAllWorkersForPartition(parititionIdx).size()
               - workersNeededPerPartition.get(parititionIdx);
       if (diff >= MINIMUM_WORKER_THRESHOLD) {
         int numberOfWorkersToRemove =
@@ -274,12 +274,13 @@ class RebalancerCommon {
                 workersNeededPerPartition.get(parititionIdx)));
         List<Long> toRemoveWorkerIds =
             removeJobsFromLeastLoadedWorkers(
-                rebalancingCache, parititionIdx, numberOfWorkersToRemove);
-        toRemoveWorkerIds.forEach(rebalancingCache::removeWorker);
+                rebalancingWorkerTable, parititionIdx, numberOfWorkersToRemove);
+        toRemoveWorkerIds.forEach(rebalancingWorkerTable::removeWorker);
         availableWorkers.addAll(toRemoveWorkerIds);
         // reset workers needed for this partition to be the same as the current worker size
         workersNeededPerPartition.set(
-            parititionIdx, rebalancingCache.getAllWorkerIdsForPartition(parititionIdx).size());
+            parititionIdx,
+            rebalancingWorkerTable.getAllWorkerIdsForPartition(parititionIdx).size());
       }
     }
   }
@@ -287,15 +288,15 @@ class RebalancerCommon {
   private static void roundRobinAssignWorkers(
       int totalNumberOfWorkersNeeded,
       List<Integer> workersNeededPerPartition,
-      RpcJobColocatingRebalancer.RebalancingCache rebalancingCache,
+      RpcJobColocatingRebalancer.RebalancingWorkerTable rebalancingWorkerTable,
       List<Long> newWorkers,
       int numberOfPartition) {
     int partitionIdx = 0;
     int idleWorkerIdx = 0;
     while (idleWorkerIdx < newWorkers.size() && totalNumberOfWorkersNeeded > 0) {
-      if (rebalancingCache.getAllWorkerIdsForPartition(partitionIdx).size()
+      if (rebalancingWorkerTable.getAllWorkerIdsForPartition(partitionIdx).size()
           < workersNeededPerPartition.get(partitionIdx)) {
-        rebalancingCache.put(newWorkers.get(idleWorkerIdx), partitionIdx);
+        rebalancingWorkerTable.put(newWorkers.get(idleWorkerIdx), partitionIdx);
         logger.info(
             "Add worker to partition.",
             StructuredLogging.virtualPartition(partitionIdx),
@@ -308,11 +309,11 @@ class RebalancerCommon {
   }
 
   private static List<Long> removeJobsFromLeastLoadedWorkers(
-      RpcJobColocatingRebalancer.RebalancingCache rebalancingCache,
+      RpcJobColocatingRebalancer.RebalancingWorkerTable rebalancingWorkerTable,
       int partitionIdx,
       int numberOfWorkersToRemove) {
     List<RebalancingWorkerWithSortedJobs> workers =
-        rebalancingCache.getAllWorkersForPartition(partitionIdx);
+        rebalancingWorkerTable.getAllWorkersForPartition(partitionIdx);
     workers.sort(RebalancingWorkerWithSortedJobs::compareTo);
     numberOfWorkersToRemove = Math.min(workers.size(), numberOfWorkersToRemove);
     return workers
