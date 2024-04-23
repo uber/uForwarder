@@ -23,6 +23,7 @@ import org.springframework.context.annotation.Bean;
 public class MetricsConfiguration {
   @Nullable static Scope INSTANCE;
 
+  private static final String ENV_UFORWARDER_REPORT_METRICS = "UFORWARDER_REPORT_METRICS";
   private static final String DOCKER_HOST_INTERNAL_ADDRESS = "host.docker.internal";
   private static final String METRICS_REPORTER_STATSD = "statsd";
   private static final String METRICS_REPORTER_M3 = "m3";
@@ -51,13 +52,18 @@ public class MetricsConfiguration {
   public Scope rootScope(@Value("${tally.publish.interval.sec:5}") int tallyPublishIntervalSec) {
     if (INSTANCE == null) {
       StatsReporter statsReporter = null;
-      if (metricsReporter.equals(METRICS_REPORTER_STATSD)) {
-        StatsDClient statsd = new NonBlockingStatsDClientBuilder()
-                .prefix(METRICS_REPORTER_STATSD)
-                .hostname(DOCKER_HOST_INTERNAL_ADDRESS)
-                .port(8125)
-                .build();
-        statsReporter = new StatsdReporter(statsd);
+      // If UFORWARDER_REPORT_METRICS is set, we will set metric reporter
+      // according to the metricsReporter property.
+      String reportMetrics = System.getenv().get(ENV_UFORWARDER_REPORT_METRICS);
+      if (reportMetrics != null) {
+        if (metricsReporter.equals(METRICS_REPORTER_STATSD)) {
+          StatsDClient statsd = new NonBlockingStatsDClientBuilder()
+                  .prefix(METRICS_REPORTER_STATSD)
+                  .hostname(DOCKER_HOST_INTERNAL_ADDRESS)
+                  .port(8125)
+                  .build();
+          statsReporter = new StatsdReporter(statsd);
+        }
       }
       INSTANCE =
           new RootScopeBuilder()
