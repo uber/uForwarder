@@ -275,4 +275,22 @@ public class AdaptiveInflightLimiterTest extends FievelTestBase {
         });
     Assert.assertEquals(true, complected.get());
   }
+
+  @Test
+  public void testCompletePermitDequeCompletedFuturePermit()
+      throws ExecutionException, InterruptedException {
+    CompletableFuture<InflightLimiter.Permit> acquiredPermit = null;
+    for (int i = 0; i < 2; ++i) {
+      acquiredPermit = adaptiveInflightLimiter.acquireAsync();
+    }
+    CompletableFuture<InflightLimiter.Permit> futurePermit = adaptiveInflightLimiter.acquireAsync();
+    Assert.assertFalse(futurePermit.isDone());
+    futurePermit.completeExceptionally(new CancellationException()); // complete a future permit
+    Assert.assertTrue(futurePermit.isDone());
+    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().availablePermits());
+    acquiredPermit.get().complete(InflightLimiter.Result.Succeed); // it should return permit
+    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(1, adaptiveInflightLimiter.getMetrics().availablePermits());
+  }
 }

@@ -1,17 +1,18 @@
 package com.uber.data.kafka.consumerproxy.worker.limiter;
 
-import java.util.Iterator;
-import java.util.LinkedHashSet;
+import java.util.LinkedList;
 import java.util.Optional;
-import java.util.Set;
+import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nullable;
 
 public abstract class AbstractInflightLimiter implements InflightLimiter {
   final Object lock = new Object();
   final AtomicBoolean isClosed = new AtomicBoolean(false);
-  final Set<CompletableFuture<Permit>> futurePermits = new LinkedHashSet<>();
+  final Queue<CompletableFuture<Permit>> futurePermits = new LinkedList<>();
+  final AtomicInteger pendingPermitCount = new AtomicInteger();
 
   @Override
   public Permit acquire() throws InterruptedException {
@@ -45,7 +46,11 @@ public abstract class AbstractInflightLimiter implements InflightLimiter {
     if (permit.isPresent()) {
       return CompletableFuture.completedFuture(new AsyncPermit(permit.get()));
     } else {
-      return new PermitCompletableFuture();
+      PermitCompletableFuture result = new PermitCompletableFuture();
+      synchronized (AbstractInflightLimiter.this) {
+        futurePermits.add(result);
+      }
+      return result;
     }
   }
 
@@ -64,6 +69,7 @@ public abstract class AbstractInflightLimiter implements InflightLimiter {
         for (CompletableFuture<Permit> futurePermit : futurePermits) {
           futurePermit.complete(NoopPermit.INSTANCE);
         }
+        futurePermits.clear();
       }
     }
   }
@@ -86,7 +92,7 @@ public abstract class AbstractInflightLimiter implements InflightLimiter {
   abstract class Metrics implements InflightLimiter.Metrics {
     @Override
     public long getAsyncQueueSize() {
-      return futurePermits.size();
+      return pendingPermitCount.get();
     }
 
     @Override
@@ -115,12 +121,20 @@ public abstract class AbstractInflightLimiter implements InflightLimiter {
           if (!futurePermits.isEmpty()) {
             Optional<Permit> permit = tryAcquire();
             if (permit.isPresent()) {
-              // complete the queued request on the head of queue
-              Iterator<CompletableFuture<Permit>> iter = futurePermits.iterator();
-              CompletableFuture<Permit> future = iter.next();
-              iter.remove();
-              // reduce scope of critical zone by delay completion
-              runnable = () -> future.complete(new AsyncPermit(permit.get()));
+              CompletableFuture<Permit> future;
+              // purge completed futures and find one pending future on the head of queue
+              while ((future = futurePermits.poll()) != null) {
+                if (!future.isDone()) {
+                  final CompletableFuture<Permit> finalFuture = future;
+                  // reduce scope of critical zone by delay completion
+                  runnable = () -> finalFuture.complete(new AsyncPermit(permit.get()));
+                  break;
+                }
+              }
+              if (future == null) {
+                // complete the permit to avoid leaking
+                permit.get().complete(Result.Unknown);
+              }
             }
           }
         }
@@ -133,40 +147,35 @@ public abstract class AbstractInflightLimiter implements InflightLimiter {
   }
 
   private class PermitCompletableFuture extends CompletableFuture<Permit> {
-
     private PermitCompletableFuture() {
-      synchronized (AbstractInflightLimiter.this) {
-        futurePermits.add(this);
-      }
+      pendingPermitCount.incrementAndGet();
     }
 
     @Override
     public boolean complete(Permit permit) {
-      beforeComplete();
-      boolean result = super.complete(permit);
-      if (!result) {
+      boolean completed = super.complete(permit);
+      if (completed) {
+        pendingPermitCount.decrementAndGet();
+      } else {
         // avoid leaking of permit
         permit.complete(Result.Unknown);
       }
-      return result;
+      return completed;
     }
 
     @Override
     public boolean completeExceptionally(Throwable ex) {
-      beforeComplete();
-      return super.completeExceptionally(ex);
+      boolean completed = super.completeExceptionally(ex);
+      if (completed) {
+        pendingPermitCount.decrementAndGet();
+      }
+      return completed;
     }
 
     @Override
     public boolean cancel(boolean mayInterruptIfRunning) {
       // complete with noop permit
       return complete(NoopPermit.INSTANCE);
-    }
-
-    private void beforeComplete() {
-      synchronized (AbstractInflightLimiter.this) {
-        futurePermits.remove(this);
-      }
     }
   }
 }
