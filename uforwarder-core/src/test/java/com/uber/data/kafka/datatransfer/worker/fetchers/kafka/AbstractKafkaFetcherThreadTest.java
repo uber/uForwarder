@@ -542,6 +542,8 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     Job job3 = createConsumerJob(3, TOPIC_NAME, 2, CONSUMER_GROUP, 1000, 1000);
     Job job4 = createConsumerJob(4, TOPIC_NAME, 2, CONSUMER_GROUP, 1, 1000);
     Job job5 = createConsumerJob(5, TOPIC_NAME, 2, CONSUMER_GROUP, 10, 1000);
+    // job6 is the updated job
+    Job job6 = createConsumerJob(5, TOPIC_NAME, 2, CONSUMER_GROUP, 20, 2000);
 
     // no add, no delete
     Assert.assertFalse(
@@ -703,6 +705,27 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
         allTopicPartitionJobMap.containsValue(job3)
             || allTopicPartitionJobMap.containsValue(job4)
             || allTopicPartitionJobMap.containsValue(job5));
+
+    // update job5 with job6
+    newTopicPartitionJobMap = new HashMap<>();
+    allTopicPartitionJobMap = new HashMap<>();
+    removedTopicPartitionJobMap = new HashMap<>();
+    pipelineStateManager.run(job6).toCompletableFuture().get();
+    validateMap(4, 4);
+    // assignment is not changed
+    Assert.assertFalse(
+        fetcherThread.extractTopicPartitionMap(
+            newTopicPartitionJobMap, removedTopicPartitionJobMap, allTopicPartitionJobMap));
+    validateMap(4, 4);
+    Assert.assertEquals(0, newTopicPartitionJobMap.size());
+    Assert.assertEquals(2, allTopicPartitionJobMap.size());
+    Assert.assertEquals(0, removedTopicPartitionJobMap.size());
+    Assert.assertTrue(allTopicPartitionJobMap.containsValue(job2));
+    Assert.assertTrue(
+        allTopicPartitionJobMap.containsValue(job3)
+            || allTopicPartitionJobMap.containsValue(job4)
+            || allTopicPartitionJobMap.containsValue(job6));
+    Assert.assertFalse(allTopicPartitionJobMap.containsValue(job5));
   }
 
   @Test
