@@ -20,6 +20,7 @@ import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTaskGroup;
 import com.uber.data.kafka.datatransfer.KafkaDispatcherTask;
 import com.uber.data.kafka.datatransfer.KafkaDispatcherTaskGroup;
+import com.uber.data.kafka.datatransfer.MiscConfig;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.ResqConfig;
 import com.uber.data.kafka.datatransfer.RetryConfig;
@@ -194,6 +195,7 @@ public class RebalancerTest extends FievelTestBase {
         .setMessagesPerSec(jobGroupInt)
         .setBytesPerSec(jobGroupInt)
         .setMaxInflightMessages(jobGroupInt);
+    jobGroupBuilder.getMiscConfigBuilder().setOwnerServiceName("test-service").setEnableDebug(true);
     JobGroup jobGroup = jobGroupBuilder.build();
 
     String jobString = "job";
@@ -232,6 +234,7 @@ public class RebalancerTest extends FievelTestBase {
         .getRetryConfigBuilder()
         .setRetryEnabled(jobBoolean)
         .addAllRetryQueues(jobGroupRetryQueues);
+    jobBuilder.getMiscConfigBuilder().setEnableDebug(false);
     Job job = jobBuilder.build();
 
     Job newJob = Rebalancer.mergeJobGroupAndJob(jobGroup, job).build();
@@ -280,6 +283,7 @@ public class RebalancerTest extends FievelTestBase {
         .setMessagesPerSec(jobGroupInt)
         .setBytesPerSec(jobGroupInt)
         .setMaxInflightMessages(jobGroupInt);
+    expectedBuilder.getMiscConfigBuilder().setOwnerServiceName("test-service").setEnableDebug(true);
     Assert.assertEquals(expectedBuilder.build(), newJob);
   }
 
@@ -332,6 +336,7 @@ public class RebalancerTest extends FievelTestBase {
             .setSecurityConfig(SecurityConfig.newBuilder().build())
             .setRetryConfig(RetryConfig.newBuilder().build())
             .setResqConfig(ResqConfig.newBuilder().build())
+            .setMiscConfig(MiscConfig.newBuilder().build())
             .build();
 
     Job actualJob = Rebalancer.mergeJobGroupAndJob(jobGroup, job).build();
@@ -398,6 +403,7 @@ public class RebalancerTest extends FievelTestBase {
             .setSecurityConfig(SecurityConfig.newBuilder().build())
             .setRetryConfig(RetryConfig.newBuilder().build())
             .setResqConfig(ResqConfig.newBuilder().build())
+            .setMiscConfig(MiscConfig.newBuilder().build())
             .build();
 
     Job actualJob = Rebalancer.mergeJobGroupAndJob(jobGroup, job).build();
@@ -456,6 +462,7 @@ public class RebalancerTest extends FievelTestBase {
             .setSecurityConfig(SecurityConfig.newBuilder().build())
             .setRetryConfig(RetryConfig.newBuilder().build())
             .setResqConfig(ResqConfig.newBuilder().build())
+            .setMiscConfig(MiscConfig.newBuilder().build())
             .build();
 
     Job actualJob = Rebalancer.mergeJobGroupAndJob(jobGroup, job).build();
@@ -528,6 +535,7 @@ public class RebalancerTest extends FievelTestBase {
             .setSecurityConfig(SecurityConfig.newBuilder().build())
             .setRetryConfig(RetryConfig.newBuilder().build())
             .setResqConfig(ResqConfig.newBuilder().build())
+            .setMiscConfig(MiscConfig.newBuilder().build())
             .build();
 
     Job actualJob = Rebalancer.mergeJobGroupAndJob(jobGroup, job).build();
@@ -603,6 +611,7 @@ public class RebalancerTest extends FievelTestBase {
             .setSecurityConfig(SecurityConfig.newBuilder().build())
             .setRetryConfig(RetryConfig.newBuilder().build())
             .setResqConfig(ResqConfig.newBuilder().build())
+            .setMiscConfig(MiscConfig.newBuilder().build())
             .build();
 
     Job actualJob = Rebalancer.mergeJobGroupAndJob(jobGroup, job).build();

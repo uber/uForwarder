@@ -146,6 +146,10 @@ public interface Rebalancer {
     builder
         .getKafkaConsumerTaskBuilder()
         .setProcessingDelayMs(jobGroup.getKafkaConsumerTaskGroup().getProcessingDelayMs());
+    builder
+        .getMiscConfigBuilder()
+        .setOwnerServiceName(jobGroup.getMiscConfig().getOwnerServiceName())
+        .setEnableDebug(jobGroup.getMiscConfig().getEnableDebug());
     // service identities can be modified from the jobGroup without any impact to the pipeline
     // on the other hand isSecure flag changing would result in a new job group
     builder
