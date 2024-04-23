@@ -29,6 +29,7 @@ import com.uber.m3.tally.Stopwatch;
 import com.uber.m3.tally.Timer;
 import io.grpc.Status;
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
@@ -1965,5 +1966,16 @@ public class ProcessorImplTest extends ProcessorTestBase {
   public void testGetStubs() {
     processor.getStubs();
     Mockito.verify(ackManager, Mockito.times(1)).getStubs();
+  }
+
+  @Test
+  public void testGetMetricsTags() {
+    Map<String, String> tags = processor.getMetricsTags(job);
+    Assert.assertEquals("routing-key", tags.get("uri"));
+    Assert.assertEquals(ProcessorTestBase.TOPIC, tags.get("kafka_topic"));
+    Assert.assertEquals(ProcessorTestBase.GROUP, tags.get("kafka_group"));
+    Assert.assertEquals(ProcessorTestBase.CLUSTER, tags.get("kafka_cluster"));
+    Assert.assertEquals(Integer.toString(ProcessorTestBase.PARTITION), tags.get("kafka_partition"));
+    Assert.assertEquals(ProcessorTestBase.CONSUMER_SERVICE_NAME, tags.get("consumer_service"));
   }
 }
