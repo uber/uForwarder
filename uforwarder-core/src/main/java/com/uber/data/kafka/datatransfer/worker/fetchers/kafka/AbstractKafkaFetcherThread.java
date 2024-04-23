@@ -5,8 +5,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
-import com.google.common.collect.Sets;
 import com.uber.data.kafka.datatransfer.AutoOffsetResetPolicy;
 import com.uber.data.kafka.datatransfer.CommandType;
 import com.uber.data.kafka.datatransfer.Job;
@@ -28,6 +26,7 @@ import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Stopwatch;
 import com.uber.m3.tally.Timer;
 import com.uber.m3.util.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
@@ -499,7 +498,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     // Use a snapshot of the expectedRunningJobMap as it might change.
     Map<Long, Job> expectedRunningJobMap = pipelineStateManager.getExpectedRunningJobMap();
     // step 1: create an old topic partition set and an old job set from previousJobRunningMap.
-    Set<Job> oldJobs = ImmutableSet.copyOf(currentRunningJobMap.values());
+    Map<Long, Job> oldJobs = ImmutableMap.copyOf(currentRunningJobMap);
     Set<TopicPartition> oldTPs = new HashSet<>();
     currentRunningJobMap.forEach(
         (jobId, job) -> {
@@ -553,21 +552,26 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
       }
     }
 
-    Set<Job> newJobs = ImmutableSet.copyOf(expectedRunningJobMap.values());
-
-    Sets.SetView<Job> cancelJobs = Sets.difference(oldJobs, newJobs);
-    Sets.SetView<Job> runJobs = Sets.difference(newJobs, oldJobs);
+    List<Job> runJobs = new ArrayList<>();
+    for (Map.Entry<Long, Job> jobEntry : expectedRunningJobMap.entrySet()) {
+      if (!oldJobs.containsKey(jobEntry.getKey())) {
+        runJobs.add(jobEntry.getValue());
+      }
+    }
 
     // step 4: add cancel jobs to removedTopicPartitionJobMap
-    cancelJobs
-        .iterator()
-        .forEachRemaining(
-            job ->
-                removedTopicPartitionJobMap.put(
-                    new TopicPartition(
-                        job.getKafkaConsumerTask().getTopic(),
-                        job.getKafkaConsumerTask().getPartition()),
-                    job));
+    List<Job> cancelJobs = new ArrayList<>();
+    for (Map.Entry<Long, Job> jobEntry : oldJobs.entrySet()) {
+      if (!expectedRunningJobMap.containsKey(jobEntry.getKey())) {
+        Job cancelJob = jobEntry.getValue();
+        cancelJobs.add(cancelJob);
+        removedTopicPartitionJobMap.put(
+            new TopicPartition(
+                cancelJob.getKafkaConsumerTask().getTopic(),
+                cancelJob.getKafkaConsumerTask().getPartition()),
+            cancelJob);
+      }
+    }
 
     logCommands(runJobs, cancelJobs);
 
@@ -575,31 +579,33 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     return !runJobs.isEmpty() || !cancelJobs.isEmpty();
   }
 
-  private static void logCommands(Sets.SetView<Job> runJobs, Sets.SetView<Job> cancelJobs) {
+  private static void logCommands(List<Job> runJobs, List<Job> cancelJobs) {
     runJobs
         .iterator()
         .forEachRemaining(
-            job ->
-                LOGGER.info(
-                    "{} on kafka fetcher",
-                    CommandType.COMMAND_TYPE_RUN_JOB.toString(),
-                    StructuredLogging.jobId(job.getJobId()),
-                    StructuredLogging.kafkaTopic(job.getKafkaConsumerTask().getTopic()),
-                    StructuredLogging.kafkaCluster(job.getKafkaConsumerTask().getCluster()),
-                    StructuredLogging.kafkaGroup(job.getKafkaConsumerTask().getConsumerGroup()),
-                    StructuredLogging.kafkaPartition(job.getKafkaConsumerTask().getPartition())));
+            job -> {
+              LOGGER.info(
+                  "{} on kafka fetcher",
+                  CommandType.COMMAND_TYPE_RUN_JOB,
+                  StructuredLogging.jobId(job.getJobId()),
+                  StructuredLogging.kafkaTopic(job.getKafkaConsumerTask().getTopic()),
+                  StructuredLogging.kafkaCluster(job.getKafkaConsumerTask().getCluster()),
+                  StructuredLogging.kafkaGroup(job.getKafkaConsumerTask().getConsumerGroup()),
+                  StructuredLogging.kafkaPartition(job.getKafkaConsumerTask().getPartition()));
+            });
     cancelJobs
         .iterator()
         .forEachRemaining(
-            job ->
-                LOGGER.info(
-                    "{} on kafka fetcher",
-                    CommandType.COMMAND_TYPE_CANCEL_JOB.toString(),
-                    StructuredLogging.jobId(job.getJobId()),
-                    StructuredLogging.kafkaTopic(job.getKafkaConsumerTask().getTopic()),
-                    StructuredLogging.kafkaCluster(job.getKafkaConsumerTask().getCluster()),
-                    StructuredLogging.kafkaGroup(job.getKafkaConsumerTask().getConsumerGroup()),
-                    StructuredLogging.kafkaPartition(job.getKafkaConsumerTask().getPartition())));
+            job -> {
+              LOGGER.info(
+                  "{} on kafka fetcher",
+                  CommandType.COMMAND_TYPE_CANCEL_JOB,
+                  StructuredLogging.jobId(job.getJobId()),
+                  StructuredLogging.kafkaTopic(job.getKafkaConsumerTask().getTopic()),
+                  StructuredLogging.kafkaCluster(job.getKafkaConsumerTask().getCluster()),
+                  StructuredLogging.kafkaGroup(job.getKafkaConsumerTask().getConsumerGroup()),
+                  StructuredLogging.kafkaPartition(job.getKafkaConsumerTask().getPartition()));
+            });
   }
 
   void adjustTracker(
