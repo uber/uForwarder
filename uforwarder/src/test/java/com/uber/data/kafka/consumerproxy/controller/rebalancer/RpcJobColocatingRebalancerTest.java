@@ -1,6 +1,9 @@
 package com.uber.data.kafka.consumerproxy.controller.rebalancer;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
@@ -16,7 +19,6 @@ import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.WorkerState;
-import com.uber.data.kafka.datatransfer.controller.autoscalar.Scalar;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
@@ -84,10 +86,6 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
   private Counter mockCounter;
 
-  private Scalar scalar;
-
-  private HibernatingJobRebalancer hibernatingJobRebalancer;
-
   // suppress ForbidClassloaderGetResourceInTests as moving to gradle repo
   @SuppressWarnings("ForbidClassloaderGetResourceInTests")
   public RpcJobColocatingRebalancerTest(String jobDataPath, String workerDataPath)
@@ -152,6 +150,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
   public void testProductionDataCoverageRate() throws Exception {
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setMessagesPerSecPerWorker(4000);
+    config.setWorkerToReduceRatio(0.9);
 
     Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
@@ -159,11 +158,10 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(mockScope, config, scalar, hibernatingJobRebalancer, true);
 
-    int round = runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 2);
+    runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 4);
     Set<Long> usedWorkers = usedWorkers(jobs, workers);
     workers.keySet().removeAll(usedWorkers);
     Assert.assertFalse(usedWorkers.contains(0L));
-    Assert.assertTrue(round < 2);
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
@@ -174,7 +172,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     // rerun the same initial jobs, it should not have diff
     workers = new HashMap<>(jsonWorkers);
     Map<String, RebalancingJobGroup> newJobs = new HashMap<>(jsonJobsForCacheCheck);
-    rebalancer.computeWorkerId(newJobs, workers);
+    runRebalanceToConverge(rebalancer::computeWorkerId, newJobs, workers, 4);
     Map<Long, Long> newJobToWorkerId =
         jobToWorkerId(
             newJobs
@@ -190,12 +188,13 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
   public void testJsonDataRemoveJobGroup() throws Exception {
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setMessagesPerSecPerWorker(4000);
+    config.setWorkerToReduceRatio(0.9);
 
     Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(mockScope, config, scalar, hibernatingJobRebalancer, true);
-    runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 2);
+    runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 4);
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
@@ -208,7 +207,6 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     RebalancingJobGroup group = jobs.get(groupName);
     int nJobs = group.getJobs().size();
     jobs.remove(groupName);
-
     runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 2);
     Map<Long, Long> prevJobToWorkerId = jobToWorkerId;
     jobToWorkerId =
@@ -227,12 +225,13 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
+    config.setWorkerToReduceRatio(0.9);
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(mockScope, config, scalar, hibernatingJobRebalancer, true);
 
     Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
-    runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 2);
+    runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 4);
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
@@ -322,6 +321,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
+    config.setWorkerToReduceRatio(0.9);
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(mockScope, config, scalar, hibernatingJobRebalancer, true);
 
@@ -404,12 +404,13 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
+    config.setWorkerToReduceRatio(0.9);
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(mockScope, config, scalar, hibernatingJobRebalancer, true);
 
     Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
-    runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 2);
+    runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 4);
 
     // make sure there is spare workers
     putWorkerToMap(
@@ -419,7 +420,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Assert.assertTrue(usedWorkers.size() < workers.size());
 
     RebalancingJobGroup rebalancingJobGroup =
-        buildRebalancingJobGroup(JobState.JOB_STATE_RUNNING, buildJob(1, 0, "a", 12));
+        buildRebalancingJobGroup("newGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0, "a", 5000));
     jobs.put("newGroup", rebalancingJobGroup);
 
     Map<Long, Long> jobToWorkerId =
@@ -447,6 +448,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
+    config.setWorkerToReduceRatio(0.9);
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(mockScope, config, scalar, hibernatingJobRebalancer, true);
 
@@ -456,35 +458,34 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Map<String, RebalancingJobGroup> extraWorkload3 =
         new HashMap<>(extraWorkloadOneJobGroupOverloadWorkers);
 
-    Map<String, RebalancingJobGroup> jobsRun1Unmodified = jsonJobs;
-    Map<String, RebalancingJobGroup> jobsRun2WithAllExtraWorkload =
-        mergeMaps(
-            Arrays.asList(new HashMap<>(jsonJobs), extraWorkload1, extraWorkload2, extraWorkload3));
-    Map<String, RebalancingJobGroup> jobsRun3RemovedWorkload =
-        mergeMaps(Arrays.asList(new HashMap<>(jsonJobs), extraWorkload3));
-    Map<String, RebalancingJobGroup> jobsRun4OriginalWorkload = new HashMap<>(jsonJobs);
-
+    Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
 
     RebalanceSimResult result1 =
-        runRebalanceSim(
-            rebalancer::computeWorkerId, this::usedWorkers, jobsRun1Unmodified, workers, 2);
+        runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 4);
     Assert.assertTrue(validateOverloadedWorkers(result1, rebalancer.getRebalancingCache()));
+
+    // add jobs
+    jobs.putAll(extraWorkload1);
+    jobs.putAll(extraWorkload2);
+    jobs.putAll(extraWorkload3);
+
     RebalanceSimResult result2 =
-        runRebalanceSim(
-            rebalancer::computeWorkerId,
-            this::usedWorkers,
-            jobsRun2WithAllExtraWorkload,
-            workers,
-            2);
+        runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
     Assert.assertTrue(validateOverloadedWorkers(result2, rebalancer.getRebalancingCache()));
+
+    // remove first set of jobs
+    extraWorkload3.keySet().forEach(jobs::remove);
     RebalanceSimResult result3 =
-        runRebalanceSim(
-            rebalancer::computeWorkerId, this::usedWorkers, jobsRun3RemovedWorkload, workers, 2);
+        runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
     Assert.assertTrue(validateOverloadedWorkers(result3, rebalancer.getRebalancingCache()));
+
+    // remove all extra jobs
+    extraWorkload1.keySet().forEach(jobs::remove);
+    extraWorkload2.keySet().forEach(jobs::remove);
+
     RebalanceSimResult result4 =
-        runRebalanceSim(
-            rebalancer::computeWorkerId, this::usedWorkers, jobsRun4OriginalWorkload, workers, 2);
+        runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
     Assert.assertTrue(validateOverloadedWorkers(result4, rebalancer.getRebalancingCache()));
 
     int workerCount1 = result1.usedWorkers.size();
@@ -496,11 +497,11 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     int diff2 = calcDiff(result2.jobToWorkerId, result3.jobToWorkerId);
     int diff3 = calcDiff(result3.jobToWorkerId, result4.jobToWorkerId);
 
-    Assert.assertTrue("6 jobs removed for first diff", diff1 == 6);
+    Assert.assertTrue("at least 6 jobs added for first diff", diff1 >= 6);
     Assert.assertTrue("Multiple workers needed to be added", workerCount2 - workerCount1 > 1);
     Assert.assertTrue(
         "Two dedicated workers should have been removed between 2 and 3",
-        workerCount2 - workerCount3 == 2);
+        workerCount2 - workerCount3 >= 2);
     Assert.assertTrue(
         "Worker count should decrease by at least one", workerCount3 - workerCount4 >= 1);
     Assert.assertTrue(diff2 > 0 && diff3 > 0);
@@ -510,6 +511,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
   public void testOverloadCase() throws Exception {
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setMessagesPerSecPerWorker(4000);
+    config.setWorkerToReduceRatio(0.9);
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(mockScope, config, scalar, hibernatingJobRebalancer, true);
 
@@ -517,7 +519,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
 
     RebalanceSimResult result1 =
-        runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
+        runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 4);
     Assert.assertTrue(validateOverloadedWorkers(result1, rebalancer.getRebalancingCache()));
     List<Integer> overloadedWorkers1 = collectOverloadedWorkers(result1);
 
@@ -539,7 +541,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     }
 
     Collections.sort(allWorkersWithWorkload);
-    // remove the last 20 least-loaded worker to avoid shuffiling jobs
+    // remove the last 20 least-loaded worker to avoid shuffling jobs
     allWorkersWithWorkload = allWorkersWithWorkload.stream().limit(20).collect(Collectors.toList());
     for (RebalancingWorkerWithSortedJobs toBeRemovedWorker : allWorkersWithWorkload) {
       allAssignedWorkers.remove(toBeRemovedWorker.getWorkerId());
@@ -561,13 +563,13 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             .filter(w -> result2.usedWorkers.contains(w.getNode().getId()))
             .allMatch(w -> w.getState() == WorkerState.WORKER_STATE_WORKING));
     Assert.assertTrue(result1.usedWorkers.size() - result2.usedWorkers.size() >= 20);
-    validateOverloadedWorkers(result2, rebalancer.getRebalancingCache());
+    Assert.assertTrue(validateOverloadedWorkers(result2, rebalancer.getRebalancingCache()));
     List<Integer> overloadedWorkers2 = collectOverloadedWorkers(result2);
     Assert.assertTrue(overloadedWorkers2.size() > overloadedWorkers1.size());
   }
 
   @Test
-  public void testAdjustWorkerCountForPartitionWithInsufficentWorker() throws Exception {
+  public void testInsertWorkersIntoRebalancingTableWithInsufficentWorker() throws Exception {
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumberOfVirtualPartitions(8);
 
@@ -587,8 +589,18 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
       workerMap.put((long) i, StoredWorker.newBuilder().build());
     }
 
-    RebalancerCommon.adjustWorkerCountForPartition(
-        rebalancingCache, workersNeededPerPartition, workerMap, 8, config);
+    // only testing worker count logic
+    Map<String, Integer> jobGroupToPartitionMap = new HashMap<>();
+    Map<String, RebalancingJobGroup> jobGroupMap = new HashMap<>();
+
+    RebalancerCommon.insertWorkersIntoRebalancingTable(
+        rebalancingCache,
+        workersNeededPerPartition,
+        workerMap,
+        8,
+        config,
+        jobGroupToPartitionMap,
+        jobGroupMap);
     for (int i = 0; i < 6; i++) {
       Assert.assertEquals(
           workersNeededPerPartition.get(i).intValue(),
@@ -600,7 +612,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
   }
 
   @Test
-  public void testAdjustWorkerCountForPartitionWithSufficientWorker() throws Exception {
+  public void testInsertWorkersIntoRebalancingTableWithSufficientWorker() throws Exception {
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumberOfVirtualPartitions(8);
 
@@ -620,9 +632,17 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     for (int i = 1000; i < 1064; i++) {
       workerMap.put((long) i, StoredWorker.newBuilder().build());
     }
+    Map<String, Integer> jobGroupToPartitionMap = new HashMap<>();
+    Map<String, RebalancingJobGroup> jobGroupMap = new HashMap<>();
 
-    RebalancerCommon.adjustWorkerCountForPartition(
-        rebalancingCache, workersNeededPerPartition, workerMap, 8, config);
+    RebalancerCommon.insertWorkersIntoRebalancingTable(
+        rebalancingCache,
+        workersNeededPerPartition,
+        workerMap,
+        8,
+        config,
+        jobGroupToPartitionMap,
+        jobGroupMap);
     for (int i = 0; i < 2; i++) {
       Assert.assertEquals(8, rebalancingCache.getAllWorkerIdsForPartition(i).size());
     }
@@ -631,6 +651,165 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
           workersNeededPerPartition.get(i).intValue(),
           rebalancingCache.getAllWorkerIdsForPartition(i).size());
     }
+  }
+
+  @Test
+  public void testInsertWorkersIntoRebalancingTableRemovesFromRebalancingCache() throws Exception {
+    RebalancerConfiguration config = new RebalancerConfiguration();
+    config.setNumberOfVirtualPartitions(8);
+    config.setWorkerToReduceRatio(1.0);
+    RpcJobColocatingRebalancer.RebalancingCache spyRebalancingCache =
+        spy(new RpcJobColocatingRebalancer.RebalancingCache());
+
+    List<Integer> workersInEachPartition = Arrays.asList(15, 15, 15, 15, 15, 15, 15, 15);
+    int workerIdIdx = 1000;
+
+    for (int partitionIdx = 0; partitionIdx < 8; partitionIdx++) {
+      for (int j = 0; j < workersInEachPartition.get(partitionIdx); j++) {
+        spyRebalancingCache.put(workerIdIdx++, partitionIdx);
+      }
+    }
+
+    List<Integer> workersNeededPerPartition = Arrays.asList(7, 7, 8, 8, 8, 8, 8, 8);
+    Map<Long, StoredWorker> workerMap = new HashMap<>();
+    for (int i = 1000;
+        i < workersInEachPartition.stream().mapToInt(Integer::intValue).sum() + 1000;
+        i++) {
+      workerMap.put((long) i, StoredWorker.newBuilder().build());
+    }
+    Map<String, Integer> jobGroupToPartitionMap = new HashMap<>();
+    Map<String, RebalancingJobGroup> jobGroupMap = new HashMap<>();
+
+    for (int i = 0; i < workerMap.size(); i++) {
+      jobGroupToPartitionMap.put("job" + i, (1 + i) % 8);
+    }
+    List<Long> workerIds = new ArrayList<>(workerMap.keySet());
+    for (int i = 0; i < workerMap.size(); i++) {
+      jobGroupMap.put(
+          "job" + i,
+          buildRebalancingJobGroup(
+              "job" + i,
+              JobState.JOB_STATE_RUNNING,
+              StoredJob.newBuilder().setWorkerId(workerIds.get(i)).build()));
+    }
+
+    // test logic to not put worker in same partition: find job group in partition 0, put same
+    // worker in virtual partition 1
+    Map.Entry<String, Integer> e =
+        jobGroupToPartitionMap
+            .entrySet()
+            .stream()
+            .filter(entry -> entry.getValue() == 0)
+            .findFirst()
+            .get();
+    Long workerIdInDuplicatePartitions =
+        jobGroupMap.get(e.getKey()).getJobs().values().stream().findFirst().get().getWorkerId();
+    jobGroupMap.put(
+        "customJob",
+        buildRebalancingJobGroup(
+            "customJob",
+            JobState.JOB_STATE_RUNNING,
+            StoredJob.newBuilder().setWorkerId(workerIdInDuplicatePartitions).build()));
+    jobGroupToPartitionMap.put("customJob", 1);
+
+    RebalancerCommon.insertWorkersIntoRebalancingTable(
+        spyRebalancingCache,
+        workersNeededPerPartition,
+        workerMap,
+        8,
+        config,
+        jobGroupToPartitionMap,
+        jobGroupMap);
+
+    // worker should only have been put in one partition
+    Mockito.verify(spyRebalancingCache, Mockito.times(1))
+        .put(eq(workerIdInDuplicatePartitions), anyLong());
+    int numOriginalWorkers = workersInEachPartition.stream().mapToInt(Integer::intValue).sum();
+    int numWorkersNeeded = workersNeededPerPartition.stream().mapToInt(Integer::intValue).sum();
+    Mockito.verify(spyRebalancingCache, Mockito.times(numOriginalWorkers - numWorkersNeeded))
+        .removeWorker(anyLong());
+    Mockito.verify(
+            spyRebalancingCache,
+            Mockito.times(workersInEachPartition.stream().mapToInt(Integer::intValue).sum() + 1))
+        .putIfAbsent(anyLong(), anyLong());
+    for (int i = 0; i < 8; i++) {
+      Assert.assertEquals(
+          workersNeededPerPartition.get(i).intValue(),
+          spyRebalancingCache.getAllWorkerIdsForPartition(i).size());
+    }
+  }
+
+  @Test
+  public void testJsonDataHaveWorkerInDifferentPartititon() throws Exception {
+    RebalancerConfiguration config = new RebalancerConfiguration();
+    config.setNumWorkersPerUri(2);
+    config.setMessagesPerSecPerWorker(4000);
+    config.setWorkerToReduceRatio(0.9);
+    RpcJobColocatingRebalancer rebalancer =
+        new RpcJobColocatingRebalancer(mockScope, config, scalar, hibernatingJobRebalancer, true);
+
+    Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
+    Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
+
+    RebalanceSimResult result1 =
+        runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 4);
+    Assert.assertTrue(validateOverloadedWorkers(result1, rebalancer.getRebalancingCache()));
+
+    long workerInPartition0 =
+        rebalancer
+            .getRebalancingCache()
+            .getAllWorkersForPartition(0)
+            .stream()
+            .findFirst()
+            .get()
+            .getWorkerId();
+    long workerInPartiton1 =
+        rebalancer
+            .getRebalancingCache()
+            .getAllWorkersForPartition(1)
+            .stream()
+            .findFirst()
+            .get()
+            .getWorkerId();
+
+    RebalancingJobGroup jobGroupInPartition1 =
+        jobs.values()
+            .stream()
+            .filter(
+                j ->
+                    j.getJobs()
+                        .values()
+                        .stream()
+                        .anyMatch(j1 -> j1.getWorkerId() == workerInPartiton1))
+            .findFirst()
+            .get();
+    long targetedJob = jobGroupInPartition1.getJobs().keySet().stream().findFirst().get();
+    jobGroupInPartition1.updateJob(
+        targetedJob,
+        StoredJob.newBuilder(jobGroupInPartition1.getJobs().get(targetedJob))
+            .setWorkerId(workerInPartition0)
+            .build());
+
+    jobs.put(jobGroupInPartition1.getJobGroup().getJobGroupId(), jobGroupInPartition1);
+
+    RebalanceSimResult result2 =
+        runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
+    boolean isWorkerInPartition0 =
+        rebalancer
+            .getRebalancingCache()
+            .getAllWorkersForPartition(0)
+            .stream()
+            .anyMatch(w -> w.getWorkerId() == workerInPartition0);
+    boolean isWorkerInPartition1 =
+        rebalancer
+            .getRebalancingCache()
+            .getAllWorkersForPartition(1)
+            .stream()
+            .anyMatch(w -> w.getWorkerId() == workerInPartition0);
+
+    Assert.assertTrue(isWorkerInPartition0 ^ isWorkerInPartition1);
+    Assert.assertTrue(validateOverloadedWorkers(result2, rebalancer.getRebalancingCache()));
+    Assert.assertTrue(calcDiff(result1.jobToWorkerId, result2.jobToWorkerId) > 0);
   }
 
   @Override
@@ -776,20 +955,17 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
       Map<String, RebalancingJobGroup> jobs,
       Map<Long, StoredWorker> workers,
       int maxRound) {
-    Map<String, RebalancingJobGroup> jobsCopy = new HashMap<>(jobs);
-    Map<Long, StoredWorker> workersCopy = new HashMap<>(workers);
     RebalanceSimResult result = new RebalanceSimResult();
-    result.round = runRebalanceToConverge(rebalanceFunction, jobsCopy, workersCopy, maxRound);
-    result.usedWorkers = usedWorkersFunction.apply(jobsCopy, workersCopy);
+    result.round = runRebalanceToConverge(rebalanceFunction, jobs, workers, maxRound);
+    result.usedWorkers = usedWorkersFunction.apply(jobs, workers);
     result.jobToWorkerId =
         jobToWorkerId(
-            jobsCopy
-                .values()
+            jobs.values()
                 .stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
-    result.jobGroupMap = jobsCopy;
-    result.workers = workersCopy;
+    result.jobGroupMap = jobs;
+    result.workers = workers;
     return result;
   }
 

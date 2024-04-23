@@ -170,6 +170,11 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   }
 
   RebalancingJobGroup buildRebalancingJobGroup(JobState jobGroupState, StoredJob... jobs) {
+    return buildRebalancingJobGroup("", jobGroupState, jobs);
+  }
+
+  RebalancingJobGroup buildRebalancingJobGroup(
+      String jobGroupId, JobState jobGroupState, StoredJob... jobs) {
     StoredJobGroup.Builder jobGroupBuilder = StoredJobGroup.newBuilder();
     double totalRps = 0d;
     for (StoredJob job : jobs) {
@@ -181,6 +186,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             .setJobGroup(
                 JobGroup.newBuilder()
                     .setFlowControl(FlowControl.newBuilder().setMessagesPerSec(totalRps).build())
+                    .setJobGroupId(jobGroupId)
                     .buildPartial())
             .setState(jobGroupState)
             .build();
