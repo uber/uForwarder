@@ -1,18 +1,23 @@
 package com.uber.data.kafka.consumerproxy.worker.limiter;
 
-import java.util.LinkedList;
+import java.util.AbstractQueue;
+import java.util.HashMap;
+import java.util.Iterator;
+import java.util.Map;
 import java.util.Optional;
+import java.util.PriorityQueue;
 import java.util.Queue;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import javax.annotation.Nullable;
 
 /**
  * Supports acquire permit asynchronously use nested {@link InflightLimiter} as delegator Note,
- * adapter needs to be closed independently from deleagtor
+ * adapter needs to be closed independently from delegator
  */
 public class AsyncInflightLimiterAdapter implements AutoCloseable {
-  private final Queue<CompletableFuture<InflightLimiter.Permit>> futurePermits = new LinkedList<>();
+  private final Queue<PermitCompletableFuture> futurePermits = new PendingMessageQueue();
   private final AtomicInteger pendingPermitCount = new AtomicInteger();
   private final AtomicBoolean isClosed = new AtomicBoolean(false);
 
@@ -26,21 +31,28 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
 
   /**
    * Acquires a permit asynchronously. if there is permit, return a complete future. otherwise
-   * future enters a FIFO queue
+   * future enters a priority queue, when dequeue, it should round-robin travers each partition.
+   * with-in each partition, message order by offset
    *
-   * @return
+   * @param partition the partition
+   * @param offset the offset
+   * @return completable future
    */
-  public CompletableFuture<InflightLimiter.Permit> acquireAsync() {
-    Optional<InflightLimiter.Permit> permit = delegator.tryAcquire();
-    if (permit.isPresent()) {
-      return CompletableFuture.completedFuture(new AsyncPermit(permit.get()));
-    } else {
-      PermitCompletableFuture result = new PermitCompletableFuture();
-      synchronized (this) {
-        futurePermits.add(result);
+  public CompletableFuture<InflightLimiter.Permit> acquireAsync(int partition, long offset) {
+    if (futurePermits.isEmpty()) {
+      // if there is no queue, return a completed future
+      Optional<InflightLimiter.Permit> permit = delegator.tryAcquire();
+      if (permit.isPresent()) {
+        return CompletableFuture.completedFuture(new AsyncPermit(permit.get()));
       }
-      return result;
     }
+    // add future into queue and try to complete one
+    PermitCompletableFuture result = new PermitCompletableFuture(partition, offset);
+    synchronized (this) {
+      futurePermits.add(result);
+    }
+    tryCompleteFuture();
+    return result;
   }
 
   @Override
@@ -48,10 +60,10 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
     if (isClosed.compareAndSet(false, true)) {
       /** complete all future permits */
       synchronized (this) {
-        for (CompletableFuture<InflightLimiter.Permit> futurePermit : futurePermits) {
-          futurePermit.complete(InflightLimiter.NoopPermit.INSTANCE);
+        PermitCompletableFuture future;
+        while ((future = futurePermits.poll()) != null) {
+          future.complete(InflightLimiter.NoopPermit.INSTANCE);
         }
-        futurePermits.clear();
       }
     }
   }
@@ -75,6 +87,41 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
     return new AsyncInflightLimiterAdapter(delegator);
   }
 
+  private void tryCompleteFuture() {
+    // try to complete any future permit if there is
+
+    if (futurePermits.isEmpty()) {
+      return;
+    }
+
+    Runnable runnable = null;
+    synchronized (AsyncInflightLimiterAdapter.this) {
+      if (futurePermits.isEmpty()) {
+        return;
+      }
+      Optional<InflightLimiter.Permit> permit = delegator.tryAcquire();
+      if (permit.isPresent()) {
+        CompletableFuture<InflightLimiter.Permit> future;
+        // purge completed futures and find one pending future on the head of queue
+        while ((future = futurePermits.poll()) != null) {
+          if (!future.isDone()) {
+            final CompletableFuture<InflightLimiter.Permit> finalFuture = future;
+            // reduce scope of critical zone by delay completion
+            runnable = () -> finalFuture.complete(new AsyncPermit(permit.get()));
+            break;
+          }
+        }
+        if (runnable == null) {
+          // complete the permit to avoid leaking
+          runnable = () -> permit.get().complete(InflightLimiter.Result.Unknown);
+        }
+      }
+    }
+    if (runnable != null) {
+      runnable.run();
+    }
+  }
+
   private class AsyncPermit implements InflightLimiter.Permit {
     private final InflightLimiter.Permit nestedPermit;
 
@@ -88,40 +135,19 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
       if (!succeed) {
         return false;
       }
-      // try to complete any future permit if there is
-      if (!futurePermits.isEmpty()) {
-        Runnable runnable = null;
-        synchronized (AsyncInflightLimiterAdapter.this) {
-          if (!futurePermits.isEmpty()) {
-            Optional<InflightLimiter.Permit> permit = delegator.tryAcquire();
-            if (permit.isPresent()) {
-              CompletableFuture<InflightLimiter.Permit> future;
-              // purge completed futures and find one pending future on the head of queue
-              while ((future = futurePermits.poll()) != null) {
-                if (!future.isDone()) {
-                  final CompletableFuture<InflightLimiter.Permit> finalFuture = future;
-                  // reduce scope of critical zone by delay completion
-                  runnable = () -> finalFuture.complete(new AsyncPermit(permit.get()));
-                  break;
-                }
-              }
-              if (future == null) {
-                // complete the permit to avoid leaking
-                permit.get().complete(InflightLimiter.Result.Unknown);
-              }
-            }
-          }
-        }
-        if (runnable != null) {
-          runnable.run();
-        }
-      }
+      tryCompleteFuture();
       return true;
     }
   }
 
-  private class PermitCompletableFuture extends CompletableFuture<InflightLimiter.Permit> {
-    private PermitCompletableFuture() {
+  class PermitCompletableFuture extends CompletableFuture<InflightLimiter.Permit>
+      implements Comparable<PermitCompletableFuture> {
+    private final int partition;
+    private final long offset;
+
+    private PermitCompletableFuture(int partition, long offset) {
+      this.partition = partition;
+      this.offset = offset;
       pendingPermitCount.incrementAndGet();
     }
 
@@ -150,6 +176,84 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
     public boolean cancel(boolean mayInterruptIfRunning) {
       // complete with noop permit
       return complete(InflightLimiter.NoopPermit.INSTANCE);
+    }
+
+    @Override
+    public int compareTo(PermitCompletableFuture o) {
+      return Long.compare(offset, o.offset);
+    }
+  }
+
+  class PendingMessageQueue extends AbstractQueue<PermitCompletableFuture> {
+    private final Map<Integer, PriorityQueue<PermitCompletableFuture>> queues;
+    private Iterator<Map.Entry<Integer, PriorityQueue<PermitCompletableFuture>>> queueIterator;
+
+    PendingMessageQueue() {
+      queues = new HashMap<>();
+      queueIterator = newIterator();
+    }
+
+    @Override
+    public Iterator<PermitCompletableFuture> iterator() {
+      throw new UnsupportedOperationException();
+    }
+
+    public int size() {
+      int result = 0;
+      for (PriorityQueue<PermitCompletableFuture> queue : queues.values()) {
+        result += queue.size();
+      }
+      return result;
+    }
+
+    @Override
+    public boolean offer(PermitCompletableFuture future) {
+      PriorityQueue<PermitCompletableFuture> queue;
+      if (queues.containsKey(future.partition)) {
+        queue = queues.get(future.partition);
+      } else {
+        queue = new PriorityQueue<>();
+        queues.put(future.partition, queue);
+        queueIterator = newIterator();
+      }
+      return queue.offer(future);
+    }
+
+    @Override
+    public @Nullable PermitCompletableFuture poll() {
+      Optional<Map.Entry<Integer, PriorityQueue<PermitCompletableFuture>>> entry = nextEntry();
+      if (entry.isPresent()) {
+        PriorityQueue<PermitCompletableFuture> queue = entry.get().getValue();
+        PermitCompletableFuture result = queue.poll();
+        if (queue.isEmpty()) {
+          queues.remove(entry.get().getKey());
+          queueIterator = newIterator();
+        }
+        return result;
+      }
+      return null;
+    }
+
+    @Override
+    public PermitCompletableFuture peek() {
+      throw new UnsupportedOperationException();
+    }
+
+    private Iterator<Map.Entry<Integer, PriorityQueue<PermitCompletableFuture>>> newIterator() {
+      return queues.entrySet().iterator();
+    }
+
+    private Optional<Map.Entry<Integer, PriorityQueue<PermitCompletableFuture>>> nextEntry() {
+      Optional<Map.Entry<Integer, PriorityQueue<PermitCompletableFuture>>> result;
+      if (queueIterator.hasNext()) {
+        result = Optional.of(queueIterator.next());
+        if (!queueIterator.hasNext()) {
+          // circulate entries
+          queueIterator = newIterator();
+        }
+        return result;
+      }
+      return Optional.empty();
     }
   }
 
