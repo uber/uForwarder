@@ -292,9 +292,15 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
 
   private CompletableFuture<InflightLimiter.Permit> acquireAsync(
       ProcessorMessage processorMessage, AsyncInflightLimiterAdapter limiter) {
+    TopicPartitionOffset topicPartitionOffset = processorMessage.getPhysicalMetadata();
     return infra
         .contextManager()
-        .wrap(processorMessage.getStub().withFuturePermit(limiter.acquireAsync()));
+        .wrap(
+            processorMessage
+                .getStub()
+                .withFuturePermit(
+                    limiter.acquireAsync(
+                        topicPartitionOffset.getPartition(), topicPartitionOffset.getOffset())));
   }
 
   Collection<Job> jobs() {
