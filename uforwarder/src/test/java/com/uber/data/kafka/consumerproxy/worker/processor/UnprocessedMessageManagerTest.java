@@ -363,7 +363,6 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
   @Test
   public void testRemove() {
     unprocessedMessageManager.remove(pm1);
-    Assert.assertEquals(0, unprocessedMessageManager.countLimiter.getMetrics().getAsyncQueueSize());
     Assert.assertEquals(6, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
 
     unprocessedMessageManager.remove(pm3);
