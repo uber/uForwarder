@@ -6,6 +6,7 @@ import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
+import com.uber.data.kafka.datatransfer.common.KafkaUtils;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
@@ -118,7 +119,7 @@ public class AbstractKafkaFetcherThreadTest2 extends FievelTestBase {
     fetcherThread.doWork();
     CheckpointInfo checkpointInfo = checkpointManager.getCheckpointInfo(job);
     Assert.assertEquals(15, checkpointInfo.getOffsetToCommit());
-    Assert.assertEquals(0, checkpointInfo.getCommittedOffset());
+    Assert.assertEquals(-1, checkpointInfo.getCommittedOffset());
 
     Thread.sleep(1000);
     fetcherThread.doWork();
@@ -141,6 +142,7 @@ public class AbstractKafkaFetcherThreadTest2 extends FievelTestBase {
                 .setPartition(partitionId)
                 .setConsumerGroup(consumerGroup)
                 .setAutoOffsetResetPolicy(AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST)
+                .setStartOffset(KafkaUtils.MAX_INVALID_START_OFFSET)
                 .build())
         .setFlowControl(
             FlowControl.newBuilder()

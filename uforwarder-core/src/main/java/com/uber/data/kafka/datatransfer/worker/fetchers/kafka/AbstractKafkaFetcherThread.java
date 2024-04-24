@@ -119,7 +119,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
 
   // TODO:KAFKA-6207 clean up feature flag
   private final boolean retrieveCommitOffsetOnFetcherInitialization;
-  private final boolean commitOnIdleFetcher;
 
   private long lastCommitTimestampMs = -1L;
   private long lastCommitOffsetsCheckTimeMs = -1L;
@@ -165,7 +164,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     this.offsetMonitorMs = config.getOffsetMonitorIntervalMs();
     this.pollTimeoutMs = config.getPollTimeoutMs();
     this.kafkaConsumer = kafkaConsumer;
-    this.commitOnIdleFetcher = config.getCommitOnIdleFetcher();
     this.retrieveCommitOffsetOnFetcherInitialization =
         config.getRetrieveCommitOffsetOnFetcherInitialization();
     this.scope =
@@ -435,8 +433,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
   }
 
   private boolean eligibleToCommit(long offsetToCommit, long committedOffset) {
-    if (commitOnIdleFetcher
-        && offsetToCommit == committedOffset
+    if (offsetToCommit == committedOffset
         && (System.currentTimeMillis() - lastCommitTimestampMs > ACTIVE_COMMIT_INTERVAL_IN_MS)) {
       return true;
     } else if (offsetToCommit != committedOffset

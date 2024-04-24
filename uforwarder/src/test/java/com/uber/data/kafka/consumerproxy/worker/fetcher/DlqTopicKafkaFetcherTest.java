@@ -282,8 +282,8 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
     pipelineStateManager.run(job).toCompletableFuture().get();
     // force to do work
     fetcherThread.doWork();
-    // nothing to commit
-    Mockito.verify(mockConsumer, Mockito.never()).commitSync(mapCaptor.capture());
+    // commit offset even if the commit offset is not moving
+    Mockito.verify(mockConsumer, Mockito.times(1)).commitSync(mapCaptor.capture());
     CheckpointInfo checkpointInfo = checkpointManager.getCheckpointInfo(job);
     Assert.assertNotNull(checkpointInfo);
     // wait at most 5s
@@ -302,7 +302,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
     Thread.sleep(1000);
     // force to do work
     fetcherThread.doWork();
-    Mockito.verify(mockConsumer, Mockito.times(1)).commitSync(mapCaptor.capture());
+    Mockito.verify(mockConsumer, Mockito.times(2)).commitSync(mapCaptor.capture());
     Assert.assertEquals(50L, checkpointInfo.getCommittedOffset());
     // cancel the job
     pipelineStateManager.cancel(job).toCompletableFuture().get();
