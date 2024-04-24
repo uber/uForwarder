@@ -1,5 +1,6 @@
 package com.uber.data.kafka.consumerproxy.worker.limiter;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.AbstractQueue;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -184,9 +185,16 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
     }
   }
 
+  /**
+   * Queue for pending message when dequeue, partitions are selected in round-robin way. messages
+   * are sorted by offset per partition
+   */
+  @VisibleForTesting
   class PendingMessageQueue extends AbstractQueue<PermitCompletableFuture> {
     private final Map<Integer, PriorityQueue<PermitCompletableFuture>> queues;
     private Iterator<Map.Entry<Integer, PriorityQueue<PermitCompletableFuture>>> queueIterator;
+
+    private AtomicInteger size = new AtomicInteger(0);
 
     PendingMessageQueue() {
       queues = new HashMap<>();
@@ -198,12 +206,10 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
       throw new UnsupportedOperationException();
     }
 
+    /** Gets size of the queue */
+    @Override
     public int size() {
-      int result = 0;
-      for (PriorityQueue<PermitCompletableFuture> queue : queues.values()) {
-        result += queue.size();
-      }
-      return result;
+      return size.get();
     }
 
     @Override
@@ -216,7 +222,11 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
         queues.put(future.partition, queue);
         queueIterator = newIterator();
       }
-      return queue.offer(future);
+      boolean result = queue.offer(future);
+      if (result) {
+        size.incrementAndGet();
+      }
+      return result;
     }
 
     @Override
@@ -225,6 +235,9 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
       if (entry.isPresent()) {
         PriorityQueue<PermitCompletableFuture> queue = entry.get().getValue();
         PermitCompletableFuture result = queue.poll();
+        if (result != null) {
+          size.decrementAndGet();
+        }
         if (queue.isEmpty()) {
           queues.remove(entry.get().getKey());
           queueIterator = newIterator();
@@ -260,8 +273,22 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
   /** Adapter metrics */
   public class Metrics {
 
+    /**
+     * Gets number of requests to be completed
+     *
+     * @return
+     */
     public long getAsyncQueueSize() {
       return pendingPermitCount.get();
+    }
+
+    /**
+     * Gets number of requests in the pending queue Some requests may have already been completed
+     *
+     * @return
+     */
+    public int getPendingQueueSize() {
+      return futurePermits.size();
     }
   }
 }
