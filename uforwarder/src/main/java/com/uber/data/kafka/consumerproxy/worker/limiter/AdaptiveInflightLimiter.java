@@ -95,14 +95,17 @@ public abstract class AdaptiveInflightLimiter extends AbstractInflightLimiter {
     @Override
     protected boolean doComplete(Result result) {
       switch (result) {
-        case Failed:
+        case Dropped:
           listener.onDropped();
           break;
         case Succeed:
           listener.onSuccess();
           break;
-        default:
+        case Failed:
           listener.onIgnore();
+          break;
+        default:
+          // Noop
       }
       /** unblock one blocking thread if there is any */
       synchronized (lock) {

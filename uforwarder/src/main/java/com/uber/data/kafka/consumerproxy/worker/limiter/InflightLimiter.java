@@ -51,10 +51,10 @@ public interface InflightLimiter extends AutoCloseable {
   enum Result {
     /** indicates request succeed */
     Succeed,
-    /** indicates request failed */
+    /** indicates request unknown failure */
     Failed,
-    /** indicates result is unknown */
-    Unknown
+    /** indicates request dropped */
+    Dropped
   }
 
   /** Metrics of inflight limiter */
@@ -110,12 +110,12 @@ public interface InflightLimiter extends AutoCloseable {
     boolean complete(Result result);
 
     /**
-     * complete request with unknown result
+     * complete request successfully
      *
      * @return the boolean
      */
     default boolean complete() {
-      return complete(Result.Unknown);
+      return complete(Result.Succeed);
     }
   }
 

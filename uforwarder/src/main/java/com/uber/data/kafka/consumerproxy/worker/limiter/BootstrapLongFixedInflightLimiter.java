@@ -115,7 +115,7 @@ public final class BootstrapLongFixedInflightLimiter extends LongFixedInflightLi
           ret = permit.complete(result);
         }
         // switch to working state when processed count > threshold
-        if (ret && result != Result.Failed) {
+        if (ret && result == Result.Succeed) {
           if (completed.incrementAndGet() > bootstrapCompleteThreshold) {
             stateReference.compareAndSet(BootstrapState.this, new WorkingState());
           }
