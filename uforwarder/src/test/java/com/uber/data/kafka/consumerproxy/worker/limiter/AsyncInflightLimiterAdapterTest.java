@@ -26,15 +26,19 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
     CompletableFuture<InflightLimiter.Permit> futurePermit1 = adapter.acquireAsync(0, 1);
     Assert.assertTrue(futurePermit1.isDone());
     Assert.assertEquals(0, adapter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(0, adapter.getMetrics().getPendingQueueSize());
     CompletableFuture<InflightLimiter.Permit> futurePermit2 = adapter.acquireAsync(0, 2);
     Assert.assertTrue(futurePermit2.isDone());
     Assert.assertEquals(0, adapter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(0, adapter.getMetrics().getPendingQueueSize());
     CompletableFuture<InflightLimiter.Permit> futurePermit3 = adapter.acquireAsync(0, 3);
     Assert.assertFalse(futurePermit3.isDone());
     Assert.assertEquals(1, adapter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(1, adapter.getMetrics().getPendingQueueSize());
     Assert.assertTrue(futurePermit2.get().complete(InflightLimiter.Result.Succeed));
     Assert.assertTrue(futurePermit3.isDone());
     Assert.assertEquals(0, adapter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(0, adapter.getMetrics().getPendingQueueSize());
   }
 
   @Test
@@ -46,10 +50,13 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
     }
     CompletableFuture<InflightLimiter.Permit> futurePermit1 = adapter.acquireAsync(1, 1);
     Assert.assertEquals(1, adapter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(1, adapter.getMetrics().getPendingQueueSize());
     CompletableFuture<InflightLimiter.Permit> futurePermit2 = adapter.acquireAsync(1, 2);
     Assert.assertEquals(2, adapter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(2, adapter.getMetrics().getPendingQueueSize());
     CompletableFuture<InflightLimiter.Permit> futurePermit3 = adapter.acquireAsync(2, 1);
     Assert.assertEquals(3, adapter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(3, adapter.getMetrics().getPendingQueueSize());
     for (InflightLimiter.Permit permit : permits) {
       permit.complete();
     }
@@ -57,6 +64,7 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
     Assert.assertTrue(futurePermit3.isDone());
     Assert.assertTrue(futurePermit1.isDone());
     Assert.assertFalse(futurePermit2.isDone());
+    Assert.assertEquals(1, adapter.getMetrics().getPendingQueueSize());
     // complete last one
     futurePermit1.get().complete();
     Assert.assertTrue(futurePermit2.isDone());
@@ -95,9 +103,11 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
     }
     CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(0, 2);
     Assert.assertEquals(1, adapter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(1, adapter.getMetrics().getPendingQueueSize());
     futurePermit.cancel(false);
     Assert.assertTrue(futurePermit.isDone());
     Assert.assertEquals(0, adapter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(1, adapter.getMetrics().getPendingQueueSize());
   }
 
   @Test
@@ -109,9 +119,11 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
     }
     CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(0, 1);
     Assert.assertEquals(1, adapter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(1, adapter.getMetrics().getPendingQueueSize());
     acquiredPermit.get().complete(InflightLimiter.Result.Succeed);
     Assert.assertTrue(futurePermit.isDone());
     Assert.assertEquals(0, adapter.getMetrics().getAsyncQueueSize());
+    Assert.assertEquals(0, adapter.getMetrics().getPendingQueueSize());
   }
 
   @Test
@@ -157,8 +169,10 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
     Assert.assertTrue(futurePermit.isDone());
     Assert.assertEquals(0, adapter.getMetrics().getAsyncQueueSize());
     Assert.assertEquals(0, inflightLimiter.getMetrics().availablePermits());
+    Assert.assertEquals(1, adapter.getMetrics().getPendingQueueSize());
     acquiredPermit.get().complete(InflightLimiter.Result.Succeed); // it should return permit
     Assert.assertEquals(0, adapter.getMetrics().getAsyncQueueSize());
     Assert.assertEquals(1, inflightLimiter.getMetrics().availablePermits());
+    Assert.assertEquals(0, adapter.getMetrics().getPendingQueueSize());
   }
 }
