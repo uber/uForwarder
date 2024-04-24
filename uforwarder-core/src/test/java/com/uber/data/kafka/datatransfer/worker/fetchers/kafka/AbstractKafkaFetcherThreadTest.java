@@ -595,6 +595,14 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     completableFuture.completeExceptionally(new Throwable());
     Mockito.when(processor.submit(Mockito.isA(ItemAndJob.class))).thenReturn(completableFuture);
     fetcherThread.processFetchedData(consumerRecords, taskMap);
+
+    // case 3: job is updated, partition should not be paused
+    Mockito.reset(mockConsumer);
+    Job updatedJob = createConsumerJob(job.getJobId(), TOPIC_NAME, 0, CONSUMER_GROUP, 1002, 1002);
+    pipelineStateManager.update(updatedJob).toCompletableFuture().get();
+    fetcherThread.processFetchedData(consumerRecords, taskMap);
+    Mockito.verify(mockConsumer, Mockito.never()).pause(Collections.singleton(tp1));
+    Mockito.verify(mockConsumer, Mockito.times(1)).pause(Collections.singleton(tp2));
   }
 
   @Test

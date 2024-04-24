@@ -84,7 +84,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
   public boolean shouldJobBeRunning(Job job) {
     // get the update map lock in case the job is removed and added back again.
     synchronized (updateMapLock) {
-      return expectedRunningJobMap.containsValue(job);
+      return expectedRunningJobMap.containsKey(job.getJobId());
     }
   }
 
