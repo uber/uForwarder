@@ -1,5 +1,6 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.UnmodifiableIterator;
@@ -208,7 +209,7 @@ public class GrpcManagedChannelPool extends ManagedChannel {
   }
 
   /** Threadsafe channel pool */
-  private class ImmutableChannelPool {
+  class ImmutableChannelPool {
     private final ImmutableList<ManagedChannel> channels;
     private final int size;
     private final AtomicInteger index;
@@ -219,9 +220,14 @@ public class GrpcManagedChannelPool extends ManagedChannel {
       this.index = new AtomicInteger(0);
     }
 
-    private ManagedChannel next() {
+    @VisibleForTesting
+    void setIndex(int newIndex) {
+      index.set(newIndex);
+    }
+
+    ManagedChannel next() {
       // channelPoolSize is an int so it is safe to cast the output of mod to int.
-      return channels.get(Math.abs(index.getAndIncrement()) % size);
+      return channels.get(Math.abs(index.getAndIncrement() % size));
     }
 
     private UnmodifiableIterator<ManagedChannel> iterator() {

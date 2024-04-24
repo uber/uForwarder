@@ -1,5 +1,6 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc;
 
+import com.google.common.collect.ImmutableList;
 import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.CallOptions;
 import io.grpc.ClientCall;
@@ -169,5 +170,22 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
       Assert.assertEquals(0, poolWithTwoChannels.getMetrics().inflight());
       throw e;
     }
+  }
+
+  @Test
+  public void testNextChannelIndexOverflow() {
+    ImmutableList.Builder<ManagedChannel> poolBuilder = ImmutableList.builder();
+    Supplier<ManagedChannel> channelProvider = Mockito.mock(Supplier.class);
+    Mockito.when(channelProvider.get()).thenReturn(channelOne).thenReturn(channelTwo);
+    for (int i = 0; i < 5; i++) {
+      poolBuilder.add(channelProvider.get());
+    }
+    GrpcManagedChannelPool.ImmutableChannelPool pool =
+        poolWithTwoChannels.new ImmutableChannelPool(poolBuilder.build());
+
+    pool.setIndex(Integer.MAX_VALUE);
+    Assert.assertNotNull(pool.next());
+    // this should not overflow
+    Assert.assertNotNull(pool.next());
   }
 }
