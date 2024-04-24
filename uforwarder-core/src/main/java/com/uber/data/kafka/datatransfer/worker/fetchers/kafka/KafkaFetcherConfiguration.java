@@ -43,6 +43,8 @@ public final class KafkaFetcherConfiguration {
 
   private boolean commitOnIdleFetcher = false;
 
+  private boolean retrieveCommitOffsetOnFetcherInitialization = false;
+
   public Properties getKafkaConsumerProperties(
       String bootstrapServers,
       String clientId,
@@ -149,6 +151,15 @@ public final class KafkaFetcherConfiguration {
 
   public void setCommitOnIdleFetcher(Boolean commitOnIdleFetcher) {
     this.commitOnIdleFetcher = commitOnIdleFetcher;
+  }
+
+  public boolean getRetrieveCommitOffsetOnFetcherInitialization() {
+    return retrieveCommitOffsetOnFetcherInitialization;
+  }
+
+  public void setRetrieveCommitOffsetOnFetcherInitialization(
+      Boolean retrieveCommitOffsetOnFetcherInitialization) {
+    this.retrieveCommitOffsetOnFetcherInitialization = retrieveCommitOffsetOnFetcherInitialization;
   }
 
   private String toConsumerConfig(AutoOffsetResetPolicy autoOffsetResetPolicy) {

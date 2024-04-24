@@ -5,12 +5,14 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.JobStatus;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
+import com.uber.data.kafka.datatransfer.common.KafkaUtils;
 import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
@@ -378,7 +380,138 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
                     .build())
             .build();
     fetcherThread.addToCheckPointManager(
-        ImmutableMap.of(tp1, job1, tp2, job2, tp3, job3, tp4, job4));
+        ImmutableMap.of(tp1, job1, tp2, job2, tp3, job3, tp4, job4), ImmutableMap.of());
+  }
+
+  @Test
+  public void testAddToCheckPointManagerWithoutStartOffset() {
+    TopicPartition tp1 = new TopicPartition(TOPIC_NAME, 0);
+    Job job1 =
+        Job.newBuilder()
+            .setKafkaConsumerTask(
+                KafkaConsumerTask.newBuilder()
+                    .setConsumerGroup(CONSUMER_GROUP)
+                    .setTopic(TOPIC_NAME)
+                    .setPartition(0)
+                    .setStartOffset(-1L)
+                    .setEndOffset(-1L)
+                    .build())
+            .build();
+    CheckpointInfo checkpointInfo =
+        new CheckpointInfo(job1, KafkaUtils.MAX_INVALID_START_OFFSET, null);
+    Mockito.when(checkpointManager.addCheckpointInfo(any())).thenReturn(checkpointInfo);
+    fetcherThread.addToCheckPointManager(
+        ImmutableMap.of(tp1, job1), ImmutableMap.of(tp1, new OffsetAndMetadata(10L)));
+    Assert.assertEquals(-1L, checkpointInfo.getCommittedOffset());
+    Assert.assertEquals(-1L, checkpointInfo.getOffsetToCommit());
+  }
+
+  @Test
+  public void testAddToCheckPointManagerWithRetrieveCommitOffsetOnFetcherInitialization() {
+    TopicPartition tp1 = new TopicPartition(TOPIC_NAME, 0);
+    Job job1 =
+        Job.newBuilder()
+            .setKafkaConsumerTask(
+                KafkaConsumerTask.newBuilder()
+                    .setConsumerGroup(CONSUMER_GROUP)
+                    .setTopic(TOPIC_NAME)
+                    .setPartition(0)
+                    .setStartOffset(-1L)
+                    .setEndOffset(-1L)
+                    .build())
+            .build();
+
+    kafkaFetcherConfiguration.setRetrieveCommitOffsetOnFetcherInitialization(true);
+    fetcherThread =
+        new KafkaFetcherThread(
+            THREAD_NAME,
+            kafkaFetcherConfiguration,
+            checkpointManager,
+            throughputTracker,
+            inflightMessageTracker,
+            mockConsumer,
+            coreInfra,
+            true,
+            true);
+
+    CheckpointInfo checkpointInfo =
+        new CheckpointInfo(job1, KafkaUtils.MAX_INVALID_START_OFFSET, null);
+    Mockito.when(checkpointManager.addCheckpointInfo(any())).thenReturn(checkpointInfo);
+    fetcherThread.addToCheckPointManager(ImmutableMap.of(tp1, job1), ImmutableMap.of());
+    Assert.assertEquals(KafkaUtils.MAX_INVALID_START_OFFSET, checkpointInfo.getCommittedOffset());
+    Assert.assertEquals(KafkaUtils.MAX_INVALID_START_OFFSET, checkpointInfo.getOffsetToCommit());
+
+    fetcherThread.addToCheckPointManager(
+        ImmutableMap.of(tp1, job1), ImmutableMap.of(tp1, new OffsetAndMetadata(10L)));
+    Assert.assertEquals(10L, checkpointInfo.getCommittedOffset());
+    Assert.assertEquals(10L, checkpointInfo.getOffsetToCommit());
+
+    checkpointInfo = new CheckpointInfo(job1, 20L, null);
+    Mockito.when(checkpointManager.addCheckpointInfo(any())).thenReturn(checkpointInfo);
+    fetcherThread.addToCheckPointManager(
+        ImmutableMap.of(tp1, job1), ImmutableMap.of(tp1, new OffsetAndMetadata(10L)));
+    Assert.assertEquals(20L, checkpointInfo.getCommittedOffset());
+    Assert.assertEquals(20L, checkpointInfo.getOffsetToCommit());
+  }
+
+  @Test
+  public void testGetBrokerCommittedOffset() {
+    TopicPartition tp1 = new TopicPartition(TOPIC_NAME, 0);
+    Mockito.when(mockConsumer.committed(ImmutableSet.of(tp1)))
+        .thenReturn(ImmutableMap.of(tp1, new OffsetAndMetadata(10L)));
+    Map<TopicPartition, OffsetAndMetadata> partitionOffsetAndMetadataMap =
+        fetcherThread.getBrokerCommittedOffset(ImmutableSet.of(tp1));
+    Assert.assertEquals(10L, partitionOffsetAndMetadataMap.get(tp1).offset());
+  }
+
+  @Test
+  public void testGetBrokerCommittedOffsetWithError() {
+    TopicPartition tp1 = new TopicPartition(TOPIC_NAME, 0);
+    Mockito.when(mockConsumer.committed(ImmutableSet.of(tp1)))
+        .thenThrow(new IllegalArgumentException("test"));
+    Map<TopicPartition, OffsetAndMetadata> partitionOffsetAndMetadataMap =
+        fetcherThread.getBrokerCommittedOffset(ImmutableSet.of(tp1));
+    Assert.assertEquals(0, partitionOffsetAndMetadataMap.size());
+  }
+
+  @Test
+  public void testKCommitOnIdleFetcherWithInitialization() throws Exception {
+    kafkaFetcherConfiguration.setCommitOnIdleFetcher(true);
+    kafkaFetcherConfiguration.setRetrieveCommitOffsetOnFetcherInitialization(true);
+    fetcherThread =
+        new KafkaFetcherThread(
+            THREAD_NAME,
+            kafkaFetcherConfiguration,
+            checkpointManager,
+            throughputTracker,
+            inflightMessageTracker,
+            mockConsumer,
+            coreInfra,
+            true,
+            true);
+
+    Job job = createConsumerJob(1, TOPIC_NAME, 0, CONSUMER_GROUP, 1000, 1000);
+    Job.Builder jobBuilder = Job.newBuilder(job);
+    jobBuilder.getKafkaConsumerTaskBuilder().setStartOffset(KafkaUtils.MAX_INVALID_START_OFFSET);
+    job = jobBuilder.build();
+
+    CheckpointInfo checkpointInfo =
+        new CheckpointInfo(job, KafkaUtils.MAX_INVALID_START_OFFSET, null);
+    Mockito.when(checkpointManager.addCheckpointInfo(any())).thenReturn(checkpointInfo);
+    Mockito.when(checkpointManager.getCheckpointInfo(any())).thenReturn(checkpointInfo);
+    Mockito.when(checkpointManager.getCheckpointInfo(any())).thenReturn(checkpointInfo);
+    TopicPartition tp = new TopicPartition(TOPIC_NAME, 0);
+    Mockito.when(mockConsumer.committed(ImmutableSet.of(tp)))
+        .thenReturn(ImmutableMap.of(tp, new OffsetAndMetadata(10L)));
+
+    pipelineStateManager.run(job).toCompletableFuture().get();
+    fetcherThread.setPipelineStateManager(pipelineStateManager);
+    fetcherThread.setNextStage(processor);
+
+    Set<TopicPartition> hashSet = new HashSet<>();
+    hashSet.add(tp);
+    fetcherThread.doWork();
+    Mockito.verify(mockConsumer, Mockito.times(1)).commitAsync(any(), any());
   }
 
   @Test
