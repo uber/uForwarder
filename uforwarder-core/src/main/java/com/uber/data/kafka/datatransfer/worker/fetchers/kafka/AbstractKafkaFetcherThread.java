@@ -117,6 +117,8 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
   @Nullable private volatile Sink<ConsumerRecord<K, V>, Long> processorSink;
   @Nullable private volatile PipelineStateManager pipelineStateManager;
 
+  // TODO:KAFKA-6207 clean up feature flag
+  private final boolean retrieveCommitOffsetOnFetcherInitialization;
   private final boolean commitOnIdleFetcher;
 
   private long lastCommitTimestampMs = -1L;
@@ -164,6 +166,8 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     this.pollTimeoutMs = config.getPollTimeoutMs();
     this.kafkaConsumer = kafkaConsumer;
     this.commitOnIdleFetcher = config.getCommitOnIdleFetcher();
+    this.retrieveCommitOffsetOnFetcherInitialization =
+        config.getRetrieveCommitOffsetOnFetcherInitialization();
     this.scope =
         infra
             .scope()
@@ -265,8 +269,14 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     // step 2: handle newly-added topic partitions
     // specifically, (1) the checkpoint manager starts to track them (2) extracts topic partitions
     // with non-negative start offset for further processing.
+    // (3) fetch committed offset from broker and put it into checkpoint manager when feature flag
+    // retrieveCommitOffsetOnFetcherInitialization is enabled
+    Map<TopicPartition, OffsetAndMetadata> brokerCommittedOffset = new HashMap<>();
+    if (retrieveCommitOffsetOnFetcherInitialization) {
+      brokerCommittedOffset = getBrokerCommittedOffset(addedTopicPartitionJobMap.keySet());
+    }
     Map<TopicPartition, Long> topicPartitionOffsetMap =
-        addToCheckPointManager(addedTopicPartitionJobMap);
+        addToCheckPointManager(addedTopicPartitionJobMap, brokerCommittedOffset);
 
     // step 2.1 track throughput and inflightMessage of newly added topic partitions and the removed
     // topic partitions
@@ -337,6 +347,47 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
               checkpointManager.getCheckpointInfo(entry.getValue()).getFetchOffset());
         }
       }
+    }
+  }
+
+  @VisibleForTesting
+  Map<TopicPartition, OffsetAndMetadata> getBrokerCommittedOffset(
+      Set<TopicPartition> addedTopicPartition) {
+    Preconditions.checkNotNull(pipelineStateManager, "pipeline config manager required");
+    Stopwatch kafkaCommittedTimer =
+        scope
+            .tagged(
+                StructuredTags.builder()
+                    .setKafkaGroup(
+                        pipelineStateManager
+                            .getJobTemplate()
+                            .getKafkaConsumerTask()
+                            .getConsumerGroup())
+                    .setKafkaTopic(
+                        pipelineStateManager.getJobTemplate().getKafkaConsumerTask().getTopic())
+                    .build())
+            .timer(MetricNames.OFFSET_FETCH_LATENCY)
+            .start();
+    try {
+      return kafkaConsumer.committed(addedTopicPartition);
+    } catch (Throwable e) {
+      LOGGER.error("failed to fetch committed offset from kafka servers", e);
+      scope
+          .tagged(
+              StructuredTags.builder()
+                  .setKafkaGroup(
+                      pipelineStateManager
+                          .getJobTemplate()
+                          .getKafkaConsumerTask()
+                          .getConsumerGroup())
+                  .setKafkaTopic(
+                      pipelineStateManager.getJobTemplate().getKafkaConsumerTask().getTopic())
+                  .build())
+          .counter(MetricNames.OFFSET_FETCH_EXCEPTION)
+          .inc(1);
+      return ImmutableMap.of();
+    } finally {
+      kafkaCommittedTimer.stop();
     }
   }
 
@@ -623,11 +674,30 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
 
   @VisibleForTesting
   Map<TopicPartition, Long> addToCheckPointManager(
-      Map<TopicPartition, Job> addedTopicPartitionJobMap) {
+      Map<TopicPartition, Job> addedTopicPartitionJobMap,
+      Map<TopicPartition, OffsetAndMetadata> brokerCommittedOffset) {
     Map<TopicPartition, Long> startingOffsetMap = new HashMap<>();
     if (!addedTopicPartitionJobMap.isEmpty()) {
       for (Map.Entry<TopicPartition, Job> entry : addedTopicPartitionJobMap.entrySet()) {
-        checkpointManager.addCheckpointInfo(entry.getValue());
+        CheckpointInfo checkpointInfo = checkpointManager.addCheckpointInfo(entry.getValue());
+        // if the offset to commit is not set, we set it to the broker committed offset when feature
+        // flag enabled
+        if (retrieveCommitOffsetOnFetcherInitialization
+            && !checkpointInfo.isCommitOffsetExists()
+            && brokerCommittedOffset.containsKey(entry.getKey())) {
+          OffsetAndMetadata brokerOffset = brokerCommittedOffset.get(entry.getKey());
+          checkpointInfo.setCommittedOffset(brokerOffset.offset());
+          checkpointInfo.setOffsetToCommit(brokerOffset.offset());
+          LOGGER.info(
+              "set committed offset to broker committed offset",
+              StructuredLogging.kafkaGroup(
+                  entry.getValue().getKafkaConsumerTask().getConsumerGroup()),
+              StructuredLogging.kafkaTopic(entry.getValue().getKafkaConsumerTask().getTopic()),
+              StructuredLogging.kafkaPartition(
+                  entry.getValue().getKafkaConsumerTask().getPartition()),
+              StructuredLogging.kafkaOffset(brokerOffset.offset()));
+        }
+
         KafkaConsumerTask config = entry.getValue().getKafkaConsumerTask();
         long startingOffset = config.getStartOffset();
         // only seek start offset when it's a valid offset
@@ -1171,6 +1241,8 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     static final String CLOSE_SUCCESS = "fetcher.kafka.close.success";
     static final String CLOSE_FAILURE = "fetcher.kafka.close.failure";
     static final String KAFKA_POLL_LATENCY = "fetcher.kafka.poll.latency";
+    static final String OFFSET_FETCH_LATENCY = "fetcher.kafka.offset.fetch.latency";
+    static final String OFFSET_FETCH_EXCEPTION = "fetcher.kafka.offset.fetch.exception";
     static final String OFFSET_COMMIT_LATENCY = "fetcher.kafka.offset.commit.latency";
     static final String OFFSET = "fetcher.kafka.offset";
     static final String OFFSET_COMMIT_SUCCESS = "fetcher.kafka.offset.commit.success";

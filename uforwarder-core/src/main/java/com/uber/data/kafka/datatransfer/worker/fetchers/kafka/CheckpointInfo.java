@@ -1,6 +1,7 @@
 package com.uber.data.kafka.datatransfer.worker.fetchers.kafka;
 
 import com.uber.data.kafka.datatransfer.Job;
+import com.uber.data.kafka.datatransfer.common.KafkaUtils;
 import java.util.concurrent.atomic.AtomicLong;
 import javax.annotation.Nullable;
 
@@ -63,6 +64,16 @@ public final class CheckpointInfo {
 
   public long getCommittedOffset() {
     return committedOffset.get();
+  }
+
+  /**
+   * Checks if the offset exists in the checkpoint info
+   *
+   * @return true if the offset exists in the checkpoint info
+   */
+  public boolean isCommitOffsetExists() {
+    return offsetToCommit.get() != KafkaUtils.MAX_INVALID_START_OFFSET
+        || committedOffset.get() != KafkaUtils.MAX_INVALID_START_OFFSET;
   }
 
   public Job getJob() {
