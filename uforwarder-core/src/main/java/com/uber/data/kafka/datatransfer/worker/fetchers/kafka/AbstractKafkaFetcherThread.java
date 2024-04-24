@@ -272,7 +272,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     // (3) fetch committed offset from broker and put it into checkpoint manager when feature flag
     // retrieveCommitOffsetOnFetcherInitialization is enabled
     Map<TopicPartition, OffsetAndMetadata> brokerCommittedOffset = new HashMap<>();
-    if (retrieveCommitOffsetOnFetcherInitialization) {
+    if (retrieveCommitOffsetOnFetcherInitialization && !addedTopicPartitionJobMap.isEmpty()) {
       brokerCommittedOffset = getBrokerCommittedOffset(addedTopicPartitionJobMap.keySet());
     }
     Map<TopicPartition, Long> topicPartitionOffsetMap =
@@ -684,8 +684,13 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         // flag enabled
         if (retrieveCommitOffsetOnFetcherInitialization
             && !checkpointInfo.isCommitOffsetExists()
+            && brokerCommittedOffset != null
             && brokerCommittedOffset.containsKey(entry.getKey())) {
           OffsetAndMetadata brokerOffset = brokerCommittedOffset.get(entry.getKey());
+          // OffsetAndMetadata returned by kafka could be null
+          if (brokerOffset == null) {
+            continue;
+          }
           checkpointInfo.setCommittedOffset(brokerOffset.offset());
           checkpointInfo.setOffsetToCommit(brokerOffset.offset());
           LOGGER.info(
