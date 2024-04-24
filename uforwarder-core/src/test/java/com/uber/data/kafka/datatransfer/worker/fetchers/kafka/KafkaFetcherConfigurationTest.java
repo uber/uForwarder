@@ -58,13 +58,11 @@ public class KafkaFetcherConfigurationTest extends FievelTestBase {
     kafkaFetcherConfiguration.setOffsetMonitorIntervalMs(1);
     kafkaFetcherConfiguration.setPollTimeoutMs(1);
     kafkaFetcherConfiguration.setResolverClass(TestResolver.class.getName());
-    kafkaFetcherConfiguration.setCommitOnIdleFetcher(true);
     Assert.assertEquals(2, kafkaFetcherConfiguration.getNumberOfFetchers());
     Assert.assertEquals(1, kafkaFetcherConfiguration.getOffsetCommitIntervalMs());
     Assert.assertEquals(1, kafkaFetcherConfiguration.getOffsetMonitorIntervalMs());
     Assert.assertEquals(1, kafkaFetcherConfiguration.getPollTimeoutMs());
     Assert.assertEquals(TestResolver.class.getName(), kafkaFetcherConfiguration.getResolverClass());
-    Assert.assertEquals(true, kafkaFetcherConfiguration.getCommitOnIdleFetcher());
     kafkaFetcherConfiguration.setResolverClass(KafkaClusterResolver.class.getName());
     Properties properties =
         kafkaFetcherConfiguration.getKafkaConsumerProperties(

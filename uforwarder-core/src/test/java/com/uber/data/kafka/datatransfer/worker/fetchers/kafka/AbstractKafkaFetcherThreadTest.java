@@ -301,7 +301,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
         ArgumentCaptor.forClass(Map.class);
     ArgumentCaptor<OffsetCommitCallback> callbackCaptor =
         ArgumentCaptor.forClass(OffsetCommitCallback.class);
-    kafkaFetcherConfiguration.setCommitOnIdleFetcher(true);
     checkpointManager = new KafkaCheckpointManager(coreInfra.scope());
     fetcherThread =
         new KafkaFetcherThread(
@@ -485,7 +484,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
 
   @Test
   public void testKCommitOnIdleFetcherWithInitialization() throws Exception {
-    kafkaFetcherConfiguration.setCommitOnIdleFetcher(true);
     kafkaFetcherConfiguration.setRetrieveCommitOffsetOnFetcherInitialization(true);
     fetcherThread =
         new KafkaFetcherThread(
