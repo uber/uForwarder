@@ -441,6 +441,15 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     Assert.assertEquals(KafkaUtils.MAX_INVALID_START_OFFSET, checkpointInfo.getCommittedOffset());
     Assert.assertEquals(KafkaUtils.MAX_INVALID_START_OFFSET, checkpointInfo.getOffsetToCommit());
 
+    fetcherThread.addToCheckPointManager(ImmutableMap.of(tp1, job1), null);
+    Assert.assertEquals(KafkaUtils.MAX_INVALID_START_OFFSET, checkpointInfo.getCommittedOffset());
+    Assert.assertEquals(KafkaUtils.MAX_INVALID_START_OFFSET, checkpointInfo.getOffsetToCommit());
+
+    fetcherThread.addToCheckPointManager(
+        ImmutableMap.of(tp1, job1), Collections.singletonMap(tp1, null));
+    Assert.assertEquals(KafkaUtils.MAX_INVALID_START_OFFSET, checkpointInfo.getCommittedOffset());
+    Assert.assertEquals(KafkaUtils.MAX_INVALID_START_OFFSET, checkpointInfo.getOffsetToCommit());
+
     fetcherThread.addToCheckPointManager(
         ImmutableMap.of(tp1, job1), ImmutableMap.of(tp1, new OffsetAndMetadata(10L)));
     Assert.assertEquals(10L, checkpointInfo.getCommittedOffset());
@@ -511,6 +520,12 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     Set<TopicPartition> hashSet = new HashSet<>();
     hashSet.add(tp);
     fetcherThread.doWork();
+    Mockito.verify(mockConsumer, Mockito.times(1)).committed(Mockito.anySet());
+    Mockito.verify(mockConsumer, Mockito.times(1)).commitAsync(any(), any());
+
+    // Verifies that committed is not inovked again
+    fetcherThread.doWork();
+    Mockito.verify(mockConsumer, Mockito.times(1)).committed(Mockito.anySet());
     Mockito.verify(mockConsumer, Mockito.times(1)).commitAsync(any(), any());
   }
 
