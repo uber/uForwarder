@@ -743,6 +743,65 @@ public class ProcessorImplTest extends ProcessorTestBase {
     Assert.assertEquals(1, dlqMetadata.getRetryCount());
   }
 
+  @Test
+  public void testSubmitMessageWithDroppedResponse()
+      throws ExecutionException, InterruptedException {
+    processor.start();
+    Mockito.when(dispatcher.submit(Mockito.any()))
+        // first call to gRPC endpoint returns INVALID.
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new DispatcherResponse(DispatcherResponse.Code.DROPPED)))
+        // second call send to gRPC succeeds.
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new DispatcherResponse(DispatcherResponse.Code.COMMIT)));
+
+    CompletableFuture<Long> offsetFuture =
+        processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
+    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+
+    // gRPC endpoint returns INVALID so we should have retried to gRPC.
+    Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
+    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assert.assertEquals(
+        DispatcherMessage.Type.GRPC,
+        dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
+    Assert.assertEquals(
+        ProcessorTestBase.MUTTLEY_ROUTING_KEY,
+        dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
+    Assert.assertEquals(
+        0,
+        dispatcherMessageArgumentCaptor
+            .getAllValues()
+            .get(0)
+            .getItem()
+            .getGrpcMessage()
+            .getRetryCount());
+    Assert.assertEquals(
+        0,
+        dispatcherMessageArgumentCaptor
+            .getAllValues()
+            .get(0)
+            .getItem()
+            .getGrpcMessage()
+            .getDispatchAttempt());
+    Assert.assertEquals(
+        DispatcherMessage.Type.GRPC,
+        dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
+    Assert.assertEquals(
+        ProcessorTestBase.MUTTLEY_ROUTING_KEY,
+        dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
+    Assert.assertEquals(
+        1,
+        dispatcherMessageArgumentCaptor
+            .getAllValues()
+            .get(1)
+            .getItem()
+            .getGrpcMessage()
+            .getDispatchAttempt());
+  }
+
   @Test(timeout = 5000)
   public void testSubmitMessageWithBackoffResponseNotRunning() throws Exception {
     Mockito.when(dispatcher.submit(Mockito.any()))

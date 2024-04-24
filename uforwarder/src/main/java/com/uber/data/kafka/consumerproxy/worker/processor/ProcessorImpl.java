@@ -283,9 +283,10 @@ public class ProcessorImpl
                     case DLQ: // DLQ is message issue
                       permit.complete(InflightLimiter.Result.Succeed);
                       break;
-                    case RESQ:
-                      permit.complete();
+                    case DROPPED:
+                      permit.complete(InflightLimiter.Result.Dropped);
                       break;
+                    case RESQ:
                     default:
                       permit.complete(InflightLimiter.Result.Failed);
                   }
