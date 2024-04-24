@@ -113,7 +113,7 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
         }
         if (runnable == null) {
           // complete the permit to avoid leaking
-          runnable = () -> permit.get().complete(InflightLimiter.Result.Unknown);
+          runnable = () -> permit.get().complete();
         }
       }
     }
@@ -158,7 +158,7 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
         pendingPermitCount.decrementAndGet();
       } else {
         // avoid leaking of permit
-        permit.complete(InflightLimiter.Result.Unknown);
+        permit.complete();
       }
       return completed;
     }

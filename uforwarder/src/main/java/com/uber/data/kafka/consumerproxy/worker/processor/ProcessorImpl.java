@@ -273,7 +273,7 @@ public class ProcessorImpl
                   // permit with
                   // unknown result
                   // to avoid leak of count
-                  permit.complete(InflightLimiter.Result.Unknown);
+                  permit.complete();
                 } else {
                   responseDistribution.recordValue(r.getCode().ordinal());
                   switch (r.getCode()) {
