@@ -8,15 +8,18 @@ plugins {
 
 dependencies {
     implementation 'com.101tec:zkclient'
+    implementation 'com.datadoghq:java-dogstatsd-client'
     implementation 'com.facebook.infer.annotation:infer-annotation'
     implementation 'com.google.api:api-common'
     implementation 'com.google.api.grpc:proto-google-common-protos'
     implementation 'com.google.guava:guava'
     implementation 'com.google.protobuf:protobuf-java'
     implementation 'com.google.protobuf:protobuf-java-util'
+    implementation 'commons-codec:commons-codec'
     implementation 'com.uber.concurrency-loadbalancer:concurrency-loadbalancer-core'
     implementation 'com.uber.m3:tally-core'
     implementation 'com.uber.m3:tally-m3'
+    implementation 'com.uber.m3:tally-statsd'
     implementation 'io.grpc:grpc-netty-shaded'
     implementation 'io.grpc:grpc-protobuf'
     implementation 'io.grpc:grpc-services'

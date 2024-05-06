@@ -9,6 +9,7 @@ plugins {
 dependencies {
     implementation 'com.uber.m3:tally-core'
     implementation 'com.uber.m3:tally-m3'
+    implementation 'com.uber.m3:tally-statsd'
     implementation 'io.grpc:grpc-stub'
     implementation 'io.opentracing:opentracing-api'
     implementation 'net.logstash.logback:logstash-logback-encoder'
