@@ -29,7 +29,7 @@ public class WorkersJsonTest extends FievelTestBase {
                 "g2", Versioned.from(StoredJobGroup.getDefaultInstance(), 0)))
         .when(jobGroupStore)
         .getAll();
-    WorkerManagementConfiguration config = new WorkerManagementConfiguration();
-    Assert.assertNotNull(new WorkersJson(workerStore, jobGroupStore, config).read());
+    NodeUrlResolver resolver = new NodeUrlResolver();
+    Assert.assertNotNull(new WorkersJson(workerStore, jobGroupStore, resolver).read());
   }
 }
