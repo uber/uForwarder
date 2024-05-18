@@ -226,7 +226,69 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
           .tagged(ImmutableMap.of(VIRTUAL_PARTITION_TAG, Long.toString(partitionIdx)))
           .gauge(MetricNames.UNADJUSTED_WORKLOAD_WORKER)
           .update(numberOfUnadjustedWorker);
+
+      // do a second traverse to make sure we don't have overloaded job(>1.0) on same worker
+      for (int workerIdx = allWorkers.size() - 1; workerIdx >= 0; workerIdx--) {
+        RebalancingWorkerWithSortedJobs rebalancingWorkerWithSortedJobs = allWorkers.get(workerIdx);
+        if (rebalancingWorkerWithSortedJobs.getNumberOfJobs() == 1) {
+          // we don't move if the worker only has one job
+          continue;
+        }
+
+        if (!isWorkerUnderLoadLimit(rebalancingWorkerWithSortedJobs)) {
+          boolean adjustedLoad =
+              ensureOverloadedJobsMovedToIdleWorker(
+                  rebalancingWorkerWithSortedJobs, workerIdx, allWorkers);
+          if (!adjustedLoad) {
+            logger.warn(
+                "Worker is still overloaded after adjusting large workload.",
+                StructuredLogging.workerId(rebalancingWorkerWithSortedJobs.getWorkerId()),
+                StructuredLogging.count(rebalancingWorkerWithSortedJobs.getNumberOfJobs()),
+                StructuredLogging.workloadScale(rebalancingWorkerWithSortedJobs.getLoad()),
+                StructuredLogging.virtualPartition(partitionIdx));
+          }
+        }
+      }
     }
+  }
+
+  private boolean ensureOverloadedJobsMovedToIdleWorker(
+      RebalancingWorkerWithSortedJobs adjustedWorker,
+      int toAdjustWorkerIdx,
+      List<RebalancingWorkerWithSortedJobs> allWorkersInPartition) {
+    List<RebalancingJob> allJobsInQueue = new ArrayList<>(adjustedWorker.getAllJobs());
+    allJobsInQueue.sort(RebalancingJob::compareTo);
+    boolean adjustedLoad = false;
+    // starting from the most loaded job
+    for (RebalancingJob toBeMovedJob : allJobsInQueue) {
+      if (toBeMovedJob.getLoad() <= 1.0) {
+        // if the job is with load <= 1.0, which means it should considered in #adjustJobsOnWorker
+        // and we can cancel the adjust
+        break;
+      }
+
+      long newWorkerId = -1L;
+      for (int otherWorkerIdx = 0; otherWorkerIdx < toAdjustWorkerIdx; otherWorkerIdx++) {
+        RebalancingWorkerWithSortedJobs otherWorker = allWorkersInPartition.get(otherWorkerIdx);
+        if (otherWorker.getNumberOfJobs() == 0) {
+          newWorkerId = otherWorker.getWorkerId();
+          break;
+        }
+      }
+
+      if (newWorkerId != -1L) {
+        adjustedWorker.removeJob(toBeMovedJob);
+        rebalancingWorkerTable.getRebalancingWorkerWithSortedJobs(newWorkerId).addJob(toBeMovedJob);
+        scope.subScope(COLOCATING_REBALANCER_SUB_SCOPE).counter(MetricNames.JOB_MOVEMENT).inc(1);
+      }
+
+      if (adjustedWorker.getNumberOfJobs() == 1) {
+        adjustedLoad = true;
+        break;
+      }
+    }
+
+    return adjustedLoad;
   }
 
   private boolean adjustJobsOnWorker(
