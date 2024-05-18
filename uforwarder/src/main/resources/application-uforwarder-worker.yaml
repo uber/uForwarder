@@ -13,9 +13,6 @@ server:
   # Port for jetty
   port: 8089
 
-system:
-  port: 8090
-
 metrics:
   # host tag is excluded by default to avoid hitting m3 cardinality limits and having metrics blacklisted.
   # we add host tags manually to only metrics that require it.
@@ -27,6 +24,26 @@ jvm:
   profiler:
     async-profiler:
       enable: true
+
+
+# These are the configurations for the system debug pages.
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+      base-path: "/"
+  # These configurations manage the jobs.html debug pages
+  job:
+    enabled: true
+  # These configurations manage the workers.html debug pages
+  worker:
+    enabled: true
+    # workerUdg sets the udg path for the worker to link to worker debug page from master debug page.
+    workerUdg: "udg://kafka-consumer-proxy-worker"
+  server:
+    debugUrlFormat: "https://system.uberinternal.com/%s:5328/debug/peers/watchkeys"
+
 # These are configurations for the worker.
 worker:
   # These are configurations for the controller
