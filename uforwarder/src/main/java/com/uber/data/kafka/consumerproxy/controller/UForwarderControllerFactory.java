@@ -10,7 +10,6 @@ import com.uber.data.kafka.consumerproxy.controller.rebalancer.HibernatingJobReb
 import com.uber.data.kafka.consumerproxy.controller.rebalancer.RpcJobColocatingRebalancer;
 import com.uber.data.kafka.consumerproxy.controller.rebalancer.ShadowRebalancerDelegateImpl;
 import com.uber.data.kafka.consumerproxy.controller.rebalancer.StreamingRpcUriRebalancer;
-import com.uber.data.kafka.consumerproxy.utils.NodeConfigurationUtils;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
@@ -34,6 +33,7 @@ import com.uber.data.kafka.datatransfer.controller.rpc.RpcAutoConfiguration;
 import com.uber.data.kafka.datatransfer.controller.storage.IdProvider;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
 import com.uber.data.kafka.datatransfer.controller.storage.StoreAutoConfiguration;
+import com.uber.data.kafka.datatransfer.utils.NodeConfigurationUtils;
 import com.uber.m3.tally.Scope;
 import java.io.IOException;
 import org.slf4j.Logger;

@@ -8,6 +8,7 @@ plugins {
 
 dependencies {
     implementation 'com.101tec:zkclient'
+    implementation 'com.github.stefanbirkner:system-rules'
     implementation 'com.facebook.infer.annotation:infer-annotation'
     implementation 'com.google.api:api-common'
     implementation 'com.google.api.grpc:proto-google-common-protos'
