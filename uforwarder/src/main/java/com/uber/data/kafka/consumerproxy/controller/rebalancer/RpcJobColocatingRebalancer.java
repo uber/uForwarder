@@ -135,7 +135,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
             || !rebalancingWorkerTable
                 .getAllWorkerIdsForPartition(partitionIdx)
                 .contains(currentWorkerId)) {
-          staleWorkerReplacement.addStoredJob(job);
+          staleWorkerReplacement.addRebalancingJob(new RebalancingJob(job, jobGroup));
         } else {
           rebalancingWorkerTable
               .getRebalancingWorkerWithSortedJobs(currentWorkerId)
@@ -150,33 +150,42 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
 
   private void handleJobsOnStaleWorkers(List<StaleWorkerReplacement> toBeMovedStaleJobs) {
     int totalStaleJobs = 0;
+    Map<Long, List<RebalancingJob>> virtualPartitionToStaleJobs = new HashMap<>();
     for (StaleWorkerReplacement replacement : toBeMovedStaleJobs) {
       totalStaleJobs += replacement.storedJobs.size();
+      virtualPartitionToStaleJobs.putIfAbsent(replacement.virtualPartitionIndex, new ArrayList<>());
+      virtualPartitionToStaleJobs
+          .get(replacement.virtualPartitionIndex)
+          .addAll(replacement.storedJobs);
+    }
+
+    for (Map.Entry<Long, List<RebalancingJob>> entry : virtualPartitionToStaleJobs.entrySet()) {
+      long partitionIdx = entry.getKey();
+      List<RebalancingJob> allJobsToMove = entry.getValue();
       // always start from the least loaded worker
       PriorityQueue<RebalancingWorkerWithSortedJobs> candidateWorkers = new PriorityQueue<>();
-      candidateWorkers.addAll(
-          rebalancingWorkerTable.getAllWorkersForPartition(replacement.virtualPartitionIndex));
+      candidateWorkers.addAll(rebalancingWorkerTable.getAllWorkersForPartition(partitionIdx));
       // TODO emit metric if candidate worker for a partition is empty
       // TODO: can consider move these jobs to other workers for short mitigation
       if (candidateWorkers.isEmpty()) {
         // The probability of this is low
         logger.warn(
-            "There is no workers for the partition {} of job group {}.",
-            replacement.virtualPartitionIndex,
-            replacement.jobGroup);
+            "There is no workers for the partition",
+            StructuredLogging.virtualPartition(partitionIdx));
         continue;
       }
 
-      replacement.storedJobs.forEach(
+      allJobsToMove.sort(RebalancingJob::compareTo);
+
+      allJobsToMove.forEach(
           job -> {
             // there should be always a worker
             Preconditions.checkArgument(!candidateWorkers.isEmpty());
             RebalancingWorkerWithSortedJobs leastLoadedWorker = candidateWorkers.poll();
-            leastLoadedWorker.addJob(new RebalancingJob(job, replacement.jobGroup));
+            leastLoadedWorker.addJob(job);
             candidateWorkers.add(leastLoadedWorker);
           });
     }
-
     scope
         .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
         .gauge(MetricNames.STALE_JOB_COUNT)
@@ -440,7 +449,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
 
   private static class StaleWorkerReplacement {
     private final RebalancingJobGroup jobGroup;
-    private final List<StoredJob> storedJobs;
+    private final List<RebalancingJob> storedJobs;
     private final long virtualPartitionIndex;
 
     StaleWorkerReplacement(RebalancingJobGroup jobGroup, long virtualPartitionIndex) {
@@ -449,8 +458,8 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
       this.virtualPartitionIndex = virtualPartitionIndex;
     }
 
-    void addStoredJob(StoredJob storedJob) {
-      this.storedJobs.add(storedJob);
+    void addRebalancingJob(RebalancingJob rebalancingJob) {
+      this.storedJobs.add(rebalancingJob);
     }
   }
 
