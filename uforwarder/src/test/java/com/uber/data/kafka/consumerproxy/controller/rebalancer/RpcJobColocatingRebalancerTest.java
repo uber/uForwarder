@@ -66,6 +66,12 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
   private static final String EXTRA_WORKLOAD_JOB_GROUP_SCALE_ONE =
       "data/extra_workload_job_group_scale_one.json";
 
+  private static final String SINGLE_WORKER_HOLDING_LARGE_JOBS_JOBGROUP_PATH =
+      "data/workersWithOverloadedJobs.json";
+
+  private static final String SINGLE_WORKER_HOLDING_LARGE_JOBS_WORKER_PATH =
+      "data/workersWithOverloadedJobsWorker.json";
+
   private ImmutableMap<String, RebalancingJobGroup> jsonJobs;
 
   private ImmutableMap<String, RebalancingJobGroup> jsonJobsForTableCheck;
@@ -77,6 +83,9 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
   private ImmutableMap<String, RebalancingJobGroup> extraWorkloadOneJobGroupScaleOne;
 
   private ImmutableMap<Long, StoredWorker> jsonWorkers;
+
+  private ImmutableMap<String, RebalancingJobGroup> workerOverloadedCaseJobs;
+  private ImmutableMap<Long, StoredWorker> workerOverloadedCaseWorkers;
 
   private Scope mockScope;
 
@@ -134,6 +143,23 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             readJsonWorkers(
                 new InputStreamReader(
                     this.getClass().getClassLoader().getResourceAsStream(workerDataPath))));
+
+    workerOverloadedCaseJobs =
+        ImmutableMap.copyOf(
+            readJsonJobs(
+                new InputStreamReader(
+                    this.getClass()
+                        .getClassLoader()
+                        .getResourceAsStream(SINGLE_WORKER_HOLDING_LARGE_JOBS_JOBGROUP_PATH))));
+
+    workerOverloadedCaseWorkers =
+        ImmutableMap.copyOf(
+            readJsonWorkers(
+                new InputStreamReader(
+                    this.getClass()
+                        .getClassLoader()
+                        .getResourceAsStream(SINGLE_WORKER_HOLDING_LARGE_JOBS_WORKER_PATH))));
+
     mockScope = Mockito.mock(Scope.class);
     mockSubScope = Mockito.mock(Scope.class);
     mockGauge = Mockito.mock(Gauge.class);
@@ -810,6 +836,33 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Assert.assertTrue(isWorkerInPartition0 ^ isWorkerInPartition1);
     Assert.assertTrue(validateOverloadedWorkers(result2, rebalancer.getRebalancingTable()));
     Assert.assertTrue(calcDiff(result1.jobToWorkerId, result2.jobToWorkerId) > 0);
+  }
+
+  @Test
+  public void testMoveJobsToIdleWorkersWhenWorkersAreOverloadedWithMultipleLargeJobs()
+      throws Exception {
+    RebalancerConfiguration config = new RebalancerConfiguration();
+    config.setNumWorkersPerUri(2);
+    config.setMessagesPerSecPerWorker(4000);
+    config.setWorkerToReduceRatio(0.9);
+    config.setTargetSpareWorkerPercentage(50);
+    config.setNumberOfVirtualPartitions(8);
+    RpcJobColocatingRebalancer rebalancer =
+        new RpcJobColocatingRebalancer(mockScope, config, scalar, hibernatingJobRebalancer, true);
+    Set<Long> usedWorkers = usedWorkers(workerOverloadedCaseJobs, workerOverloadedCaseWorkers);
+    Set<Long> idleWorkerIds = new HashSet<>(workerOverloadedCaseWorkers.keySet());
+    idleWorkerIds.removeAll(usedWorkers);
+
+    RebalanceSimResult result1 =
+        runRebalanceSim(
+            rebalancer::computeWorkerId,
+            this::usedWorkers,
+            workerOverloadedCaseJobs,
+            workerOverloadedCaseWorkers,
+            2);
+    Set<Long> newIdleWorkerIds = new HashSet<>(workerOverloadedCaseWorkers.keySet());
+    newIdleWorkerIds.removeAll(result1.usedWorkers);
+    Assert.assertTrue(idleWorkerIds.size() > newIdleWorkerIds.size());
   }
 
   @Override
