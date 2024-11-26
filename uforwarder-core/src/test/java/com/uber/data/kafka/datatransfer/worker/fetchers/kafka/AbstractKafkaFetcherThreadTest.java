@@ -401,8 +401,8 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     Mockito.when(checkpointManager.addCheckpointInfo(any())).thenReturn(checkpointInfo);
     fetcherThread.addToCheckPointManager(
         ImmutableMap.of(tp1, job1), ImmutableMap.of(tp1, new OffsetAndMetadata(10L)));
-    Assert.assertEquals(-1L, checkpointInfo.getCommittedOffset());
-    Assert.assertEquals(-1L, checkpointInfo.getOffsetToCommit());
+    Assert.assertEquals(10, checkpointInfo.getCommittedOffset());
+    Assert.assertEquals(10, checkpointInfo.getOffsetToCommit());
   }
 
   @Test
@@ -420,7 +420,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
                     .build())
             .build();
 
-    kafkaFetcherConfiguration.setRetrieveCommitOffsetOnFetcherInitialization(true);
     fetcherThread =
         new KafkaFetcherThread(
             THREAD_NAME,
@@ -484,7 +483,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
 
   @Test
   public void testKCommitOnIdleFetcherWithInitialization() throws Exception {
-    kafkaFetcherConfiguration.setRetrieveCommitOffsetOnFetcherInitialization(true);
     fetcherThread =
         new KafkaFetcherThread(
             THREAD_NAME,

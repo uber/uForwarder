@@ -116,10 +116,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
   private final boolean asyncCommitOffset;
   @Nullable private volatile Sink<ConsumerRecord<K, V>, Long> processorSink;
   @Nullable private volatile PipelineStateManager pipelineStateManager;
-
-  // TODO:KAFKA-6207 clean up feature flag
-  private final boolean retrieveCommitOffsetOnFetcherInitialization;
-
   private long lastCommitTimestampMs = -1L;
   private long lastCommitOffsetsCheckTimeMs = -1L;
 
@@ -164,8 +160,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     this.offsetMonitorMs = config.getOffsetMonitorIntervalMs();
     this.pollTimeoutMs = config.getPollTimeoutMs();
     this.kafkaConsumer = kafkaConsumer;
-    this.retrieveCommitOffsetOnFetcherInitialization =
-        config.getRetrieveCommitOffsetOnFetcherInitialization();
     this.scope =
         infra
             .scope()
@@ -267,10 +261,9 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     // step 2: handle newly-added topic partitions
     // specifically, (1) the checkpoint manager starts to track them (2) extracts topic partitions
     // with non-negative start offset for further processing.
-    // (3) fetch committed offset from broker and put it into checkpoint manager when feature flag
-    // retrieveCommitOffsetOnFetcherInitialization is enabled
+    // (3) fetch committed offset from broker and put it into checkpoint manager
     Map<TopicPartition, OffsetAndMetadata> brokerCommittedOffset = new HashMap<>();
-    if (retrieveCommitOffsetOnFetcherInitialization && !addedTopicPartitionJobMap.isEmpty()) {
+    if (!addedTopicPartitionJobMap.isEmpty()) {
       brokerCommittedOffset = getBrokerCommittedOffset(addedTopicPartitionJobMap.keySet());
     }
     Map<TopicPartition, Long> topicPartitionOffsetMap =
@@ -677,10 +670,8 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     if (!addedTopicPartitionJobMap.isEmpty()) {
       for (Map.Entry<TopicPartition, Job> entry : addedTopicPartitionJobMap.entrySet()) {
         CheckpointInfo checkpointInfo = checkpointManager.addCheckpointInfo(entry.getValue());
-        // if the offset to commit is not set, we set it to the broker committed offset when feature
-        // flag enabled
-        if (retrieveCommitOffsetOnFetcherInitialization
-            && !checkpointInfo.isCommitOffsetExists()
+        // if the offset to commit is not set, we set it to the broker committed offset
+        if (!checkpointInfo.isCommitOffsetExists()
             && brokerCommittedOffset != null
             && brokerCommittedOffset.containsKey(entry.getKey())) {
           OffsetAndMetadata brokerOffset = brokerCommittedOffset.get(entry.getKey());
