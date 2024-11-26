@@ -113,7 +113,8 @@ public final class JobUtils {
           .setPartition(partition)
           .setDedupEnabled(jobGroup.getKafkaDispatcherTaskGroup().getDedupEnabled())
           .setIsSecure(jobGroup.getKafkaDispatcherTaskGroup().getIsSecure())
-          .setIsAcksOne(jobGroup.getKafkaDispatcherTaskGroup().getIsAcksOne());
+          .setIsAcksOne(jobGroup.getKafkaDispatcherTaskGroup().getIsAcksOne())
+          .setEncodedFormatInfo(jobGroup.getKafkaDispatcherTaskGroup().getEncodedFormatInfo());
       builder
           .getAvailabilityTaskBuilder()
           .setAvailabilityJobType(jobGroup.getAvailabilityTaskGroup().getAvailabilityJobType())

@@ -8,6 +8,8 @@ import com.uber.data.kafka.datatransfer.AutoOffsetResetPolicy;
 import com.uber.data.kafka.datatransfer.AvailabilityJobType;
 import com.uber.data.kafka.datatransfer.AvailabilityTask;
 import com.uber.data.kafka.datatransfer.AvailabilityTaskGroup;
+import com.uber.data.kafka.datatransfer.EncodedFormatInfo;
+import com.uber.data.kafka.datatransfer.EncodedFormatType;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobGroup;
@@ -467,6 +469,11 @@ public class JobUtilsTest extends FievelTestBase {
                     .setDedupEnabled(true)
                     .setIsSecure(false)
                     .setIsAcksOne(true)
+                    .setEncodedFormatInfo(
+                        EncodedFormatInfo.newBuilder()
+                            .setEncodedFormatType(EncodedFormatType.ENCODED_FORMAT_TYPE_PROTOBUF)
+                            .setSchemaVersion(1)
+                            .build())
                     .build())
             .build();
 
@@ -478,6 +485,11 @@ public class JobUtilsTest extends FievelTestBase {
             .setDedupEnabled(true)
             .setIsSecure(false)
             .setIsAcksOne(true)
+            .setEncodedFormatInfo(
+                EncodedFormatInfo.newBuilder()
+                    .setSchemaVersion(1)
+                    .setEncodedFormatType(EncodedFormatType.ENCODED_FORMAT_TYPE_PROTOBUF)
+                    .build())
             .build();
 
     Assert.assertEquals(

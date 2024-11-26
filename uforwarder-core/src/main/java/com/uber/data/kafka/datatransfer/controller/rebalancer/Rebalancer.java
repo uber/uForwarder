@@ -196,7 +196,8 @@ public interface Rebalancer {
           .setDedupEnabled(oldJob.getKafkaDispatcherTask().getDedupEnabled())
           .setPartition(oldJob.getKafkaDispatcherTask().getPartition())
           .setIsSecure(oldJob.getKafkaDispatcherTask().getIsSecure())
-          .setIsAcksOne(oldJob.getKafkaDispatcherTask().getIsAcksOne());
+          .setIsAcksOne(oldJob.getKafkaDispatcherTask().getIsAcksOne())
+          .setEncodedFormatInfo(oldJob.getKafkaDispatcherTask().getEncodedFormatInfo());
     }
 
     if (oldJob.getType().equals(JobType.JOB_TYPE_KAFKA_AVAILABILITY)) {

@@ -11,6 +11,8 @@ import com.uber.data.kafka.datatransfer.AutoOffsetResetPolicy;
 import com.uber.data.kafka.datatransfer.AvailabilityJobType;
 import com.uber.data.kafka.datatransfer.AvailabilityTask;
 import com.uber.data.kafka.datatransfer.AvailabilityTaskGroup;
+import com.uber.data.kafka.datatransfer.EncodedFormatInfo;
+import com.uber.data.kafka.datatransfer.EncodedFormatType;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobGroup;
@@ -329,6 +331,7 @@ public class RebalancerTest extends FievelTestBase {
                     .setTopic(topic)
                     .setDedupEnabled(false)
                     .setPartition(partition)
+                    .setEncodedFormatInfo(EncodedFormatInfo.newBuilder().build())
                     .build())
             .setFlowControl(FlowControl.newBuilder().build())
             .setKafkaConsumerTask(KafkaConsumerTask.newBuilder().build())
@@ -530,7 +533,8 @@ public class RebalancerTest extends FievelTestBase {
                     .setCluster(dstCluster)
                     .setTopic(dstTopic)
                     .setPartition(partition)
-                    .setDedupEnabled(false))
+                    .setDedupEnabled(false)
+                    .setEncodedFormatInfo(EncodedFormatInfo.newBuilder().build()))
             .setRpcDispatcherTask(RpcDispatcherTask.newBuilder().build())
             .setSecurityConfig(SecurityConfig.newBuilder().build())
             .setRetryConfig(RetryConfig.newBuilder().build())
@@ -579,6 +583,11 @@ public class RebalancerTest extends FievelTestBase {
                     .setDedupEnabled(false)
                     .setIsSecure(false)
                     .setIsAcksOne(true)
+                    .setEncodedFormatInfo(
+                        EncodedFormatInfo.newBuilder()
+                            .setEncodedFormatType(EncodedFormatType.ENCODED_FORMAT_TYPE_PROTOBUF)
+                            .setSchemaVersion(1)
+                            .build())
                     .build())
             .setAvailabilityTask(
                 AvailabilityTask.newBuilder()
@@ -601,6 +610,11 @@ public class RebalancerTest extends FievelTestBase {
                     .setDedupEnabled(false)
                     .setIsSecure(false)
                     .setIsAcksOne(true)
+                    .setEncodedFormatInfo(
+                        EncodedFormatInfo.newBuilder()
+                            .setSchemaVersion(1)
+                            .setEncodedFormatType(EncodedFormatType.ENCODED_FORMAT_TYPE_PROTOBUF)
+                            .build())
                     .build())
             .setAvailabilityTask(
                 AvailabilityTask.newBuilder()
