@@ -23,16 +23,15 @@ public class DelayProcessManagerNoopTest<K, V> extends FievelTestBase {
 
   @Test(expected = UnsupportedOperationException.class)
   public void testPause() {
-    delayProcessManager.pausedPartitionsAndRecords(
-        Mockito.any(TopicPartition.class), Mockito.anyList());
+    delayProcessManager.pause(Mockito.any(TopicPartition.class), Mockito.anyList());
   }
 
   @Test
   public void testResume() {
-    Assert.assertTrue(delayProcessManager.resumePausedPartitionsAndRecords().isEmpty());
+    Assert.assertTrue(delayProcessManager.resume().isEmpty());
   }
 
-  @Test
+  @Test(expected = UnsupportedOperationException.class)
   public void testDelete() {
     delayProcessManager.delete(Mockito.anyCollection());
   }
