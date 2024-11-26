@@ -13,6 +13,9 @@ server:
   # Port for jetty
   port: 8089
 
+system:
+  port: 8090
+
 metrics:
   # host tag is excluded by default to avoid hitting m3 cardinality limits and having metrics blacklisted.
   # we add host tags manually to only metrics that require it.
@@ -24,16 +27,6 @@ jvm:
   profiler:
     async-profiler:
       enable: true
-
-
-# These are the configurations for the system debug pages.
-management:
-  endpoints:
-    web:
-      exposure:
-        include: "*"
-      base-path: "/"
-
 # These are configurations for the worker.
 worker:
   # These are configurations for the controller
