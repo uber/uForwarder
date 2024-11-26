@@ -135,7 +135,7 @@ public class AutoScalar implements Scalar {
                 jobGroupKey,
                 key ->
                     new JobGroupScaleStatus(scale.isPresent() ? quota.build(scale.get()) : quota))
-            .getScale(quota);
+            .getScale(quota, jobGroup.getMiscConfig().getScaleResetEnabled());
 
     scope
         .tagged(
@@ -237,12 +237,12 @@ public class AutoScalar implements Scalar {
      * Gets proposed scale of a job group
      *
      * @param quota the quota of a job group
+     * @param scaleResetEnabled the flag to control scale reset
      * @return the scale
      */
-    private double getScale(SignatureAndScale quota) {
-      // reset scale when flow control updated
-      // TODO: stop rest scale if autoscalar matured enough in production
-      if (signature != quota.signature) {
+    private double getScale(SignatureAndScale quota, boolean scaleResetEnabled) {
+      // reset scale when flow control updated and scale reset is enabled
+      if (signature != quota.signature && scaleResetEnabled) {
         synchronized (this) {
           if (signature != quota.signature) {
             reset(quota);
