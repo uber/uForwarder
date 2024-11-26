@@ -5,7 +5,7 @@ import com.uber.data.kafka.datatransfer.controller.rpc.ControllerWorkerService;
 import io.grpc.Server;
 import io.grpc.netty.shaded.io.grpc.netty.NettyServerBuilder;
 import java.io.IOException;
-import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.SmartLifecycle;
@@ -14,9 +14,11 @@ import org.springframework.context.SmartLifecycle;
 public class GrpcServerRunner implements SmartLifecycle {
 
   private static final Logger logger = LoggerFactory.getLogger(GrpcServerRunner.class);
-  private final AtomicBoolean running;
+  private static final int NON_SERVING_PORT = -1;
 
   private final Server server;
+
+  private final AtomicInteger servingPort; // positive port indicates running
 
   /** Constructor */
   public GrpcServerRunner(
@@ -28,7 +30,7 @@ public class GrpcServerRunner implements SmartLifecycle {
             .addService(controllerAdminService)
             .addService(controllerWorkerService)
             .build();
-    this.running = new AtomicBoolean(false);
+    this.servingPort = new AtomicInteger(NON_SERVING_PORT);
   }
 
   @Override
@@ -39,17 +41,21 @@ public class GrpcServerRunner implements SmartLifecycle {
       logger.error("Failed to start GrpcServerRunner", e);
       throw new RuntimeException(e);
     }
-    running.set(true);
+    servingPort.set(server.getPort());
   }
 
   @Override
   public void stop() {
     server.shutdown();
-    running.set(false);
+    servingPort.set(-1);
   }
 
   @Override
   public boolean isRunning() {
-    return running.get();
+    return servingPort.get() != NON_SERVING_PORT;
+  }
+
+  public int getPort() {
+    return servingPort.get();
   }
 }
