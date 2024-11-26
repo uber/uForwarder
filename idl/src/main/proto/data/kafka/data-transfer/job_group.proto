@@ -2,6 +2,7 @@ syntax = "proto3";
 
 // These protos are in alpha stage and there is no guarantee of protocol compatbility at this time.
 
+import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 import "data/kafka/data-transfer/job.proto";
 
@@ -74,6 +75,8 @@ message JobGroup {
   // ReplicationTaskGroup is populated for job groups that involve Kafka replication/ingestion
   // Its job type should be JOB_TYPE_KAFKA_REPLICATION when populated
   ReplicationTaskGroup replication_task_group = 13;
+  // The extensible field, used for 3rdParty application
+  google.protobuf.Any extension = 14;
 }
 
 // KafkaConsumerTaskGroup is a specification for a Kafka Consumption Group task.
@@ -97,8 +100,9 @@ message KafkaConsumerTaskGroup {
   // end_timestamp follows Kafka zero-offset semantics so actually refers to the first timestamp to
   // **not** consume.
   google.protobuf.Timestamp end_timestamp = 6;
-  // DEPRECATED, use the processing_delay_ms for each retry queue in RetryConfig instead
-  int32 processing_delay_ms = 7 [deprecated = true];
+  // a delay processing time for the kafka topic. This is a configuration for the original topic.
+  // for retry topics, use processing_delay_ms in RetryConfig.
+  int32 processing_delay_ms = 7;
   // isolation level could be read_uncommitted or read_committed, default read_uncommitted
   IsolationLevel isolation_level = 8;
   // Auditing related metadata. It will be set if the job type is `JOB_TYPE_KAFKA_AUDIT`
@@ -152,6 +156,8 @@ message KafkaDispatcherTaskGroup {
   bool is_secure = 4;
   // true when acks=1/lossy, false when acks=all/lossless
   bool is_acks_one = 5;
+  // optional encoded format information
+  EncodedFormatInfo encoded_format_info = 6;
 }
 
 // JobGroup is a grouping of jobs that represent a single logical resource.
