@@ -10,6 +10,7 @@ import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.utils.RetryUtils;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherMessage;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
+import com.uber.data.kafka.consumerproxy.worker.filter.Filter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.InflightLimiter;
 import com.uber.data.kafka.datatransfer.CommandType;
 import com.uber.data.kafka.datatransfer.Job;
@@ -195,9 +196,10 @@ public class ProcessorImpl
 
   private final int maxGrpcRetry;
   private final int maxKafkaRetry;
-  private final boolean clusterFilterEnabled;
 
   private final String addressFromUri;
+
+  private final Filter messageFilter;
 
   public ProcessorImpl(
       Job job,
@@ -205,7 +207,7 @@ public class ProcessorImpl
       OutboundMessageLimiter.Builder outboundMessageLimiterBuilder,
       MessageAckStatusManager.Builder ackStatusManagerBuilder,
       UnprocessedMessageManager.Builder unprocessedManagerBuilder,
-      boolean clusterFilterEnabled,
+      Filter messageFilter,
       int outboundMessageLimit,
       CoreInfra infra) {
     // create a default message dispatcher to avoid NullPointerException if setNextStage is invoked
@@ -219,7 +221,7 @@ public class ProcessorImpl
         outboundMessageLimiterBuilder.build(job),
         job.getRpcDispatcherTask().getUri(),
         outboundMessageLimit,
-        clusterFilterEnabled,
+        messageFilter,
         // TODO(haitao.zhang): make those two values configurable
         Integer.MAX_VALUE,
         Integer.MAX_VALUE,
@@ -233,7 +235,7 @@ public class ProcessorImpl
       OutboundMessageLimiter outboundMessageLimiter,
       String jobUri,
       int outboundMessageLimit,
-      boolean clusterFilterEnabled,
+      Filter messageFilter,
       int maxGrpcRetry,
       int maxKafkaRetry,
       CoreInfra infra) {
@@ -242,7 +244,7 @@ public class ProcessorImpl
     this.outboundMessageLimiter = outboundMessageLimiter;
     this.addressFromUri = RoutingUtils.extractAddress(jobUri);
     this.maxGrpcRetry = maxGrpcRetry;
-    this.clusterFilterEnabled = clusterFilterEnabled;
+    this.messageFilter = messageFilter;
     this.maxKafkaRetry = maxKafkaRetry;
     this.infra = infra;
     this.isRunning = new AtomicBoolean(false);
@@ -1070,14 +1072,7 @@ public class ProcessorImpl
                     LOGGER,
                     infra.scope(),
                     () -> {
-                      // if clusterFilterEnabled, filter out (do not send) kafka messages
-                      // where producer cluster is non empty and does not equal the consuming
-                      // cluster.
-                      String producerCluster = pm.getProducerCluster();
-                      if (clusterFilterEnabled
-                          && !producerCluster.isEmpty()
-                          && !producerCluster.equalsIgnoreCase(
-                              job.getKafkaConsumerTask().getCluster())) {
+                      if (!messageFilter.shouldProcess(pm)) {
                         pm.setOffsetToCommit(ackManager.ack(pm));
                         pm.setShouldDispatch(false);
 
