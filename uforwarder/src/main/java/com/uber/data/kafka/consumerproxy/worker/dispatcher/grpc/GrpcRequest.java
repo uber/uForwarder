@@ -21,7 +21,6 @@ public final class GrpcRequest {
   private static final String RETRY_COUNT_HEADER_KEY = "kafka-retrycount";
   private static final String KAFKA_HEADER_KEY = "kafka-key-bin";
   private static final String ATTEMPT_COUNT_HEADER_KEY = "kafka-attemptcount";
-  private static final String PRODUCE_TIMESTAMP_HEADER_KEY = "kafka-record-ts";
 
   private final String consumergroup;
   private final String topic;
@@ -38,7 +37,6 @@ public final class GrpcRequest {
   private final Headers headers;
   private final MessageStub stub;
   private final CompletableFuture<GrpcResponse> future;
-  private final long consumerRecordTimestamp;
 
   public GrpcRequest(
       String consumergroup,
@@ -54,8 +52,7 @@ public final class GrpcRequest {
       String physicalCluster,
       int physicalPartition,
       long physicalOffset,
-      Headers headers,
-      long consumerRecordTimestamp) {
+      Headers headers) {
     this(
         consumergroup,
         topic,
@@ -71,8 +68,7 @@ public final class GrpcRequest {
         physicalOffset,
         headers,
         value,
-        new byte[] {},
-        consumerRecordTimestamp);
+        new byte[] {});
   }
 
   public GrpcRequest(
@@ -90,8 +86,7 @@ public final class GrpcRequest {
       long physicalOffset,
       Headers headers,
       byte[] value,
-      byte[] key,
-      long consumerRecordTimestamp) {
+      byte[] key) {
     this.consumergroup = consumergroup;
     this.topic = topic;
     this.partition = partition;
@@ -117,7 +112,6 @@ public final class GrpcRequest {
     this.headers = headers;
     this.stub = stub;
     this.future = new CompletableFuture<>();
-    this.consumerRecordTimestamp = consumerRecordTimestamp;
   }
 
   ClientInterceptor[] metadataInterceptors() {
@@ -131,7 +125,6 @@ public final class GrpcRequest {
           metadataInterceptor(RETRY_COUNT_HEADER_KEY, Long.toString(retryCount)),
           metadataInterceptor(KAFKA_HEADER_KEY, key),
           metadataInterceptor(ATTEMPT_COUNT_HEADER_KEY, Long.toString(dispatchAttempt)),
-          metadataInterceptor(PRODUCE_TIMESTAMP_HEADER_KEY, Long.toString(consumerRecordTimestamp)),
         };
     return getClientInterceptors(fixedMetadataInterceptors);
   }
@@ -199,15 +192,6 @@ public final class GrpcRequest {
 
   public String getPhysicalCluster() {
     return physicalCluster;
-  }
-
-  /**
-   * Gets the produce timestamp of the consumer record.
-   *
-   * @return The timestamp of the consumer record.
-   */
-  public long getConsumerRecordTimestamp() {
-    return consumerRecordTimestamp;
   }
 
   public CompletableFuture<GrpcResponse> getFuture() {
