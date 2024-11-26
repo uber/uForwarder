@@ -79,9 +79,25 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   @Override
   public void updateLimit(int limit) {
     longFixedInflightLimiter.updateLimit(limit);
-    adaptiveInflightLimiter.setDryRun(limit > 0);
+    boolean dryRunAdaptiveLimiter;
+    int maxLimit;
+    if (limit > 0) {
+      // use static limit
+      dryRunAdaptiveLimiter = true;
+      maxLimit = limit;
+    } else {
+      // use adaptive limit
+      dryRunAdaptiveLimiter = false;
+      maxLimit =
+          Math.max(
+              DEFAULT_MAX_INFLIGHT,
+              maxOutboundCacheCount * topicPartitionToScopeAndInflight.size());
+    }
+    adaptiveInflightLimiter.setDryRun(dryRunAdaptiveLimiter);
+    adaptiveInflightLimiter.setMaxInflight(maxLimit);
+    shadowAdaptiveInflightLimiter.setMaxInflight(maxLimit);
     LOGGER.info(
-        "updated max inflight to " + limit,
+        "updated inflight limit to " + limit,
         StructuredLogging.kafkaGroup(jobTemplate.getKafkaConsumerTask().getConsumerGroup()),
         StructuredLogging.kafkaTopic(jobTemplate.getKafkaConsumerTask().getTopic()));
   }
@@ -162,7 +178,6 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
 
     topicPartitionToScopeAndInflight.computeIfAbsent(
         topicPartition, o -> new ScopeAndInflight(topicPartitionScope, job));
-    updateMaxInflight();
   }
 
   /**
@@ -176,14 +191,12 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
         new TopicPartition(
             job.getKafkaConsumerTask().getTopic(), job.getKafkaConsumerTask().getPartition());
     topicPartitionToScopeAndInflight.remove(topicPartition);
-    updateMaxInflight();
   }
 
   /** Cancel all running topic partition consumer jobs */
   @Override
   public void cancelAll() {
     topicPartitionToScopeAndInflight.clear();
-    updateMaxInflight();
   }
 
   /** Gets if the job exists * */
@@ -294,14 +307,6 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
                                             .withPermit(shadowPermit)
                                             .withScopeAndInflight(scopeAndInflight)
                                             .build())));
-  }
-
-  private void updateMaxInflight() {
-    int maxInflight =
-        Math.max(
-            DEFAULT_MAX_INFLIGHT, maxOutboundCacheCount * topicPartitionToScopeAndInflight.size());
-    adaptiveInflightLimiter.setMaxInflight(maxInflight);
-    shadowAdaptiveInflightLimiter.setMaxInflight(maxInflight);
   }
 
   private CompletableFuture<InflightLimiter.Permit> acquireAsync(

@@ -245,18 +245,17 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
   }
 
   @Test
-  public void testCancelJobUpdateMaxInflight() {
-    // 2 updates one for primary another for shadow limiter
-    Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).setMaxInflight(1000);
+  public void testUpdateLimitWithPositiveLimit() {
     Mockito.reset(adaptiveInflightLimiter);
-    outboundMessageLimiter.cancel(job1);
-    Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).setMaxInflight(1000);
+    outboundMessageLimiter.updateLimit(50);
+    Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).setMaxInflight(50);
+    Mockito.verify(adaptiveInflightLimiter, Mockito.times(1)).setDryRun(true);
   }
 
   @Test
-  public void testInitJobUpdateMaxInflight() {
-    // 2 updates one for primary another for shadow limiter
-    Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).setMaxInflight(1000);
+  public void testUpdateLimitWithZeroLimit() {
+    Mockito.reset(adaptiveInflightLimiter);
+    outboundMessageLimiter.updateLimit(50);
     Mockito.reset(adaptiveInflightLimiter);
     outboundMessageLimiter.init(
         Job.newBuilder()
@@ -269,6 +268,8 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
                     .setPartition(2)
                     .build())
             .build());
+    outboundMessageLimiter.updateLimit(0);
     Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).setMaxInflight(1600);
+    Mockito.verify(adaptiveInflightLimiter, Mockito.times(1)).setDryRun(false);
   }
 }
