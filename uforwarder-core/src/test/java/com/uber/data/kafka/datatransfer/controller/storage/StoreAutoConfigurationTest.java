@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.controller.storage;
 
+import com.google.protobuf.util.JsonFormat;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
 import com.uber.data.kafka.datatransfer.controller.config.JobGroupStoreConfiguration;
@@ -27,6 +28,8 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
 
   private StoreAutoConfiguration storeAutoConfiguration;
 
+  private JsonFormat.TypeRegistry typeRegistry;
+
   @Before
   public void setup() throws Exception {
     Scope scope = Mockito.mock(Scope.class);
@@ -50,6 +53,7 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
     zkConfiguration = new ZookeeperConfiguration();
     zkConfiguration.setZkConnection("localhost:" + port);
     storeAutoConfiguration = new StoreAutoConfiguration();
+    typeRegistry = JsonFormat.TypeRegistry.newBuilder().build();
 
     Mockito.when(scope.subScope(Mockito.anyString())).thenReturn(scope);
     Mockito.when(scope.tagged(Mockito.anyMap())).thenReturn(scope);
@@ -68,6 +72,7 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
                 new JobGroupStoreConfiguration(),
                 zkConfiguration,
                 infra,
+                typeRegistry,
                 storeAutoConfiguration.jobGroupIdProvider(),
                 leaderSelector)));
   }
@@ -79,6 +84,7 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
             new JobGroupStoreConfiguration(),
             zkConfiguration,
             infra,
+            typeRegistry,
             storeAutoConfiguration.jobGroupIdProvider(),
             leaderSelector));
   }
@@ -90,6 +96,7 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
             new JobStatusStoreConfiguration(),
             zkConfiguration,
             infra,
+            typeRegistry,
             storeAutoConfiguration.jobStatusIdProvider(),
             leaderSelector));
   }
@@ -103,6 +110,7 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
             config,
             zkConfiguration,
             infra,
+            typeRegistry,
             storeAutoConfiguration.workerIdProvider(config, zkConfiguration),
             leaderSelector));
   }
