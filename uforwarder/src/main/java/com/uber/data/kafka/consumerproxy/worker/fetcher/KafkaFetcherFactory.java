@@ -100,6 +100,7 @@ public class KafkaFetcherFactory {
               consumerGroup,
               autoOffsetResetPolicy,
               isolationLevel,
+              jobTemplate.getKafkaConsumerTask().getProcessingDelayMs(),
               config,
               isSecure,
               coreInfra);
