@@ -49,6 +49,7 @@ public final class ProcessorMessage {
   private final String physicalCluster;
   private final int physicalPartition;
   private final long physicalOffset;
+  private final long physicalTimestamp;
 
   // logicalXXX is the logical kafka metadata that this data corresponds to.
   // For retryQ/DLQ data, this corresponds to the original topic non retryQ/DLQ topic.
@@ -56,6 +57,7 @@ public final class ProcessorMessage {
   private final String logicalTopic;
   private final int logicalPartition;
   private final long logicalOffset;
+  private final long logicalTimestamp;
   private final AtomicLong retryCount;
   private final AtomicLong dispatchAttempt;
   private final AtomicLong timeoutCount;
@@ -85,10 +87,12 @@ public final class ProcessorMessage {
       String physicalCluster,
       int physicalPartition,
       long physicalOffset,
+      long physicalTimestamp,
       String logicalGroup,
       String logicalTopic,
       int logicalPartition,
       long logicalOffset,
+      long logicalTimestamp,
       long retryCount,
       long timeoutCount,
       Optional<Span> parentSpan,
@@ -101,10 +105,12 @@ public final class ProcessorMessage {
     this.physicalCluster = physicalCluster;
     this.physicalPartition = physicalPartition;
     this.physicalOffset = physicalOffset;
+    this.physicalTimestamp = physicalTimestamp;
     this.logicalGroup = logicalGroup;
     this.logicalTopic = logicalTopic;
     this.logicalPartition = logicalPartition;
     this.logicalOffset = logicalOffset;
+    this.logicalTimestamp = logicalTimestamp;
     this.retryCount = new AtomicLong(retryCount);
     this.dispatchAttempt = new AtomicLong(0);
     this.timeoutCount = new AtomicLong(timeoutCount);
@@ -187,10 +193,12 @@ public final class ProcessorMessage {
           job.getKafkaConsumerTask().getCluster(),
           consumerRecord.partition(),
           consumerRecord.offset(),
+          consumerRecord.timestamp(),
           job.getKafkaConsumerTask().getConsumerGroup(),
           dlqMetadata.getTopic(),
           dlqMetadata.getPartition(),
           dlqMetadata.getOffset(),
+          dlqMetadata.getTimestampNs(),
           dlqMetadata.getRetryCount(),
           dlqMetadata.getTimeoutCount(),
           span,
@@ -206,10 +214,12 @@ public final class ProcessorMessage {
         job.getKafkaConsumerTask().getCluster(),
         consumerRecord.partition(),
         consumerRecord.offset(),
+        consumerRecord.timestamp(),
         job.getKafkaConsumerTask().getConsumerGroup(),
         consumerRecord.topic(),
         consumerRecord.partition(),
         consumerRecord.offset(),
+        consumerRecord.timestamp(),
         0,
         0,
         span,
@@ -242,8 +252,10 @@ public final class ProcessorMessage {
     ProcessorMessage that = (ProcessorMessage) o;
     return physicalPartition == that.physicalPartition
         && physicalOffset == that.physicalOffset
+        && physicalTimestamp == that.physicalTimestamp
         && logicalPartition == that.logicalPartition
         && logicalOffset == that.logicalOffset
+        && logicalTimestamp == that.logicalTimestamp
         && Arrays.equals(key, that.key)
         && Arrays.equals(value, that.value)
         && physicalTopic.equals(that.physicalTopic)
@@ -261,10 +273,12 @@ public final class ProcessorMessage {
             physicalTopic,
             physicalPartition,
             physicalOffset,
+            physicalTimestamp,
             logicalGroup,
             logicalTopic,
             logicalPartition,
             logicalOffset,
+            logicalTimestamp,
             getRetryCount(),
             getDispatchAttempt(),
             getTimeoutCount());
@@ -300,6 +314,7 @@ public final class ProcessorMessage {
             .setTopic(logicalTopic)
             .setPartition(logicalPartition)
             .setOffset(logicalOffset)
+            .setTimestampNs(logicalTimestamp)
             .setRetryCount(retryCount.get())
             .setTimeoutCount(timeoutCount.get());
     if (key != null) {

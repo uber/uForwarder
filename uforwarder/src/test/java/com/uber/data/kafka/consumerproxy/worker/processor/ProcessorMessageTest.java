@@ -21,6 +21,7 @@ import java.util.Optional;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
+import org.apache.kafka.common.record.TimestampType;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -43,15 +44,19 @@ public class ProcessorMessageTest extends FievelTestBase {
   private static String ORIGINAL_GROUP = "group";
   private static int ORIGINAL_PARTITION = 0;
   private static long ORIGINAL_OFFSET = 0;
+
+  private static long ORIGINAL_TIMESTAMP = 1000;
   private static String PHYSICAL_TOPIC = "topic";
 
   private static int PHYSICAL_PARTITION = 0;
   private static long PHYSICAL_OFFSET = 0;
 
+  private static long PHYSICAL_TIMESTAMP = 1000;
   private static String DLQ_TOPIC = "topic__group__dlq";
   private static String DLQ_CLUSTER = "kafka-dlq-dca";
   private static int DLQ_PARTITION = 1;
   private static long DLQ_OFFSET = 1;
+  private static long DLQ_TIMESTAMP = 2000;
   private static Job job = Job.newBuilder().build();
   private static Optional<Span> SPAN = Optional.empty();
   private static MessageStub stub = new MessageStub();
@@ -75,10 +80,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             PHYSICAL_TOPIC,
             PHYSICAL_PARTITION,
             PHYSICAL_OFFSET,
+            PHYSICAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -100,6 +107,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             .setTopic(ORIGINAL_TOPIC)
             .setPartition(ORIGINAL_PARTITION)
             .setOffset(ORIGINAL_OFFSET)
+            .setTimestampNs(ORIGINAL_TIMESTAMP)
             .setRetryCount(1)
             .setTimeoutCount(0)
             .build();
@@ -123,10 +131,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             DLQ_CLUSTER,
             DLQ_PARTITION,
             DLQ_OFFSET,
+            DLQ_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             1,
             0,
             SPAN,
@@ -143,6 +153,11 @@ public class ProcessorMessageTest extends FievelTestBase {
                 ORIGINAL_TOPIC,
                 ORIGINAL_PARTITION,
                 ORIGINAL_OFFSET,
+                ORIGINAL_TIMESTAMP,
+                TimestampType.CREATE_TIME,
+                -1L,
+                -1,
+                -1,
                 KEY.getBytes(),
                 VALUE.getBytes()),
             nonDLQJob,
@@ -153,7 +168,16 @@ public class ProcessorMessageTest extends FievelTestBase {
     ProcessorMessage otherDLQMessage =
         ProcessorMessage.of(
             new ConsumerRecord<>(
-                DLQ_TOPIC, DLQ_PARTITION, DLQ_OFFSET, dlqMetadata.toByteArray(), VALUE.getBytes()),
+                DLQ_TOPIC,
+                DLQ_PARTITION,
+                DLQ_OFFSET,
+                DLQ_TIMESTAMP,
+                TimestampType.CREATE_TIME,
+                -1L,
+                -1,
+                -1,
+                dlqMetadata.toByteArray(),
+                VALUE.getBytes()),
             dlqJob,
             infra,
             stub);
@@ -165,6 +189,7 @@ public class ProcessorMessageTest extends FievelTestBase {
     String retryTopic = "topic__group__retry";
     int retryPartition = 2;
     long retryOffset = 2;
+    long retryTimestamp = 2000;
     ProcessorMessage retryMessage =
         new ProcessorMessage(
             KEY.getBytes(),
@@ -174,10 +199,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             DLQ_CLUSTER,
             retryPartition,
             retryOffset,
+            retryTimestamp,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             1,
             0,
             SPAN,
@@ -204,6 +231,11 @@ public class ProcessorMessageTest extends FievelTestBase {
                 retryTopic,
                 retryPartition,
                 retryOffset,
+                retryTimestamp,
+                TimestampType.CREATE_TIME,
+                -1L,
+                -1,
+                -1,
                 dlqMetadata.toByteArray(),
                 VALUE.getBytes()),
             retryJob,
@@ -217,6 +249,7 @@ public class ProcessorMessageTest extends FievelTestBase {
     String resqTopic = "topic__group__resq";
     int resqPartition = 2;
     long resqOffset = 2;
+    long resqTimestamp = 2000;
     ProcessorMessage resqMessage =
         new ProcessorMessage(
             KEY.getBytes(),
@@ -226,10 +259,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             resqPartition,
             resqOffset,
+            resqTimestamp,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             1,
             0,
             SPAN,
@@ -250,7 +285,16 @@ public class ProcessorMessageTest extends FievelTestBase {
     ProcessorMessage otherResqMessage =
         ProcessorMessage.of(
             new ConsumerRecord<>(
-                resqTopic, resqPartition, resqOffset, dlqMetadata.toByteArray(), VALUE.getBytes()),
+                resqTopic,
+                resqPartition,
+                resqOffset,
+                resqTimestamp,
+                TimestampType.CREATE_TIME,
+                -1L,
+                -1,
+                -1,
+                dlqMetadata.toByteArray(),
+                VALUE.getBytes()),
             resqJob,
             infra,
             stub);
@@ -269,10 +313,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -309,10 +355,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -325,9 +373,6 @@ public class ProcessorMessageTest extends FievelTestBase {
     Assert.assertNotEquals(new Object(), nonDLQMessage);
     Assert.assertNotEquals(nonDLQMessage, new Object());
 
-    // For non DLQ message only dispatch attempt count should be increased.
-    nonDLQMessage.increaseAttemptCount();
-    Assert.assertNotEquals(nonDLQMessage, processorMessage);
     // validate any single field difference results in not equal
     Assert.assertNotEquals(
         nonDLQMessage,
@@ -339,10 +384,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -358,10 +405,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -377,10 +426,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -396,10 +447,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION + 1,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -415,10 +468,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET + 1,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -434,10 +489,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
-            ORIGINAL_TOPIC,
+            ORIGINAL_TIMESTAMP + 1,
+            ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -453,10 +510,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
-            ORIGINAL_GROUP,
-            ORIGINAL_GROUP,
+            ORIGINAL_TIMESTAMP,
+            ORIGINAL_TOPIC,
+            ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -472,10 +531,33 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
+            ORIGINAL_GROUP,
+            ORIGINAL_GROUP,
+            ORIGINAL_PARTITION,
+            ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
+            0,
+            0,
+            SPAN,
+            infra,
+            stub));
+    Assert.assertNotEquals(
+        nonDLQMessage,
+        new ProcessorMessage(
+            KEY.getBytes(),
+            VALUE.getBytes(),
+            HEADERS,
+            ORIGINAL_TOPIC,
+            ORIGINAL_CLUSTER,
+            ORIGINAL_PARTITION,
+            ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION + 1,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -491,10 +573,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET + 1,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -510,15 +594,41 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP + 1,
+            0,
+            0,
+            SPAN,
+            infra,
+            stub));
+    Assert.assertNotEquals(
+        nonDLQMessage,
+        new ProcessorMessage(
+            KEY.getBytes(),
+            VALUE.getBytes(),
+            HEADERS,
+            ORIGINAL_TOPIC,
+            ORIGINAL_CLUSTER,
+            ORIGINAL_PARTITION,
+            ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
+            ORIGINAL_GROUP,
+            ORIGINAL_TOPIC,
+            ORIGINAL_PARTITION,
+            ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             1,
             0,
             SPAN,
             infra,
             stub));
+    // For non DLQ message only dispatch attempt count should be increased.
+    nonDLQMessage.increaseAttemptCount();
+    Assert.assertNotEquals(nonDLQMessage, processorMessage);
   }
 
   @Test
@@ -533,10 +643,12 @@ public class ProcessorMessageTest extends FievelTestBase {
                 ORIGINAL_CLUSTER,
                 ORIGINAL_PARTITION,
                 ORIGINAL_OFFSET,
+                ORIGINAL_TIMESTAMP,
                 ORIGINAL_GROUP,
                 ORIGINAL_TOPIC,
                 ORIGINAL_PARTITION,
                 ORIGINAL_OFFSET,
+                ORIGINAL_TIMESTAMP,
                 0,
                 0,
                 SPAN,
@@ -581,6 +693,7 @@ public class ProcessorMessageTest extends FievelTestBase {
                 .setTopic(ORIGINAL_TOPIC)
                 .setPartition(ORIGINAL_PARTITION)
                 .setOffset(ORIGINAL_OFFSET)
+                .setTimestampNs(ORIGINAL_TIMESTAMP)
                 .setRetryCount(1)
                 .setTimeoutCount(0)
                 .build()
@@ -610,10 +723,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             DLQ_CLUSTER,
             DLQ_PARTITION,
             DLQ_OFFSET,
+            DLQ_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             1,
             1,
             SPAN,
@@ -627,6 +742,7 @@ public class ProcessorMessageTest extends FievelTestBase {
                 .setTopic(ORIGINAL_TOPIC)
                 .setPartition(ORIGINAL_PARTITION)
                 .setOffset(ORIGINAL_OFFSET)
+                .setTimestampNs(ORIGINAL_TIMESTAMP)
                 .setRetryCount(1)
                 .setTimeoutCount(1)
                 .build()
@@ -672,10 +788,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
@@ -742,10 +860,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             ORIGINAL_CLUSTER,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             ORIGINAL_GROUP,
             ORIGINAL_TOPIC,
             ORIGINAL_PARTITION,
             ORIGINAL_OFFSET,
+            ORIGINAL_TIMESTAMP,
             0,
             0,
             SPAN,
