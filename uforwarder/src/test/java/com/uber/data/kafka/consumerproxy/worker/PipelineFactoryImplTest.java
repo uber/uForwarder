@@ -19,6 +19,7 @@ import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
@@ -149,11 +150,13 @@ public class PipelineFactoryImplTest extends FievelTestBase {
                 ArgumentMatchers.anyBoolean(),
                 ArgumentMatchers.anyBoolean()))
         .thenThrow(new Exception("failed to create dispatcher"));
-    try {
-      pipelineFactory.createPipeline(pipelineFactory.getPipelineId(job), job);
-    } catch (Exception e) {
-      Assert.assertEquals("java.lang.Exception: failed to create dispatcher", e.getMessage());
-    }
+    Exception e =
+        Assertions.assertThrows(
+            Exception.class,
+            () -> {
+              pipelineFactory.createPipeline(pipelineFactory.getPipelineId(job), job);
+            });
+    Assert.assertEquals("java.lang.Exception: failed to create dispatcher", e.getMessage());
     Mockito.verify(kafkaFetcher, Mockito.atLeastOnce()).stop();
     Mockito.verify(processor, Mockito.atLeastOnce()).stop();
     Mockito.verify(grpcDispatcher, Mockito.atLeastOnce()).stop();
