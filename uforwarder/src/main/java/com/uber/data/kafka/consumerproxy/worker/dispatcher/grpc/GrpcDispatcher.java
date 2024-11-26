@@ -16,6 +16,7 @@ import com.uber.data.kafka.datatransfer.common.StructuredFields;
 import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.instrumentation.Instrumentation;
+import com.uber.data.kafka.instrumentation.Tags;
 import com.uber.data.kafka.instrumentation.Utils;
 import io.grpc.CallOptions;
 import io.grpc.Channel;
@@ -169,6 +170,11 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
                 tags)
             .whenComplete(
                 (r, t) -> {
+                  // adding additional metric to include all statuses including filtered ones
+                  Map<String, String> map = new HashMap<>();
+                  Utils.copyTags(map, tags);
+                  map.put(Tags.Key.code, r.status().getCode().name());
+                  infra.scope().tagged(map).counter(MetricNames.CALL_WITH_FILTER).inc(1);
                   // close context to avoid memory leak
                   context.close();
                 })
@@ -392,6 +398,7 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
     static final String TIMEOUT_COUNT = "dispatcher.grpc.timeout-count";
     static final String ADJUSTED_RPC_TIMEOUT = "dispatcher.grpc.adjusted-rpc-timeout";
     static final String CALL = "dispatcher.grpc.call";
+    static final String CALL_WITH_FILTER = "dispatcher.grpc.call.with-filter";
     static final String CHANNEL_USAGE = "dispatcher.grpc.channel.usage";
     static final String CHANNEL_SIZE = "dispatcher.grpc.channel.size";
     static final String DISPATCH = "dispatcher.grpc.dispatch";
