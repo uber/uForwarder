@@ -2,7 +2,6 @@ package com.uber.data.kafka.consumerproxy.worker.limiter;
 
 import com.netflix.concurrency.limits.Limiter;
 import java.util.Optional;
-import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import javax.annotation.Nullable;
 
@@ -14,30 +13,9 @@ import javax.annotation.Nullable;
  */
 public abstract class AdaptiveInflightLimiter extends AbstractInflightLimiter {
   private final AtomicInteger queueLength;
-  private final AtomicBoolean dryRun;
 
   public AdaptiveInflightLimiter() {
-    this.dryRun = new AtomicBoolean(true);
     this.queueLength = new AtomicInteger(0);
-  }
-
-  /**
-   * Sets dryRun mode. when dryRun is enabled, the limiter - permits all requests - evaluates
-   * inflight limit
-   *
-   * @param dryRun the dry run
-   */
-  public void setDryRun(boolean dryRun) {
-    this.dryRun.set(dryRun);
-  }
-
-  /**
-   * Gets dryRun mode, when dryRun is enabled, the limiter - permits all requests
-   *
-   * @return
-   */
-  public boolean isDryRun() {
-    return dryRun.get();
   }
 
   /**
@@ -56,7 +34,7 @@ public abstract class AdaptiveInflightLimiter extends AbstractInflightLimiter {
 
   @Override
   @Nullable
-  Permit doAcquire(boolean blocking) throws InterruptedException {
+  Permit doAcquire(AcquireMode acquireMode) throws InterruptedException {
     if (!isClosed.get()) {
       synchronized (lock) {
         queueLength.incrementAndGet();
@@ -65,9 +43,9 @@ public abstract class AdaptiveInflightLimiter extends AbstractInflightLimiter {
             Optional<Limiter.Listener> listener = tryAcquireImpl();
             if (listener.isPresent()) {
               return new AdaptivePermit(listener.get());
-            } else if (dryRun.get()) {
+            } else if (acquireMode == AcquireMode.DryRun) {
               return NoopPermit.INSTANCE;
-            } else if (!blocking) {
+            } else if (acquireMode == AcquireMode.NonBlocking) {
               // unblock caller if failed to get permit
               return null;
             }

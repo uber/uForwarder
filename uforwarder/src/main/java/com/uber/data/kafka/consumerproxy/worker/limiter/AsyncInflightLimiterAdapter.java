@@ -39,10 +39,11 @@ public class AsyncInflightLimiterAdapter implements AutoCloseable {
    * @param offset the offset
    * @return completable future
    */
-  public CompletableFuture<InflightLimiter.Permit> acquireAsync(int partition, long offset) {
+  public CompletableFuture<InflightLimiter.Permit> acquireAsync(
+      int partition, long offset, boolean dryRun) {
     if (futurePermits.isEmpty()) {
       // if there is no queue, return a completed future
-      Optional<InflightLimiter.Permit> permit = delegator.tryAcquire();
+      Optional<InflightLimiter.Permit> permit = delegator.tryAcquire(dryRun);
       if (permit.isPresent()) {
         return CompletableFuture.completedFuture(new AsyncPermit(permit.get()));
       }

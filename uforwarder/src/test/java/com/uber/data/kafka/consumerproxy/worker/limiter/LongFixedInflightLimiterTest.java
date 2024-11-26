@@ -178,6 +178,29 @@ public class LongFixedInflightLimiterTest extends FievelTestBase {
   }
 
   @Test
+  public void testAcquireWithRryRun() throws InterruptedException {
+    InflightLimiter.Permit permit = inflightLimiter.acquire(true);
+    Assert.assertNotEquals(InflightLimiter.NoopPermit.INSTANCE, permit);
+    Assert.assertEquals(1, inflightLimiter.getMetrics().getInflight());
+
+    permit = inflightLimiter.acquire(true);
+    Assert.assertNotEquals(InflightLimiter.NoopPermit.INSTANCE, permit);
+    Assert.assertEquals(2, inflightLimiter.getMetrics().getInflight());
+
+    permit = inflightLimiter.acquire(true);
+    Assert.assertEquals(InflightLimiter.NoopPermit.INSTANCE, permit);
+    Assert.assertEquals(2, inflightLimiter.getMetrics().getInflight());
+  }
+
+  @Test
+  public void testTryAcquireDryRun() {
+    inflightLimiter.tryAcquire(true);
+    inflightLimiter.tryAcquire(true);
+    Optional<InflightLimiter.Permit> permit = inflightLimiter.tryAcquire(true);
+    Assert.assertEquals(InflightLimiter.NoopPermit.INSTANCE, permit.get());
+  }
+
+  @Test
   public void testTryAcquire() {
     Optional<InflightLimiter.Permit> permit1 = inflightLimiter.tryAcquire();
     Assert.assertTrue(permit1.isPresent());
