@@ -30,7 +30,6 @@ public class DispatcherMessageTest extends FievelTestBase {
   private static final long RETRY_COUNT = 3;
   private static final long DISPATCH_ATTEMPT = 4;
   private static final long TIMEOUT_COUNT = 5;
-  private static final long CONSUMER_RECORD_TIMESTAMP = 1709664197;
 
   private DispatcherMessage grpcDispatcherMessage;
   private GrpcRequest grpcRequest;
@@ -72,8 +71,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP);
+            TIMEOUT_COUNT);
     grpcRequest =
         new GrpcRequest(
             GROUP,
@@ -109,8 +107,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP);
+            TIMEOUT_COUNT);
     producerRecord = new ProducerRecord<>(TOPIC, null, KEY.getBytes(), VALUE.getBytes(), HEADERS);
   }
 
@@ -171,8 +168,7 @@ public class DispatcherMessageTest extends FievelTestBase {
                 PHYSICAL_OFFSET,
                 RETRY_COUNT,
                 DISPATCH_ATTEMPT,
-                TIMEOUT_COUNT,
-                CONSUMER_RECORD_TIMESTAMP)
+                TIMEOUT_COUNT)
             .getGrpcMessage());
   }
 
@@ -209,8 +205,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
 
     Assert.assertNotEquals(grpcDispatcherMessage, null);
     Assert.assertNotEquals(null, grpcDispatcherMessage);
@@ -236,8 +231,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -257,8 +251,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -278,8 +271,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -299,8 +291,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -320,8 +311,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -341,8 +331,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -362,8 +351,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -383,8 +371,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -404,8 +391,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -425,8 +411,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT + 1,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -446,8 +431,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT + 1,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -467,8 +451,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT + 1,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT + 1));
     Assert.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
@@ -488,8 +471,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
-            TIMEOUT_COUNT,
-            CONSUMER_RECORD_TIMESTAMP));
+            TIMEOUT_COUNT));
   }
 
   @Test
@@ -513,8 +495,7 @@ public class DispatcherMessageTest extends FievelTestBase {
                 PHYSICAL_OFFSET,
                 RETRY_COUNT,
                 DISPATCH_ATTEMPT,
-                TIMEOUT_COUNT,
-                CONSUMER_RECORD_TIMESTAMP)
+                TIMEOUT_COUNT)
             .hashCode());
     Assert.assertNotEquals(grpcDispatcherMessage.hashCode(), kafkaDispatcherMessage.hashCode());
   }
