@@ -65,7 +65,7 @@ public class UforwarderIntegrationTests extends FievelTestBase {
   private static final DockerImageName TEST_IMAGE_ZOOKEEPER =
       DockerImageName.parse("bitnami/zookeeper:3.8.0");
   private static final DockerImageName TEST_IMAGE_KAFKA =
-      DockerImageName.parse("confluentinc/cp-kafka:5.2.1");
+      DockerImageName.parse("confluentinc/cp-kafka:7.6.1");
   // Simple consumer
   private static final String TEST_CLUSTER_NAME = "test-cluster";
   private static final String TEST_TOPIC_NAME = "test-topic";
