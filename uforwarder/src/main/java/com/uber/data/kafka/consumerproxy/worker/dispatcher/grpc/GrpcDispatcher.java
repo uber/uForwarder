@@ -157,7 +157,7 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
                           LOGGER,
                           infra.scope(),
                           ClientCalls::asyncUnaryCall,
-                          channelWithMetadata(message)
+                          channelWithMetadata(message, tags)
                               .newCall(methodDescriptor, extractCallOptions(item)),
                           message.payload(),
                           newStreamObserver(completableFuture, timeoutMs, message, tags),
@@ -216,13 +216,13 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
    * @param grpcRequest the grpc request
    * @return the channel with metadata
    */
-  public Channel channelWithMetadata(GrpcRequest grpcRequest) {
+  public Channel channelWithMetadata(GrpcRequest grpcRequest, String... tags) {
     // Dedup interceptor should be the first as interceptors are intercepted in reverse order.
     Channel ret =
         ClientInterceptors.intercept(
             channel, new DedupHeaderInterceptor(infra.scope(), grpcRequest));
     ret = ClientInterceptors.intercept(ret, grpcRequest.metadataInterceptors());
-    return grpcFilter.interceptChannel(ret, grpcRequest);
+    return grpcFilter.interceptChannel(ret, grpcRequest, tags);
   }
 
   @VisibleForTesting
