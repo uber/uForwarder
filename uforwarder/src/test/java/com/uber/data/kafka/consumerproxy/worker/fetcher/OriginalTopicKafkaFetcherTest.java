@@ -11,6 +11,7 @@ import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.CheckpointManager;
+import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.DelayProcessManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfiguration;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.SeekStartOffsetOption;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.ThroughputTracker;
@@ -90,6 +91,7 @@ public class OriginalTopicKafkaFetcherTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
+            DelayProcessManager.NOOP,
             mockConsumer,
             infra);
     fetcherThread.setPipelineStateManager(pipelineStateManager);
@@ -103,6 +105,7 @@ public class OriginalTopicKafkaFetcherTest extends FievelTestBase {
         GROUP,
         AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST,
         IsolationLevel.ISOLATION_LEVEL_UNSET,
+        -1,
         kafkaFetcherConfiguration,
         false,
         infra);
