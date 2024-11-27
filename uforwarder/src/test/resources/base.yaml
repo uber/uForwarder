@@ -179,6 +179,7 @@ worker:
     # This filters out messages that was not originally produced to the cluster that it is being read from.
     clusterFilterEnabled: true
     experimentalLimiterEnabled: true
+    regionalFilterEnabled: true
   # These are the configurations for the fetchers.
   fetcher:
     # These are the configurations for the kafka fetcher.

@@ -26,5 +26,6 @@ public class ProcessorConfigurationTest extends FievelTestBase {
     Assert.assertEquals(true, processorConfiguration.isClusterFilterEnabled());
     Assert.assertEquals(true, processorConfiguration.isExperimentalLimiterEnabled());
     Assert.assertEquals(9999, processorConfiguration.getMaxProcessorInBoundCacheCount());
+    Assert.assertEquals(true, processorConfiguration.isRegionalFilterEnabled());
   }
 }
