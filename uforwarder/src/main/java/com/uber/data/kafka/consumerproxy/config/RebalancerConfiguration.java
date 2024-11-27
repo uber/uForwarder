@@ -1,9 +1,13 @@
 package com.uber.data.kafka.consumerproxy.config;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 @ConfigurationProperties("master.rebalancer")
 public class RebalancerConfiguration {
+  public static final double PLACEMENT_WORKER_SCALE_SOFT_LIMIT = 1.0;
+  private static final Logger logger = LoggerFactory.getLogger(RebalancerConfiguration.class);
   private static final long DEFAULT_MESSAGES_PER_SEC_PER_WORKER = Long.MAX_VALUE;
 
   // This sets a static number of workers to use per RPC uri.
@@ -42,6 +46,12 @@ public class RebalancerConfiguration {
 
   // The ratio of worker to remove in a batch when workload reduces
   private double workerToReduceRatio = 0.1;
+
+  // The system should use the estimated total worker based on soft limit(1.0) to scale cluster
+  // size,
+  // but rebalancer can use hard limit to pack workload onto workers. The rebalance can keep
+  // placement optimized within the graceful area between soft and hard limit.
+  private double placementWorkerScaleHardLimit = 1.0;
 
   public int getNumWorkersPerUri() {
     return numWorkersPerUri;
@@ -220,5 +230,20 @@ public class RebalancerConfiguration {
   /** Gets the worker to reduce ratio */
   public double getWorkerToReduceRatio() {
     return this.workerToReduceRatio;
+  }
+
+  /** Sets the worker scale hard limit for job placement */
+  public void setPlacementWorkerScaleHardLimit(double placementWorkerScaleHardLimit) {
+    if (placementWorkerScaleHardLimit < PLACEMENT_WORKER_SCALE_SOFT_LIMIT) {
+      logger.error(
+          "placementWorkerScaleHardLimit should not be smaller than 1.0, setting it to 1.0");
+      placementWorkerScaleHardLimit = PLACEMENT_WORKER_SCALE_SOFT_LIMIT;
+    }
+    this.placementWorkerScaleHardLimit = placementWorkerScaleHardLimit;
+  }
+
+  /* Gets the worker scale hard limit for job placement */
+  public double getPlacementWorkerScaleHardLimit() {
+    return this.placementWorkerScaleHardLimit;
   }
 }
