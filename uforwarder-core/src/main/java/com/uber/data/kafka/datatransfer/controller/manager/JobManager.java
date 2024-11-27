@@ -21,6 +21,7 @@ import com.uber.m3.tally.Stopwatch;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -149,20 +150,20 @@ public final class JobManager {
       Map<String, Versioned<StoredJobGroup>> jobGroups, Map<Long, StoredJobStatus> jobStatusMap) {
     Map<String, RebalancingJobGroup> rebalancingJobGroupMap = new HashMap<>();
     for (Map.Entry<String, Versioned<StoredJobGroup>> jobGroupEntry : jobGroups.entrySet()) {
-      Set<Long> jobIdsForJobGroup =
-          jobGroupEntry
-              .getValue()
-              .model()
-              .getJobsList()
-              .stream()
-              .map(j -> j.getJob().getJobId())
-              .collect(Collectors.toSet());
-      Map<Long, StoredJobStatus> jobStatusForJobGroup =
-          jobStatusMap
-              .entrySet()
-              .stream()
-              .filter(e -> jobIdsForJobGroup.contains(e.getKey()))
-              .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+      Set<Long> jobIdsForJobGroup = new HashSet<>();
+      jobGroupEntry
+          .getValue()
+          .model()
+          .getJobsList()
+          .forEach(j -> jobIdsForJobGroup.add(j.getJob().getJobId()));
+      Map<Long, StoredJobStatus> jobStatusForJobGroup = new HashMap<>();
+      for (Map.Entry<Long, StoredJobStatus> jobStatusEntry : jobStatusMap.entrySet()) {
+        if (!jobIdsForJobGroup.contains(jobStatusEntry.getKey())) {
+          continue;
+        }
+
+        jobStatusForJobGroup.put(jobStatusEntry.getKey(), jobStatusEntry.getValue());
+      }
       rebalancingJobGroupMap.put(
           jobGroupEntry.getKey(),
           RebalancingJobGroup.of(jobGroupEntry.getValue(), jobStatusForJobGroup));
