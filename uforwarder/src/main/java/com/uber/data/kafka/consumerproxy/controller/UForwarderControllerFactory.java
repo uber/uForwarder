@@ -1,6 +1,8 @@
 package com.uber.data.kafka.consumerproxy.controller;
 
 import com.google.common.collect.ImmutableMap;
+import com.uber.data.kafka.consumerproxy.UForwarderAppType;
+import com.uber.data.kafka.consumerproxy.common.ApplicationReadyListener;
 import com.uber.data.kafka.consumerproxy.config.KafkaAdminClientConfiguration;
 import com.uber.data.kafka.consumerproxy.config.NoopTracerAutoConfiguration;
 import com.uber.data.kafka.consumerproxy.config.RebalancerConfiguration;
@@ -171,5 +173,10 @@ public class UForwarderControllerFactory {
         storedWorker -> placementPod,
         ImmutableMap.of(),
         rebalancerConfiguration.getNumberOfVirtualPartitions());
+  }
+
+  @Bean
+  public ApplicationReadyListener applicationReadyListener() {
+    return ApplicationReadyListener.newBuilder(UForwarderAppType.CONTROLLER_APP).build();
   }
 }
