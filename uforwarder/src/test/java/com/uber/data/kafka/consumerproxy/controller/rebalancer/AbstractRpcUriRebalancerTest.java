@@ -13,6 +13,7 @@ import com.uber.data.kafka.datatransfer.DebugWorkersTable;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.JobGroup;
 import com.uber.data.kafka.datatransfer.JobState;
+import com.uber.data.kafka.datatransfer.ScaleStatus;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
@@ -143,7 +144,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
                     this.getClass().getClassLoader().getResourceAsStream("data/workers.json"))));
   }
 
-  private static StoredJob buildJob(long jobId, long workerId) {
+  static StoredJob buildJob(long jobId, long workerId) {
     return buildJob(jobId, workerId, "", 6);
   }
 
@@ -172,19 +173,51 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   RebalancingJobGroup buildRebalancingJobGroup(
       String jobGroupId, JobState jobGroupState, StoredJob... jobs) {
     StoredJobGroup.Builder jobGroupBuilder = StoredJobGroup.newBuilder();
-    double totalRps = 0d;
+    double mps = 0;
     for (StoredJob job : jobs) {
       jobGroupBuilder.addJobs(job.toBuilder().setState(jobGroupState).build());
-      totalRps += job.getJob().getFlowControl().getMessagesPerSec();
+      mps += job.getJob().getFlowControl().getMessagesPerSec();
     }
     StoredJobGroup jobGroup =
         jobGroupBuilder
             .setJobGroup(
                 JobGroup.newBuilder()
-                    .setFlowControl(FlowControl.newBuilder().setMessagesPerSec(totalRps).build())
+                    .setFlowControl(FlowControl.newBuilder().setMessagesPerSec(mps).build())
                     .setJobGroupId(jobGroupId)
                     .buildPartial())
             .setState(jobGroupState)
+            .build();
+    RebalancingJobGroup result =
+        RebalancingJobGroup.of(Versioned.from(jobGroup, 1), ImmutableMap.of());
+    return RebalancingJobGroup.of(result.toStoredJobGroup(), ImmutableMap.of());
+  }
+
+  RebalancingJobGroup buildRebalancingJobGroup(
+      String jobGroupId,
+      JobState jobGroupState,
+      double mps,
+      double bps,
+      double inflight,
+      double scale,
+      StoredJob... jobs) {
+    StoredJobGroup.Builder jobGroupBuilder = StoredJobGroup.newBuilder();
+    for (StoredJob job : jobs) {
+      jobGroupBuilder.addJobs(job.toBuilder().setState(jobGroupState).build());
+    }
+    StoredJobGroup jobGroup =
+        jobGroupBuilder
+            .setJobGroup(
+                JobGroup.newBuilder()
+                    .setFlowControl(
+                        FlowControl.newBuilder()
+                            .setMessagesPerSec(mps)
+                            .setBytesPerSec(bps)
+                            .setMaxInflightMessages(inflight)
+                            .build())
+                    .setJobGroupId(jobGroupId)
+                    .buildPartial())
+            .setState(jobGroupState)
+            .setScaleStatus(ScaleStatus.newBuilder().setScale(scale).build())
             .build();
     RebalancingJobGroup result =
         RebalancingJobGroup.of(Versioned.from(jobGroup, 1), ImmutableMap.of());
