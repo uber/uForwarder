@@ -64,6 +64,7 @@ public class StructuredLogging extends StructuredFields {
   private static final String ZONE_INTENTION = "zone_intention";
 
   private static final String WORKLOAD_SCALE = "workload_scale";
+  private static final String POD = "pod";
 
   public static StructuredArgument kafkaTopic(String topic) {
     return StructuredArguments.keyValue(KAFKA_TOPIC, topic);
@@ -279,5 +280,9 @@ public class StructuredLogging extends StructuredFields {
 
   public static StructuredArgument headerValue(byte[] headerValue) {
     return StructuredArguments.keyValue(HEADER_VALUE, new String(headerValue));
+  }
+
+  public static StructuredArgument pod(String podValue) {
+    return StructuredArguments.keyValue(POD, podValue);
   }
 }
