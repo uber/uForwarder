@@ -6,6 +6,11 @@ plugins {
     id 'uforwarder.java-library-conventions'
 }
 
+test {
+    minHeapSize = "1g"
+    maxHeapSize = "2g"
+}
+
 dependencies {
     implementation 'com.101tec:zkclient'
     implementation 'com.github.stefanbirkner:system-rules'
