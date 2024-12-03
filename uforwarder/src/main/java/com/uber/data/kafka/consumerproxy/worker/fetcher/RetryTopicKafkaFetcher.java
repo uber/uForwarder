@@ -1,23 +1,26 @@
 package com.uber.data.kafka.consumerproxy.worker.fetcher;
 
+import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
+import com.uber.data.kafka.consumerproxy.common.StructuredTags;
 import com.uber.data.kafka.datatransfer.AutoOffsetResetPolicy;
 import com.uber.data.kafka.datatransfer.IsolationLevel;
 import com.uber.data.kafka.datatransfer.Job;
+import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.RetryQueue;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.CheckpointManager;
-import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.DelayProcessManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.InflightMessageTracker;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaCheckpointManager;
-import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaDelayProcessManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfiguration;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.SeekStartOffsetOption;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.ThroughputTracker;
+import com.uber.data.kafka.instrumentation.Instrumentation;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Condition;
 import java.util.concurrent.locks.ReentrantLock;
 import javax.annotation.Nullable;
@@ -53,7 +56,6 @@ public final class RetryTopicKafkaFetcher extends AbstractKafkaFetcherThread<byt
       KafkaFetcherConfiguration config,
       CheckpointManager checkpointManager,
       ThroughputTracker throughputTracker,
-      DelayProcessManager<byte[], byte[]> delayProcessManager,
       Consumer<byte[], byte[]> kafkaConsumer,
       CoreInfra infra,
       Optional<RetryQueue> retryQueueConfig) {
@@ -62,7 +64,6 @@ public final class RetryTopicKafkaFetcher extends AbstractKafkaFetcherThread<byt
         config,
         checkpointManager,
         throughputTracker,
-        delayProcessManager,
         new InflightMessageTracker(),
         kafkaConsumer,
         infra,
@@ -127,10 +128,72 @@ public final class RetryTopicKafkaFetcher extends AbstractKafkaFetcherThread<byt
       CheckpointManager checkpointManager,
       PipelineStateManager pipelineStateManager)
       throws InterruptedException {
+    // a boolean indicating whether the caller needs to process the remaining messages for the
+    // given job or not. True means the caller does not need to, false means otherwise.
+    boolean stopProcessingRemaining = false;
     // If the job is no longer assigned to this pipeline, there
     // is no need to process the remaining records.
-    // The delay processing is handled by the delayProcessManager.
-    return !pipelineStateManager.shouldJobBeRunning(job);
+    if (!pipelineStateManager.shouldJobBeRunning(job)) {
+      stopProcessingRemaining = true;
+    } else {
+      // handle the processing delay
+      long processingDelayMs = getProcessingDelayMs(job);
+      if (processingDelayMs > 0) {
+        long deadline = consumerRecord.timestamp() + processingDelayMs;
+        long waitingTimeMs = deadline - System.currentTimeMillis();
+        KafkaConsumerTask kafkaConsumerTask = job.getKafkaConsumerTask();
+        // wait until the expected delay is reached or the job was removed.
+        while (waitingTimeMs > 0 && pipelineStateManager.shouldJobBeRunning(job)) {
+          // log exceptionally long (>6H) waiting
+          if (waitingTimeMs > 21600000) {
+            LOGGER.info(
+                "long-waiting-messages",
+                StructuredLogging.kafkaCluster(kafkaConsumerTask.getCluster()),
+                StructuredLogging.kafkaGroup(kafkaConsumerTask.getConsumerGroup()),
+                StructuredLogging.kafkaTopic(kafkaConsumerTask.getTopic()),
+                StructuredLogging.kafkaPartition(kafkaConsumerTask.getPartition()),
+                StructuredLogging.kafkaOffset(consumerRecord.offset()));
+          }
+
+          final long finalWaitingTimeMs = waitingTimeMs;
+          Instrumentation.instrument.withException(
+              LOGGER,
+              infra.scope(),
+              infra.tracer(),
+              () -> {
+                lock.lock();
+                try {
+                  return processingDelayReached.await(finalWaitingTimeMs, TimeUnit.MILLISECONDS);
+                } finally {
+                  lock.unlock();
+                }
+              },
+              r -> !r,
+              "message-processing-wait",
+              StructuredTags.KAFKA_CLUSTER,
+              kafkaConsumerTask.getCluster(),
+              StructuredTags.KAFKA_GROUP,
+              kafkaConsumerTask.getConsumerGroup(),
+              StructuredTags.KAFKA_TOPIC,
+              kafkaConsumerTask.getTopic(),
+              StructuredTags.KAFKA_PARTITION,
+              Integer.toString(kafkaConsumerTask.getPartition()));
+          // update the waitingTimeMs in case await is terminated by signal.
+          waitingTimeMs = deadline - System.currentTimeMillis();
+        }
+        // check again: if the job is no longer assigned to this pipeline, there
+        // is no need to process the remaining records.
+        stopProcessingRemaining = !pipelineStateManager.shouldJobBeRunning(job);
+      }
+    }
+    return stopProcessingRemaining;
+  }
+
+  private int getProcessingDelayMs(Job job) {
+    if (retryQueueConfig != null && retryQueueConfig.isPresent()) {
+      return retryQueueConfig.get().getProcessingDelayMs();
+    }
+    return -1;
   }
 
   @Override
@@ -177,19 +240,11 @@ public final class RetryTopicKafkaFetcher extends AbstractKafkaFetcherThread<byt
                 isSecure));
     KafkaCheckpointManager checkpointManager = new KafkaCheckpointManager(infra.scope());
     ThroughputTracker throughputTracker = new ThroughputTracker();
-    int processingDelayMs = -1;
-    if (retryQueueConfig != null && retryQueueConfig.isPresent()) {
-      processingDelayMs = retryQueueConfig.get().getProcessingDelayMs();
-    }
-    DelayProcessManager<byte[], byte[]> delayProcessManager =
-        new KafkaDelayProcessManager<>(
-            infra.scope(), consumerGroup, processingDelayMs, kafkaConsumer);
     return new RetryTopicKafkaFetcher(
         threadName,
         config,
         checkpointManager,
         throughputTracker,
-        delayProcessManager,
         kafkaConsumer,
         infra,
         retryQueueConfig);

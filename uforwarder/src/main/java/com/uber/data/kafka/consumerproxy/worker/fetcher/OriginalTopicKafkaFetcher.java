@@ -7,10 +7,8 @@ import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.CheckpointManager;
-import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.DelayProcessManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.InflightMessageTracker;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaCheckpointManager;
-import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaDelayProcessManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfiguration;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.SeekStartOffsetOption;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.ThroughputTracker;
@@ -43,7 +41,6 @@ public final class OriginalTopicKafkaFetcher extends AbstractKafkaFetcherThread<
       KafkaFetcherConfiguration config,
       CheckpointManager checkpointManager,
       ThroughputTracker throughputTracker,
-      DelayProcessManager<byte[], byte[]> delayProcessManager,
       Consumer<byte[], byte[]> kafkaConsumer,
       CoreInfra infra) {
     super(
@@ -51,12 +48,10 @@ public final class OriginalTopicKafkaFetcher extends AbstractKafkaFetcherThread<
         config,
         checkpointManager,
         throughputTracker,
-        delayProcessManager,
         new InflightMessageTracker(),
         kafkaConsumer,
         infra,
-        true,
-        false);
+        true);
   }
 
   /**
@@ -140,7 +135,6 @@ public final class OriginalTopicKafkaFetcher extends AbstractKafkaFetcherThread<
       String consumerGroup,
       AutoOffsetResetPolicy autoOffsetResetPolicy,
       IsolationLevel isolationLevel,
-      int processingDelayMs,
       KafkaFetcherConfiguration config,
       boolean isSecure,
       CoreInfra infra)
@@ -156,16 +150,7 @@ public final class OriginalTopicKafkaFetcher extends AbstractKafkaFetcherThread<
                 isSecure));
     KafkaCheckpointManager checkpointManager = new KafkaCheckpointManager(infra.scope());
     ThroughputTracker throughputTracker = new ThroughputTracker();
-    DelayProcessManager<byte[], byte[]> delayProcessManager =
-        new KafkaDelayProcessManager<>(
-            infra.scope(), consumerGroup, processingDelayMs, kafkaConsumer);
     return new OriginalTopicKafkaFetcher(
-        threadName,
-        config,
-        checkpointManager,
-        throughputTracker,
-        delayProcessManager,
-        kafkaConsumer,
-        infra);
+        threadName, config, checkpointManager, throughputTracker, kafkaConsumer, infra);
   }
 }

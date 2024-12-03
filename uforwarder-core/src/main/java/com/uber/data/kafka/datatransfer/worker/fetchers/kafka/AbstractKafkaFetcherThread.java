@@ -42,7 +42,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.stream.Collectors;
 import javax.annotation.Nullable;
 import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
@@ -106,7 +105,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
   private final CheckpointManager checkpointManager;
   private final KafkaFetcherConfiguration config;
   private final ThroughputTracker throughputTracker;
-  private final DelayProcessManager delayProcessManager;
 
   private final InflightMessageTracker inflightMessageTracker;
 
@@ -135,7 +133,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         config,
         checkpointManager,
         throughputTracker,
-        DelayProcessManager.NOOP,
         inflightMessageTracker,
         kafkaConsumer,
         infra,
@@ -148,7 +145,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
       KafkaFetcherConfiguration config,
       CheckpointManager checkpointManager,
       ThroughputTracker throughputTracker,
-      DelayProcessManager<K, V> delayProcessManager,
       InflightMessageTracker inflightMessageTracker,
       Consumer<K, V> kafkaConsumer,
       CoreInfra infra,
@@ -159,7 +155,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         infra.contextManager().wrap(Executors.newSingleThreadScheduledExecutor());
     this.checkpointManager = checkpointManager;
     this.throughputTracker = throughputTracker;
-    this.delayProcessManager = delayProcessManager;
     this.inflightMessageTracker = inflightMessageTracker;
     this.config = config;
     this.offsetMonitorMs = config.getOffsetMonitorIntervalMs();
@@ -288,26 +283,11 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
             "assignment changed",
             StructuredLogging.kafkaTopicPartitions(allTopicPartitionJobMap.keySet()));
         kafkaConsumer.assign(allTopicPartitionJobMap.keySet());
-
-        // delete removed jobs from delayProcessManager
-        delayProcessManager.delete(removedTopicPartitionJobMap.keySet());
-
         // Resume all topic partitions in case they are paused before.
-        // The partitions paused by delayProcessManager will not be resumed here, but will be
-        // resumed in DelayProcessManager.
         // If we don't resume and if the previously paused topic partitions are assigned to
         // this worker again, those topic partitions will still be in paused state. This might be
         // a problem because we cannot fetch messages from this specific topic partitions.
-        // topic partitions paused by delayProcessManager will be resumed in resumeTopicPartitions
-        // function.
-        List<TopicPartition> pausedTopicPartitions = delayProcessManager.getAll();
-        Collection<TopicPartition> topicPartitions =
-            allTopicPartitionJobMap
-                .keySet()
-                .stream()
-                .filter(tp -> !pausedTopicPartitions.contains(tp))
-                .collect(Collectors.toSet());
-        kafkaConsumer.resume(topicPartitions);
+        kafkaConsumer.resume(allTopicPartitionJobMap.keySet());
       }
 
       // step 3.2: seek start offsets when it's necessary
@@ -319,21 +299,14 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
       // step 5: poll messages
       @Nullable ConsumerRecords<K, V> records = pollMessages(allTopicPartitionJobMap);
 
-      // step 6: get resumed topic partitions
-      Map<TopicPartition, List<ConsumerRecord<K, V>>> resumedRecords =
-          delayProcessManager.resumePausedPartitionsAndRecords();
-
-      // step 7: merge resumed records with new polled records
-      @Nullable ConsumerRecords<K, V> mergedRecords = mergeRecords(records, resumedRecords);
-
-      // step 8: update actual running job status here because we use async commit, so offsets are
+      // step 6: update actual running job status here because we use async commit, so offsets are
       // committed to Kafka servers when we are doing polling.
       updateActualRunningJobStatus();
 
-      // step 9: process messages
-      processFetchedData(mergedRecords, allTopicPartitionJobMap);
+      // step 7: process messages
+      processFetchedData(records, allTopicPartitionJobMap);
 
-      // step 10: log and report metric
+      // step 8: log and report metric
       logTopicPartitionOffsetInfo(allTopicPartitionJobMap);
     } catch (Throwable e) {
       // TODO (T4575853): recreate kafka consumer if kafka consumer is closed.
@@ -450,50 +423,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         scope.counter(MetricNames.OFFSET_COMMIT_EXCEPTION).inc(1);
       }
     }
-  }
-
-  @Nullable
-  ConsumerRecords<K, V> mergeRecords(
-      @Nullable ConsumerRecords<K, V> records,
-      Map<TopicPartition, List<ConsumerRecord<K, V>>> resumedRecords) {
-    Preconditions.checkNotNull(pipelineStateManager, "pipeline config manager required");
-
-    if (resumedRecords == null || resumedRecords.isEmpty()) {
-      return records;
-    }
-
-    if (records == null) {
-      return new ConsumerRecords<>(resumedRecords);
-    }
-
-    Map<TopicPartition, List<ConsumerRecord<K, V>>> mergedRecords = new HashMap<>(resumedRecords);
-    for (TopicPartition partition : records.partitions()) {
-      if (resumedRecords.containsKey(partition)) {
-        LOGGER.warn(
-            "The delay partitions may have duplications",
-            StructuredLogging.kafkaGroup(
-                pipelineStateManager.getJobTemplate().getKafkaConsumerTask().getConsumerGroup()),
-            StructuredLogging.kafkaTopic(partition.topic()),
-            StructuredLogging.kafkaPartition(partition.partition()));
-        scope
-            .tagged(
-                StructuredTags.builder()
-                    .setKafkaGroup(
-                        pipelineStateManager
-                            .getJobTemplate()
-                            .getKafkaConsumerTask()
-                            .getConsumerGroup())
-                    .setKafkaTopic(partition.topic())
-                    .setKafkaPartition(partition.partition())
-                    .build())
-            .gauge(MetricNames.TOPIC_PARTITION_DELAY_DUPLICATION)
-            .update(resumedRecords.get(partition).size());
-      }
-      mergedRecords
-          .computeIfAbsent(partition, key -> new ArrayList<>())
-          .addAll(records.records(partition));
-    }
-    return new ConsumerRecords<>(mergedRecords);
   }
 
   private boolean eligibleToCommit(long offsetToCommit, long committedOffset) {
@@ -1029,10 +958,9 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
           continue;
         }
 
-        final int size = records.size();
+        int size = records.size();
         long lastProcessedOffset = records.get(size - 1).offset();
-        for (int i = 0; i < size; ++i) {
-          ConsumerRecord<K, V> record = records.get(i);
+        for (ConsumerRecord<K, V> record : records) {
           // FIXME: this is a workaround for retry queue duplication problem.
           // https://t3.uberinternal.com/browse/KAFEP-1522
           // long term solution is to have a separate thread for periodic commit offset, however, it
@@ -1050,26 +978,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
             pausePartitionAndSeekOffset(tp, record.offset());
             break;
           }
-          if (delayProcessManager.shouldDelayProcess(record)) {
-            delayProcessManager.pausedPartitionsAndRecords(tp, records.subList(i, size));
-            lastProcessedOffset = record.offset() - 1;
-            break;
-          }
-
-          scope
-              .tagged(
-                  StructuredTags.builder()
-                      .setKafkaGroup(
-                          pipelineStateManager
-                              .getJobTemplate()
-                              .getKafkaConsumerTask()
-                              .getConsumerGroup())
-                      .setKafkaTopic(tp.topic())
-                      .setKafkaPartition(tp.partition())
-                      .build())
-              .gauge(MetricNames.TOPIC_PARTITION_DELAY_TIME)
-              .update(System.currentTimeMillis() - record.timestamp());
-
           inflightMessageTracker.addMessage(tp, record.serializedValueSize());
           // process the message
           final Scope scopeWithGroupTopicPartition =
@@ -1288,7 +1196,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
       kafkaConsumer.wakeup();
       kafkaConsumer.close();
       checkpointManager.close();
-      delayProcessManager.close();
       throughputTracker.clear();
       inflightMessageTracker.clear();
       if (!scheduledExecutorService.isShutdown()) {
@@ -1322,11 +1229,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         "fetcher.kafka.topic.partition.seek.end-null";
     static final String TOPIC_PARTITION_DUP_JOB = "fetcher.kafka.topic.partition.dup-job";
     static final String TOPIC_PARTITION_PAUSED = "fetcher.kafka.topic.partition.paused";
-    static final String TOPIC_PARTITION_RESUME = "fetcher.kafka.topic.partition.resume";
-    static final String TOPIC_PARTITION_DELAY_TIME = "fetcher.kafka.topic.partition.delay.time";
     static final String TOPIC_PARTITION_OFFSET_START = "fetcher.kafka.topic.partition.offset.start";
-    static final String TOPIC_PARTITION_DELAY_DUPLICATION =
-        "fetcher.kafka.topic.partition.delay.duplication";
     static final String TOPIC_PARTITION_OFFSET_END = "fetcher.kafka.topic.partition.offset.end";
     static final String CLOSE_SUCCESS = "fetcher.kafka.close.success";
     static final String CLOSE_FAILURE = "fetcher.kafka.close.failure";
