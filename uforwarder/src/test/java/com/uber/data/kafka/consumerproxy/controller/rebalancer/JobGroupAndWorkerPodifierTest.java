@@ -104,7 +104,7 @@ public class JobGroupAndWorkerPodifierTest extends FievelTestBase {
         };
 
     JobPodPlacementProvider jobPodPlacementProvider =
-        new JobPodPlacementProvider(jobPod, workerPod, ImmutableMap.of(), 8);
+        new JobPodPlacementProvider(jobPod, workerPod, ImmutableMap.of(), ImmutableMap.of(), 8);
     Scope scope = mock(Scope.class);
     when(scope.tagged(anyMap())).thenReturn(scope);
     Counter counter = mock(Counter.class);

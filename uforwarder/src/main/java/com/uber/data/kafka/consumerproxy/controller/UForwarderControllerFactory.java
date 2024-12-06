@@ -171,6 +171,7 @@ public class UForwarderControllerFactory {
         storedJob -> placementPod,
         storedWorker -> placementPod,
         ImmutableMap.of(),
+        ImmutableMap.of(),
         rebalancerConfiguration.getNumberOfVirtualPartitions());
   }
 
