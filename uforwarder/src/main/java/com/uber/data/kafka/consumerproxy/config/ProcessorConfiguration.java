@@ -27,7 +27,9 @@ public class ProcessorConfiguration {
   private int sharedInboundCacheByteSize = 512 * 1024 * 1024;
 
   // This is the default unprocessed outbound message count for each topic partition if there is no
-  // valid configuration provided by the master in the JobConfiguration.
+  // valid configuration provided by the master in the JobConfiguration, and max unprocessed
+  // outbound
+  // message count of each topic partition for adaptive limiter
   private int maxOutboundCacheCount = 250;
 
   // This is the default max difference between an ACKed offset and the largest committed offset for
