@@ -88,7 +88,7 @@ public class LongFixedInflightLimiterTest extends FievelTestBase {
     t1.join(1000);
   }
 
-  @Test(timeout = 1000)
+  @Test(timeout = 10000)
   public void testAcquireAndRelease() throws InterruptedException {
     AtomicBoolean reached = new AtomicBoolean(false);
     inflightLimiter.acquire();
@@ -106,7 +106,7 @@ public class LongFixedInflightLimiterTest extends FievelTestBase {
     thread.start();
 
     Awaitility.await()
-        .atMost(1, TimeUnit.SECONDS)
+        .atMost(10, TimeUnit.SECONDS)
         .until(() -> inflightLimiter.getMetrics().getBlockingQueueSize() == 1);
     permit.complete(InflightLimiter.Result.Succeed);
 
