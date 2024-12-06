@@ -245,17 +245,21 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
   }
 
   @Test
-  public void testUpdateLimitWithPositiveLimit() {
+  public void testUpdateLimitWithPositiveLimit() throws InterruptedException {
     Mockito.reset(adaptiveInflightLimiter);
     outboundMessageLimiter.updateLimit(50);
     Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).setMaxInflight(50);
-    Mockito.verify(adaptiveInflightLimiter, Mockito.times(1)).setDryRun(true);
+    // with positive limit, we should dryrun adaptive limit
+    Mockito.reset(adaptiveInflightLimiter);
+    outboundMessageLimiter.acquirePermit(pm1);
+    Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).acquire(true);
+    Mockito.reset(adaptiveInflightLimiter);
+    outboundMessageLimiter.acquirePermitAsync(pm1);
+    Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).tryAcquire(true);
   }
 
   @Test
-  public void testUpdateLimitWithZeroLimit() {
-    Mockito.reset(adaptiveInflightLimiter);
-    outboundMessageLimiter.updateLimit(50);
+  public void testUpdateLimitWithZeroLimit() throws InterruptedException {
     Mockito.reset(adaptiveInflightLimiter);
     outboundMessageLimiter.init(
         Job.newBuilder()
@@ -270,6 +274,14 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
             .build());
     outboundMessageLimiter.updateLimit(0);
     Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).setMaxInflight(1600);
-    Mockito.verify(adaptiveInflightLimiter, Mockito.times(1)).setDryRun(false);
+    // with zero limit, we should use adaptive limit
+    Mockito.reset(adaptiveInflightLimiter);
+    outboundMessageLimiter.acquirePermit(pm1);
+    Mockito.verify(adaptiveInflightLimiter, Mockito.times(1)).acquire(false);
+    Mockito.verify(adaptiveInflightLimiter, Mockito.times(1)).acquire(true);
+    Mockito.reset(adaptiveInflightLimiter);
+    outboundMessageLimiter.acquirePermitAsync(pm1);
+    Mockito.verify(adaptiveInflightLimiter, Mockito.times(1)).tryAcquire(false);
+    Mockito.verify(adaptiveInflightLimiter, Mockito.times(1)).tryAcquire(true);
   }
 }

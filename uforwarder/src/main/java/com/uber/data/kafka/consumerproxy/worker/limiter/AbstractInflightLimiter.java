@@ -9,8 +9,8 @@ public abstract class AbstractInflightLimiter implements InflightLimiter {
   final AtomicBoolean isClosed = new AtomicBoolean(false);
 
   @Override
-  public Permit acquire() throws InterruptedException {
-    Permit permit = doAcquire(true);
+  public Permit acquire(boolean dryRun) throws InterruptedException {
+    Permit permit = doAcquire(dryRun ? AcquireMode.DryRun : AcquireMode.Blocking);
     if (permit == null) {
       // this should never happen
       return NoopPermit.INSTANCE;
@@ -19,9 +19,9 @@ public abstract class AbstractInflightLimiter implements InflightLimiter {
   }
 
   @Override
-  public Optional<Permit> tryAcquire() {
+  public Optional<Permit> tryAcquire(boolean dryRun) {
     try {
-      return Optional.ofNullable(doAcquire(false));
+      return Optional.ofNullable(doAcquire(dryRun ? AcquireMode.DryRun : AcquireMode.NonBlocking));
     } catch (InterruptedException e) {
       // this should never happen
       return Optional.empty();
@@ -49,12 +49,22 @@ public abstract class AbstractInflightLimiter implements InflightLimiter {
   /**
    * Acquires permit.
    *
-   * @param blocking blocks the call inorder to get permit
+   * @param acquireMode the acquire mode
    * @return the permit
    * @throws InterruptedException the interrupted exception
    */
   @Nullable
-  abstract Permit doAcquire(boolean blocking) throws InterruptedException;
+  abstract Permit doAcquire(AcquireMode acquireMode) throws InterruptedException;
+
+  /** used by doAcquire() to determine how the request should be permitted */
+  enum AcquireMode {
+    // block the call until permit can be granted
+    Blocking,
+    // grant permit if possible, otherwise return NoopPermit.INSTANCE
+    DryRun,
+    // grant permit if possible, otherwise return null
+    NonBlocking
+  }
 
   abstract class Metrics implements InflightLimiter.Metrics {
 

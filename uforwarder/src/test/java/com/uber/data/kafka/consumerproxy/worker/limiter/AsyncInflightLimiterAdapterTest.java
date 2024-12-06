@@ -23,15 +23,15 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
 
   @Test
   public void testAcquireAsync() throws ExecutionException, InterruptedException {
-    CompletableFuture<InflightLimiter.Permit> futurePermit1 = adapter.acquireAsync(0, 1);
+    CompletableFuture<InflightLimiter.Permit> futurePermit1 = adapter.acquireAsync(0, 1, false);
     Assert.assertTrue(futurePermit1.isDone());
     Assert.assertEquals(0, adapter.getMetrics().getAsyncQueueSize());
     Assert.assertEquals(0, adapter.getMetrics().getPendingQueueSize());
-    CompletableFuture<InflightLimiter.Permit> futurePermit2 = adapter.acquireAsync(0, 2);
+    CompletableFuture<InflightLimiter.Permit> futurePermit2 = adapter.acquireAsync(0, 2, false);
     Assert.assertTrue(futurePermit2.isDone());
     Assert.assertEquals(0, adapter.getMetrics().getAsyncQueueSize());
     Assert.assertEquals(0, adapter.getMetrics().getPendingQueueSize());
-    CompletableFuture<InflightLimiter.Permit> futurePermit3 = adapter.acquireAsync(0, 3);
+    CompletableFuture<InflightLimiter.Permit> futurePermit3 = adapter.acquireAsync(0, 3, false);
     Assert.assertFalse(futurePermit3.isDone());
     Assert.assertEquals(1, adapter.getMetrics().getAsyncQueueSize());
     Assert.assertEquals(1, adapter.getMetrics().getPendingQueueSize());
@@ -46,15 +46,15 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
       throws ExecutionException, InterruptedException {
     List<InflightLimiter.Permit> permits = new ArrayList<>();
     for (int i = 0; i < 2; ++i) {
-      permits.add(adapter.acquireAsync(0, i).get());
+      permits.add(adapter.acquireAsync(0, i, false).get());
     }
-    CompletableFuture<InflightLimiter.Permit> futurePermit1 = adapter.acquireAsync(1, 1);
+    CompletableFuture<InflightLimiter.Permit> futurePermit1 = adapter.acquireAsync(1, 1, false);
     Assert.assertEquals(1, adapter.getMetrics().getAsyncQueueSize());
     Assert.assertEquals(1, adapter.getMetrics().getPendingQueueSize());
-    CompletableFuture<InflightLimiter.Permit> futurePermit2 = adapter.acquireAsync(1, 2);
+    CompletableFuture<InflightLimiter.Permit> futurePermit2 = adapter.acquireAsync(1, 2, false);
     Assert.assertEquals(2, adapter.getMetrics().getAsyncQueueSize());
     Assert.assertEquals(2, adapter.getMetrics().getPendingQueueSize());
-    CompletableFuture<InflightLimiter.Permit> futurePermit3 = adapter.acquireAsync(2, 1);
+    CompletableFuture<InflightLimiter.Permit> futurePermit3 = adapter.acquireAsync(2, 1, false);
     Assert.assertEquals(3, adapter.getMetrics().getAsyncQueueSize());
     Assert.assertEquals(3, adapter.getMetrics().getPendingQueueSize());
     for (InflightLimiter.Permit permit : permits) {
@@ -74,7 +74,7 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
   public void testCloseRelease() {
     List<CompletableFuture<InflightLimiter.Permit>> permits = new ArrayList<>();
     for (int i = 0; i < 3; ++i) {
-      permits.add(adapter.acquireAsync(0, 1));
+      permits.add(adapter.acquireAsync(0, 1, false));
     }
     int done = 0;
     for (CompletableFuture<InflightLimiter.Permit> permit : permits) {
@@ -92,16 +92,16 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
 
   @Test
   public void testAcquireSucceedAndCancel() {
-    CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(0, 1);
+    CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(0, 1, false);
     Assert.assertFalse(futurePermit.cancel(false));
   }
 
   @Test
   public void testAcquireFailedAndCancel() throws ExecutionException, InterruptedException {
     for (int i = 0; i < 2; ++i) {
-      adapter.acquireAsync(0, i);
+      adapter.acquireAsync(0, i, false);
     }
-    CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(0, 2);
+    CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(0, 2, false);
     Assert.assertEquals(1, adapter.getMetrics().getAsyncQueueSize());
     Assert.assertEquals(1, adapter.getMetrics().getPendingQueueSize());
     futurePermit.cancel(false);
@@ -115,9 +115,9 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
       throws ExecutionException, InterruptedException {
     CompletableFuture<InflightLimiter.Permit> acquiredPermit = null;
     for (int i = 0; i < 2; ++i) {
-      acquiredPermit = adapter.acquireAsync(0, i);
+      acquiredPermit = adapter.acquireAsync(0, i, false);
     }
-    CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(0, 1);
+    CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(0, 1, false);
     Assert.assertEquals(1, adapter.getMetrics().getAsyncQueueSize());
     Assert.assertEquals(1, adapter.getMetrics().getPendingQueueSize());
     acquiredPermit.get().complete(InflightLimiter.Result.Succeed);
@@ -140,9 +140,9 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
   @Test
   public void testCompletePermitCompletableFuture() {
     for (int i = 0; i < 2; ++i) {
-      adapter.acquireAsync(0, i);
+      adapter.acquireAsync(0, i, false);
     }
-    CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(0, 2);
+    CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(0, 2, false);
     Assert.assertFalse(futurePermit.isDone());
     futurePermit.completeExceptionally(new CancellationException());
     AtomicBoolean complected = new AtomicBoolean(false);
@@ -161,9 +161,9 @@ public class AsyncInflightLimiterAdapterTest extends FievelTestBase {
       throws ExecutionException, InterruptedException {
     CompletableFuture<InflightLimiter.Permit> acquiredPermit = null;
     for (int i = 0; i < 2; ++i) {
-      acquiredPermit = adapter.acquireAsync(0, i);
+      acquiredPermit = adapter.acquireAsync(0, i, false);
     }
-    CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(1, 0);
+    CompletableFuture<InflightLimiter.Permit> futurePermit = adapter.acquireAsync(1, 0, false);
     Assert.assertFalse(futurePermit.isDone());
     futurePermit.completeExceptionally(new CancellationException()); // complete a future permit
     Assert.assertTrue(futurePermit.isDone());
