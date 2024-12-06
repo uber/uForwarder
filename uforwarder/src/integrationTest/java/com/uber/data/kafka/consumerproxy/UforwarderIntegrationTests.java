@@ -38,6 +38,8 @@ import java.util.List;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
+import net.jodah.failsafe.Failsafe;
+import net.jodah.failsafe.RetryPolicy;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
@@ -46,6 +48,7 @@ import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.serialization.ByteArrayDeserializer;
 import org.apache.kafka.common.serialization.ByteArraySerializer;
+import org.awaitility.core.ConditionTimeoutException;
 import org.junit.AfterClass;
 import org.junit.Assert;
 import org.junit.BeforeClass;
@@ -130,15 +133,34 @@ public class UforwarderIntegrationTests extends FievelTestBase {
     kafkaServer.start();
     NetworkUtils.assertPortInUseWithTimeout(kafkaServer.getFirstMappedPort(), 30);
 
-    controllerGrpcPort = NetworkUtils.getRandomAvailablePort();
-    UForwarderStarter.startUForwarderMaster(
-        kafkaServer.getBootstrapServers(),
-        String.format(ZK_CONNECT_TEMPLATE, zkServer.getMappedPort(ZOOKEEPER_PORT)),
-        controllerGrpcPort);
-    UForwarderStarter.startUForwarderWorker(
-        kafkaServer.getBootstrapServers(),
-        NetworkUtils.getRandomAvailablePort(),
-        Constants.MASTER_HOST + ":" + controllerGrpcPort);
+    controllerGrpcPort =
+        Failsafe.with(
+                new RetryPolicy<Integer>()
+                    .withDelay(Duration.ofSeconds(1))
+                    .withMaxRetries(2)
+                    .handle(ConditionTimeoutException.class))
+            .get(
+                () -> {
+                  int port = NetworkUtils.getRandomAvailablePort();
+                  UForwarderStarter.startUForwarderMaster(
+                      kafkaServer.getBootstrapServers(),
+                      String.format(ZK_CONNECT_TEMPLATE, zkServer.getMappedPort(ZOOKEEPER_PORT)),
+                      port);
+                  return port;
+                });
+
+    Failsafe.with(
+            new RetryPolicy<Void>()
+                .withDelay(Duration.ofSeconds(1))
+                .withMaxRetries(2)
+                .handle(ConditionTimeoutException.class))
+        .run(
+            () -> {
+              UForwarderStarter.startUForwarderWorker(
+                  kafkaServer.getBootstrapServers(),
+                  NetworkUtils.getRandomAvailablePort(),
+                  Constants.MASTER_HOST + ":" + controllerGrpcPort);
+            });
   }
 
   @AfterClass
