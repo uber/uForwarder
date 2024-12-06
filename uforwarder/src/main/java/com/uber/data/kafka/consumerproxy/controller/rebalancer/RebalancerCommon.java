@@ -87,33 +87,28 @@ class RebalancerCommon {
   }
 
   static List<Integer> generateWorkerVirtualPartitions(
-      final Map<String, RebalancingJobGroup> jobGroupMap,
-      final Map<Long, StoredWorker> workerMap,
+      PodAwareRebalanceGroup podAwareRebalanceGroup,
       RebalancerConfiguration rebalancerConfiguration,
       Map<String, Integer> jobGroupToPartitionMap,
       RpcJobColocatingRebalancer.RebalancingWorkerTable rebalancingWorkerTable) {
-    int numberOfPartition = rebalancerConfiguration.getNumberOfVirtualPartitions();
     // calculate how many workers are needed per partition based on workload
     List<Integer> workerNeededPerPartition =
         calculateWorkerNeededPerPartition(
-            rebalancerConfiguration, jobGroupToPartitionMap, jobGroupMap, workerMap);
+            podAwareRebalanceGroup, rebalancerConfiguration, jobGroupToPartitionMap);
     insertWorkersIntoRebalancingTable(
         rebalancingWorkerTable,
         workerNeededPerPartition,
-        workerMap,
-        numberOfPartition,
+        podAwareRebalanceGroup,
         rebalancerConfiguration,
-        jobGroupToPartitionMap,
-        jobGroupMap);
+        jobGroupToPartitionMap);
     return workerNeededPerPartition;
   }
 
   private static List<Integer> calculateWorkerNeededPerPartition(
+      PodAwareRebalanceGroup podAwareRebalanceGroup,
       RebalancerConfiguration rebalancerConfiguration,
-      final Map<String, Integer> jobGroupToPartitionMap,
-      final Map<String, RebalancingJobGroup> jobGroupMap,
-      final Map<Long, StoredWorker> workerMap) {
-    int numberOfPartition = rebalancerConfiguration.getNumberOfVirtualPartitions();
+      final Map<String, Integer> jobGroupToPartitionMap) {
+    int numberOfPartition = podAwareRebalanceGroup.getNumberOfVirtualPartitions();
     // calculate the total workload of job group per partition
     List<Integer> overloadedWorkerNeededByPartitionList =
         new ArrayList<>(Collections.nCopies(numberOfPartition, 0));
@@ -124,21 +119,22 @@ class RebalancerCommon {
 
     List<Integer> jobCountByPartitionList =
         new ArrayList<>(Collections.nCopies(numberOfPartition, 0));
-    for (RebalancingJobGroup jobGroup : jobGroupMap.values()) {
+    for (Map.Entry<String, List<StoredJob>> entry :
+        podAwareRebalanceGroup.getGroupIdToJobs().entrySet()) {
+      String groupId = entry.getKey();
       long hashValue =
-          Math.abs(
-              jobGroup.getJobGroup().getJobGroupId().hashCode()
-                  % rebalancerConfiguration.getMaxAssignmentHashValueRange());
-      int partitionIdx = (int) (hashValue % numberOfPartition);
-      jobGroupToPartitionMap.put(jobGroup.getJobGroup().getJobGroupId(), partitionIdx);
-      for (StoredJob job : jobGroup.getJobs().values()) {
+          Math.abs(groupId.hashCode() % rebalancerConfiguration.getMaxAssignmentHashValueRange());
+
+      int partition = (int) (hashValue % numberOfPartition);
+      jobGroupToPartitionMap.put(groupId, partition);
+      for (StoredJob job : entry.getValue()) {
         // for single job with >= 1.0 scale, we need to put in a dedicated worker
         if (job.getScale() >= 1.0) {
           overloadedWorkerNeededByPartitionList.set(
-              partitionIdx, overloadedWorkerNeededByPartitionList.get(partitionIdx) + 1);
+              partition, overloadedWorkerNeededByPartitionList.get(partition) + 1);
         } else {
-          jobCountByPartitionList.set(partitionIdx, jobCountByPartitionList.get(partitionIdx) + 1);
-          workloadPerJobByPartitionList.get(partitionIdx).add(job.getScale());
+          jobCountByPartitionList.set(partition, jobCountByPartitionList.get(partition) + 1);
+          workloadPerJobByPartitionList.get(partition).add(job.getScale());
         }
       }
     }
@@ -190,35 +186,37 @@ class RebalancerCommon {
   protected static void insertWorkersIntoRebalancingTable(
       RpcJobColocatingRebalancer.RebalancingWorkerTable rebalancingWorkerTable,
       List<Integer> workersNeededPerPartition,
-      final Map<Long, StoredWorker> workerMap,
-      int numberOfPartition,
+      PodAwareRebalanceGroup podAwareRebalanceGroup,
       RebalancerConfiguration rebalancerConfiguration,
-      Map<String, Integer> jobGroupToPartitionMap,
-      final Map<String, RebalancingJobGroup> jobGroupMap) {
-
+      Map<String, Integer> jobGroupToPartitionMap) {
     // 1.) Add all workers for each job group to the rebalancing table, provided workers are still
     // valid
+    Map<Long, StoredWorker> podWorkers = podAwareRebalanceGroup.getWorkers();
     for (Map.Entry<String, Integer> entry : jobGroupToPartitionMap.entrySet()) {
       String jobGroupId = entry.getKey();
-      int partitionIdx = entry.getValue();
-      RebalancingJobGroup jobGroup = jobGroupMap.get(jobGroupId);
-      Preconditions.checkNotNull(
-          jobGroup,
+      int groupPartitionIdx = entry.getValue();
+      Preconditions.checkArgument(
+          podAwareRebalanceGroup.getGroupIdToJobs().containsKey(jobGroupId),
           String.format("Job group id '%s' is missing, should never happen.", jobGroupId));
-      for (StoredJob job : jobGroup.getJobs().values()) {
+
+      for (StoredJob job : podAwareRebalanceGroup.getGroupIdToJobs().get(jobGroupId)) {
         long workerId = job.getWorkerId();
-        if (workerMap.containsKey(workerId)) {
-          // putIfAbsent to avoid worker accidentally being in 2 different partitions
-          rebalancingWorkerTable.putIfAbsent(workerId, partitionIdx);
+        if (!podWorkers.containsKey(workerId)) {
+          continue;
         }
+        // putIfAbsent to avoid worker accidentally being in 2 different partitions
+        rebalancingWorkerTable.putIfAbsent(workerId, groupPartitionIdx);
+        // for other cases, which means the job is not on the correct worker, it will be
+        // handled in stale job step
       }
     }
 
     // 2.) "availableWorkers" not in rebalancing table are free to be used where needed
-    Set<Long> allWorkerIds = new HashSet<>(workerMap.keySet());
+    Set<Long> allWorkerIds = new HashSet<>(podWorkers.keySet());
     allWorkerIds.removeAll(rebalancingWorkerTable.getAllWorkerIds());
     List<Long> availableWorkers = new ArrayList<>(allWorkerIds);
 
+    int numberOfPartition = podAwareRebalanceGroup.getNumberOfVirtualPartitions();
     // 3.) remove workers from partition if there are too many
     freeExtraWorkers(
         rebalancingWorkerTable,
