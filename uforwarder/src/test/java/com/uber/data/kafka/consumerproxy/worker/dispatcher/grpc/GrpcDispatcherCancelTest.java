@@ -21,6 +21,8 @@ import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.ServerCalls;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.ServerSocket;
+import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -46,6 +48,7 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
   private String callee;
   private MessageStub stub;
   private int port;
+  private Random rand = new Random(123);
   private CountDownLatch latch;
   private volatile int finishCount;
 
@@ -54,11 +57,21 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
     this.config = new GrpcDispatcherConfiguration();
     this.infra = CoreInfra.NOOP;
     this.callee = "callee";
+    this.port = findFreePort();
     this.methodDescriptor = methodDescriptor("test/testAPI", new BytesMarshaller());
+    this.channel =
+        new GrpcManagedChannelPool(
+            () -> ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build(),
+            1,
+            10);
+    this.stub = new MessageStub();
     this.latch = new CountDownLatch(1);
+    this.dispatcher =
+        new GrpcDispatcher(
+            infra, config, channel, methodDescriptor, callee, GrpcFilter.NOOP, "caller");
     final ScheduledExecutorService executorService = Executors.newSingleThreadScheduledExecutor();
     server =
-        ServerBuilder.forPort(0)
+        ServerBuilder.forPort(port)
             .addService(
                 ServerServiceDefinition.builder("test")
                     .addMethod(
@@ -79,16 +92,6 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
                     .build())
             .build();
     server.start();
-    port = server.getPort();
-    this.channel =
-        new GrpcManagedChannelPool(
-            () -> ManagedChannelBuilder.forAddress("localhost", port).usePlaintext().build(),
-            1,
-            10);
-    this.stub = new MessageStub();
-    this.dispatcher =
-        new GrpcDispatcher(
-            infra, config, channel, methodDescriptor, callee, GrpcFilter.NOOP, "caller");
     dispatcher.start();
   }
 
@@ -190,5 +193,40 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
         throw new StatusRuntimeException(Status.INVALID_ARGUMENT.withCause(e));
       }
     }
+  }
+
+  /**
+   * Returns a free port number on localhost.
+   *
+   * <p>Heavily inspired from org.eclipse.jdt.launching.SocketUtil (to avoid a dependency to JDT
+   * just because of this). Slightly improved with close() missing in JDT. And throws exception
+   * instead of returning -1.
+   *
+   * @return a free port number on localhost
+   * @throws IllegalStateException if unable to find a free port
+   */
+  private static int findFreePort() {
+    ServerSocket socket = null;
+    try {
+      socket = new ServerSocket(0);
+      socket.setReuseAddress(true);
+      int port = socket.getLocalPort();
+      try {
+        socket.close();
+      } catch (IOException e) {
+        // Ignore IOException on close()
+      }
+      return port;
+    } catch (IOException e) {
+    } finally {
+      if (socket != null) {
+        try {
+          socket.close();
+        } catch (IOException e) {
+        }
+      }
+    }
+    throw new IllegalStateException(
+        "Could not find a free TCP/IP port to start embedded Jetty HTTP Server on");
   }
 }

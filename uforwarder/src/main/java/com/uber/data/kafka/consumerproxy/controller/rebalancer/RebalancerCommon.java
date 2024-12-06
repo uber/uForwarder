@@ -17,7 +17,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
@@ -172,18 +171,24 @@ class RebalancerCommon {
   }
 
   private static int getWorkerNumberPerWorkload(List<Double> workloadPerJob) {
+    // greedy approach to calculate number of workers needed, sorting from high to low
     workloadPerJob.sort(Comparator.reverseOrder());
-    PriorityQueue<Double> workers = new PriorityQueue<>();
+    int numberOfWorker = 0;
+    double currentWorkload = 0.0;
     for (double workload : workloadPerJob) {
-      if (workers.isEmpty() || workers.peek() + workload > WORKLOAD_CAPACITY_PER_WORKER) {
-        workers.add(workload);
+      if (currentWorkload + workload < WORKLOAD_CAPACITY_PER_WORKER) {
+        currentWorkload += workload;
       } else {
-        double prevWorkload = workers.poll();
-        workers.add(prevWorkload + workload);
+        currentWorkload = workload;
+        numberOfWorker += 1;
       }
     }
 
-    return workers.size();
+    if (currentWorkload > 0) {
+      numberOfWorker += 1;
+    }
+
+    return numberOfWorker;
   }
 
   @VisibleForTesting

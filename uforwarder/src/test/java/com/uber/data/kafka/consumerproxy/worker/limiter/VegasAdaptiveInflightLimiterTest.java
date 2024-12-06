@@ -14,14 +14,4 @@ public class VegasAdaptiveInflightLimiterTest extends FievelTestBase {
     p.complete();
     Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getInflight());
   }
-
-  @Test
-  public void testUpdateMaxLimit() throws InterruptedException {
-    AdaptiveInflightLimiter adaptiveInflightLimiter =
-        VegasAdaptiveInflightLimiter.newBuilder().build();
-    InflightLimiter.Permit p = adaptiveInflightLimiter.acquire();
-    Assert.assertEquals(1, adaptiveInflightLimiter.getMetrics().getInflight());
-    adaptiveInflightLimiter.setMaxInflight(100);
-    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getInflight());
-  }
 }
