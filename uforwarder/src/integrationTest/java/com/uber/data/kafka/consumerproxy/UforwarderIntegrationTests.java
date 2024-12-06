@@ -149,18 +149,8 @@ public class UforwarderIntegrationTests extends FievelTestBase {
                   return port;
                 });
 
-    Failsafe.with(
-            new RetryPolicy<Void>()
-                .withDelay(Duration.ofSeconds(1))
-                .withMaxRetries(2)
-                .handle(ConditionTimeoutException.class))
-        .run(
-            () -> {
-              UForwarderStarter.startUForwarderWorker(
-                  kafkaServer.getBootstrapServers(),
-                  NetworkUtils.getRandomAvailablePort(),
-                  Constants.MASTER_HOST + ":" + controllerGrpcPort);
-            });
+    UForwarderStarter.startUForwarderWorker(
+        kafkaServer.getBootstrapServers(), Constants.MASTER_HOST + ":" + controllerGrpcPort);
   }
 
   @AfterClass

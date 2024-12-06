@@ -14,18 +14,17 @@ public class UForwarderStarter {
    * Starts in-proc kafka consumer proxy worker
    *
    * @param bootstrapServers kafka broker bootstrap servers
-   * @param httpPort the http port for consumer proxy worker
    * @throws Exception
    */
-  public static void startUForwarderWorker(
-      String bootstrapServers, int httpPort, String controllerConnectString) throws Exception {
+  public static void startUForwarderWorker(String bootstrapServers, String controllerConnectString)
+      throws Exception {
     startUForwarder(
         "uforwarder-worker",
-        httpPort,
+        0,
         new String[] {
           "--worker.dispatcher.kafka.bootstrapServers=" + bootstrapServers,
           "--worker.fetcher.kafka.bootstrapServers=" + bootstrapServers,
-          "--server.port=" + httpPort,
+          "--server.port=0",
           "--system.port=0",
           "--worker.controller.grpc.masterHostPort=" + controllerConnectString
         });
