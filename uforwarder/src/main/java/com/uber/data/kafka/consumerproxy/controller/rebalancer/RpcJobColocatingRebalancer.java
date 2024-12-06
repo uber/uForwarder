@@ -1,7 +1,6 @@
 package com.uber.data.kafka.consumerproxy.controller.rebalancer;
 
 import static com.uber.data.kafka.consumerproxy.controller.rebalancer.RebalancerCommon.TARGET_UNIT_NUMBER;
-import static com.uber.data.kafka.consumerproxy.controller.rebalancer.RebalancerCommon.WORKLOAD_CAPACITY_PER_WORKER;
 import static com.uber.data.kafka.consumerproxy.controller.rebalancer.RebalancerCommon.roundUpToNearestNumber;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -66,6 +65,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
   private final Map<String, RebalancingWorkerTable> rebalancingWorkerTableMap;
   private final JobGroupAndWorkerPodifier jobGroupAndWorkerPodifier;
   private final JobPodPlacementProvider jobPodPlacementProvider;
+  private final double placementWorkerScaleHardLimit;
 
   public RpcJobColocatingRebalancer(
       Scope scope,
@@ -79,6 +79,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     this.scope = scope;
     this.rebalancingWorkerTableMap = new HashMap<>();
     this.jobGroupAndWorkerPodifier = new JobGroupAndWorkerPodifier(jobPodPlacementProvider, scope);
+    this.placementWorkerScaleHardLimit = rebalancerConfiguration.getPlacementWorkerScaleHardLimit();
   }
 
   @Override
@@ -403,7 +404,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
       long newWorkerId = -1L;
       for (int otherWorkerIdx = 0; otherWorkerIdx < toAdjustWorkerIdx; otherWorkerIdx++) {
         RebalancingWorkerWithSortedJobs otherWorker = allWorkersInPartition.get(otherWorkerIdx);
-        if (otherWorker.getLoad() + toBeMovedJob.getLoad() <= WORKLOAD_CAPACITY_PER_WORKER
+        if (otherWorker.getLoad() + toBeMovedJob.getLoad() <= placementWorkerScaleHardLimit
             && otherWorker.getNumberOfJobs() + 1
                 <= rebalancerConfiguration.getMaxJobNumberPerWorker()) {
           newWorkerId = otherWorker.getWorkerId();
@@ -432,7 +433,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
   }
 
   private boolean isWorkerUnderLoadLimit(RebalancingWorkerWithSortedJobs worker) {
-    return worker.getLoad() <= WORKLOAD_CAPACITY_PER_WORKER
+    return worker.getLoad() <= placementWorkerScaleHardLimit
         && worker.getNumberOfJobs() <= rebalancerConfiguration.getMaxJobNumberPerWorker();
   }
 

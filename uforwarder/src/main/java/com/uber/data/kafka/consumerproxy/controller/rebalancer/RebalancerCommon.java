@@ -1,5 +1,7 @@
 package com.uber.data.kafka.consumerproxy.controller.rebalancer;
 
+import static com.uber.data.kafka.consumerproxy.config.RebalancerConfiguration.PLACEMENT_WORKER_SCALE_SOFT_LIMIT;
+
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
@@ -28,8 +30,6 @@ class RebalancerCommon {
 
   // this is the unit number to round up when calculating the expecetd worker number for the cluster
   static final int TARGET_UNIT_NUMBER = 5;
-
-  static final double WORKLOAD_CAPACITY_PER_WORKER = 1.0;
 
   private static final int MINIMUM_WORKER_THRESHOLD = 2;
 
@@ -171,7 +171,7 @@ class RebalancerCommon {
     workloadPerJob.sort(Comparator.reverseOrder());
     PriorityQueue<Double> workers = new PriorityQueue<>();
     for (double workload : workloadPerJob) {
-      if (workers.isEmpty() || workers.peek() + workload > WORKLOAD_CAPACITY_PER_WORKER) {
+      if (workers.isEmpty() || workers.peek() + workload > PLACEMENT_WORKER_SCALE_SOFT_LIMIT) {
         workers.add(workload);
       } else {
         double prevWorkload = workers.poll();
