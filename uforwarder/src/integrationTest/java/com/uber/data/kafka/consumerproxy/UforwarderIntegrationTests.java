@@ -81,7 +81,6 @@ public class UforwarderIntegrationTests extends FievelTestBase {
   // Common settings
   private static String TEST_GROUP_NAME = "test-group";
   private static final String ZK_CONNECT_TEMPLATE = "localhost:%s";
-  private static int TEST_SERVICE_GRPC_PORT = 8085;
   private static int NUMBER_OF_MESSAGES = 5;
   private static Server mockConsumerServer;
   private static GenericContainer zkServer;
@@ -99,7 +98,6 @@ public class UforwarderIntegrationTests extends FievelTestBase {
     mockConsumerServer =
         MockConsumerServiceStarter.startTestService(
             TEST_GROUP_NAME,
-            TEST_SERVICE_GRPC_PORT,
             ImmutableList.of(
                 // Simple consumer
                 ConsumerBytesServerMethodDefinition.of(
@@ -116,7 +114,6 @@ public class UforwarderIntegrationTests extends FievelTestBase {
                     TEST_GROUP_NAME,
                     TEST_TOPIC_3_NAME,
                     new MockConsumerServiceStarter.RetryingTestKafkaConsumerHandler())));
-
     zkServer =
         new GenericContainer(TEST_IMAGE_ZOOKEEPER)
             .withExposedPorts(Constants.ZOOKEEPER_PORT)
@@ -375,7 +372,7 @@ public class UforwarderIntegrationTests extends FievelTestBase {
                         .build())
                 .setRpcDispatcherTaskGroup(
                     RpcDispatcherTaskGroup.newBuilder()
-                        .setUri("dns:///localhost:" + TEST_SERVICE_GRPC_PORT)
+                        .setUri("dns:///localhost:" + mockConsumerServer.getPort())
                         .setRpcTimeoutMs(1000)
                         .setProcedure(procedureName)
                         .setDlqCluster(TEST_CLUSTER_NAME)
