@@ -48,8 +48,6 @@ public class ProcessorMessageTest extends FievelTestBase {
   private static int PHYSICAL_PARTITION = 0;
   private static long PHYSICAL_OFFSET = 0;
 
-  private static long CONSUMER_RECORD_TIMESTAMP = 1709664197;
-
   private static String DLQ_TOPIC = "topic__group__dlq";
   private static String DLQ_CLUSTER = "kafka-dlq-dca";
   private static int DLQ_PARTITION = 1;
@@ -85,8 +83,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP);
+            stub);
     nonDLQJob =
         Job.newBuilder()
             .setJobId(0)
@@ -134,8 +131,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP);
+            stub);
     // Mockito.reset(contextManager);
   }
 
@@ -186,8 +182,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP);
+            stub);
     Job retryJob =
         Job.newBuilder()
             .setJobId(1)
@@ -239,8 +234,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP);
+            stub);
     Job resqJob =
         Job.newBuilder()
             .setJobId(1)
@@ -283,8 +277,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP);
+            stub);
     Assert.assertEquals(0, nonDLQMessage.getValueByteSize());
   }
 
@@ -324,8 +317,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP);
+            stub);
     Assert.assertEquals(nonDLQMessage, processorMessage);
     Assert.assertNotEquals(nonDLQMessage, dlqMessage);
     Assert.assertNotEquals(null, nonDLQMessage);
@@ -355,8 +347,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP));
+            stub));
     Assert.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
@@ -375,8 +366,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP));
+            stub));
     Assert.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
@@ -395,8 +385,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP));
+            stub));
     Assert.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
@@ -415,8 +404,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP));
+            stub));
     Assert.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
@@ -435,8 +423,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP));
+            stub));
     Assert.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
@@ -455,8 +442,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP));
+            stub));
     Assert.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
@@ -475,8 +461,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP));
+            stub));
     Assert.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
@@ -495,8 +480,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP));
+            stub));
     Assert.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
@@ -515,8 +499,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP));
+            stub));
     Assert.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
@@ -535,8 +518,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP));
+            stub));
   }
 
   @Test
@@ -559,8 +541,7 @@ public class ProcessorMessageTest extends FievelTestBase {
                 0,
                 SPAN,
                 infra,
-                stub,
-                CONSUMER_RECORD_TIMESTAMP)
+                stub)
             .hashCode());
     Assert.assertNotEquals(nonDLQMessage.hashCode(), dlqMessage.hashCode());
   }
@@ -585,8 +566,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             PHYSICAL_OFFSET,
             0,
             0,
-            0,
-            CONSUMER_RECORD_TIMESTAMP),
+            0),
         nonDLQMessage.getGrpcDispatcherMessage("muttley://routing-key"));
   }
 
@@ -618,8 +598,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             1,
             1,
             0,
-            0,
-            CONSUMER_RECORD_TIMESTAMP),
+            0),
         dlqMessage.getKafkaDispatcherMessage(DLQ_TOPIC));
 
     dlqMessage =
@@ -639,8 +618,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             1,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP);
+            stub);
     Assert.assertEquals(
         new DispatcherMessage(
             DispatcherMessage.Type.KAFKA,
@@ -666,8 +644,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             1,
             1,
             0,
-            1,
-            CONSUMER_RECORD_TIMESTAMP),
+            1),
         dlqMessage.getKafkaDispatcherMessage(DLQ_TOPIC));
   }
 
@@ -703,8 +680,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP);
+            stub);
 
     // Use mockito instead of mock span so that we mock exception.
     Tracer tracer = Mockito.mock(Tracer.class);
@@ -774,8 +750,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             0,
             SPAN,
             infra,
-            stub,
-            CONSUMER_RECORD_TIMESTAMP);
+            stub);
     Assert.assertEquals("clustername", nonNullHeader.getProducerCluster());
   }
 }
