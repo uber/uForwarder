@@ -159,8 +159,7 @@ public class UForwarderControllerFactory {
             rebalancerConfiguration,
             scalar,
             new HibernatingJobRebalancer(rebalancerConfiguration),
-            jobPodPlacementProvider,
-            false),
+            jobPodPlacementProvider),
         rebalancerConfiguration.getShouldRunShadowRebalancer());
   }
 

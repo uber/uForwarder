@@ -2,7 +2,9 @@ package com.uber.data.kafka.consumerproxy.controller.rebalancer;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
@@ -170,9 +172,11 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     when(mockScope.subScope(any())).thenReturn(mockSubScope);
     when(mockScope.gauge(any())).thenReturn(mockGauge);
     when(mockScope.counter(any())).thenReturn(mockCounter);
-    when(mockSubScope.tagged(any())).thenReturn(mockSubScope);
+    when(mockScope.tagged(anyMap())).thenReturn(mockScope);
+    when(mockSubScope.tagged(anyMap())).thenReturn(mockSubScope);
     when(mockSubScope.gauge(any())).thenReturn(mockGauge);
     when(mockSubScope.counter(any())).thenReturn(mockCounter);
+    doNothing().when(mockCounter).inc(anyLong());
   }
 
   @Test
@@ -189,7 +193,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
 
     runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 4);
     Set<Long> usedWorkers = usedWorkers(jobs, workers);
@@ -230,7 +234,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
     runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 4);
 
     Map<Long, Long> jobToWorkerId =
@@ -268,7 +272,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             job -> "", worker -> "", ImmutableMap.of(), config.getNumberOfVirtualPartitions());
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
 
     Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
@@ -308,7 +312,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             job -> "", worker -> "", ImmutableMap.of(), config.getNumberOfVirtualPartitions());
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
 
     Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
@@ -372,7 +376,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             job -> "", worker -> "", ImmutableMap.of(), config.getNumberOfVirtualPartitions());
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
 
     Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
@@ -463,7 +467,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             job -> "", worker -> "", ImmutableMap.of(), config.getNumberOfVirtualPartitions());
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
 
     Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
@@ -511,7 +515,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             job -> "", worker -> "", ImmutableMap.of(), config.getNumberOfVirtualPartitions());
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
 
     Map<String, RebalancingJobGroup> extraWorkload1 =
         new HashMap<>(extraWorkloadOneJobGroupScaleOne);
@@ -586,7 +590,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             job -> "", worker -> "", ImmutableMap.of(), config.getNumberOfVirtualPartitions());
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
 
     Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
@@ -842,7 +846,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             job -> "", worker -> "", ImmutableMap.of(), config.getNumberOfVirtualPartitions());
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
 
     Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
@@ -923,7 +927,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             job -> "", worker -> "", ImmutableMap.of(), config.getNumberOfVirtualPartitions());
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
     Set<Long> usedWorkers = usedWorkers(workerOverloadedCaseJobs, workerOverloadedCaseWorkers);
     Set<Long> idleWorkerIds = new HashSet<>(workerOverloadedCaseWorkers.keySet());
     idleWorkerIds.removeAll(usedWorkers);
@@ -971,7 +975,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             config.getNumberOfVirtualPartitions());
     RpcJobColocatingRebalancer rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
 
     Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
     Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
@@ -1064,7 +1068,157 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             jobPodProvider, workerPodProvider, ImmutableMap.of("canary", 1, "pod1", 1), 8);
     rebalancer =
         new RpcJobColocatingRebalancer(
-            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider, true);
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
+
+    // now disable all pod placement, there will be no canary workers or pod1 workers
+    result = runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
+    Assert.assertNull(rebalancer.getRebalancingTable().get("canary"));
+    Assert.assertNull(rebalancer.getRebalancingTable().get("pod1"));
+    jobToWorker = result.jobToWorkerId;
+
+    for (Map.Entry<Long, Long> entry : jobToWorker.entrySet()) {
+      long jobId = entry.getKey();
+      long workerId = entry.getValue();
+
+      StoredJob job = allJobs.get(jobId);
+      Assert.assertNotNull(job);
+      StoredWorker worker = workers.get(workerId);
+      Assert.assertNotNull(worker);
+    }
+  }
+
+  @Test
+  public void testEnableMultiplePodPlacementWithNoWorkersInOnePod() throws Exception {
+    RebalancerConfiguration config = new RebalancerConfiguration();
+    config.setNumWorkersPerUri(2);
+    config.setMessagesPerSecPerWorker(4000);
+    config.setTargetSpareWorkerPercentage(50);
+    config.setNumberOfVirtualPartitions(8);
+    config.setWorkerToReduceRatio(1.0);
+
+    Function<StoredJob, String> jobPodProvider = storedJob -> storedJob.getJobPod();
+    Function<StoredWorker, String> workerPodProvider =
+        storedWorker -> {
+          if (storedWorker.getNode().getHost().startsWith("notexistzone")) {
+            return "canary";
+          } else if (storedWorker.getNode().getHost().startsWith("dca24")
+              || storedWorker.getNode().getHost().startsWith("phx3")) {
+            return "pod1";
+          } else {
+            return "";
+          }
+        };
+
+    JobPodPlacementProvider jobPodPlacementProvider =
+        new JobPodPlacementProvider(
+            jobPodProvider,
+            workerPodProvider,
+            ImmutableMap.of("canary", 1, "pod1", 1),
+            config.getNumberOfVirtualPartitions());
+    RpcJobColocatingRebalancer rebalancer =
+        new RpcJobColocatingRebalancer(
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
+
+    Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
+    Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
+
+    // set 20 jobs to be canary jobs and 25 jobs to be pod1 jobs
+    int canaryJobCount = 50;
+    int pod1JobCount = 100;
+    Map<Long, StoredJob> allJobs = new HashMap<>();
+    for (Map.Entry<String, RebalancingJobGroup> group : jobs.entrySet()) {
+      RebalancingJobGroup jobGroup = group.getValue();
+      for (Map.Entry<Long, StoredJob> jobEntry : jobGroup.getJobs().entrySet()) {
+        allJobs.put(jobEntry.getKey(), jobEntry.getValue());
+        if (canaryJobCount != 0) {
+          StoredJob newJob =
+              StoredJob.newBuilder().mergeFrom(jobEntry.getValue()).setJobPod("canary").build();
+          canaryJobCount--;
+          jobGroup.updateJob(jobEntry.getKey(), newJob);
+          allJobs.put(jobEntry.getKey(), newJob);
+        } else if (pod1JobCount != 0) {
+          StoredJob newJob =
+              StoredJob.newBuilder().mergeFrom(jobEntry.getValue()).setJobPod("pod1").build();
+          pod1JobCount--;
+          jobGroup.updateJob(jobEntry.getKey(), newJob);
+          allJobs.put(jobEntry.getKey(), newJob);
+        }
+      }
+    }
+
+    RebalanceSimResult result =
+        runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
+    RpcJobColocatingRebalancer.RebalancingWorkerTable canaryTable =
+        rebalancer.getRebalancingTable().get("canary");
+    Assert.assertNull(canaryTable);
+    RpcJobColocatingRebalancer.RebalancingWorkerTable pod1Table =
+        rebalancer.getRebalancingTable().get("pod1");
+    Set<Long> allPod1Workers = pod1Table.getAllWorkerIds();
+    Assert.assertFalse(allPod1Workers.isEmpty());
+    Assert.assertEquals(1, pod1Table.getAllPartitions().size());
+
+    RpcJobColocatingRebalancer.RebalancingWorkerTable normalTable =
+        rebalancer.getRebalancingTable().get("");
+    Assert.assertEquals(8, normalTable.getAllPartitions().size());
+
+    Map<Long, Long> jobToWorker = result.jobToWorkerId;
+
+    int numberOfCanaryJobs = 0;
+    int numberOfPod1Jobs = 0;
+    int numberOfCanaryJobsOnPod1Worker = 0;
+    int numberOfCanaryJobsOnDefaultWorker = 0;
+    for (Map.Entry<Long, Long> entry : jobToWorker.entrySet()) {
+      long jobId = entry.getKey();
+      long workerId = entry.getValue();
+
+      StoredJob job = allJobs.get(jobId);
+      Assert.assertNotNull(job);
+      boolean isCanaryJob = job.getJobPod().equals("canary");
+      if (isCanaryJob) {
+        numberOfCanaryJobs++;
+      }
+      StoredWorker worker = workers.get(workerId);
+      Assert.assertNotNull(worker);
+
+      if (isCanaryJob) {
+        if (worker.getNode().getHost().startsWith("dca24")
+            || worker.getNode().getHost().startsWith("phx3")) {
+          numberOfCanaryJobsOnPod1Worker += 1;
+        } else {
+          numberOfCanaryJobsOnDefaultWorker += 1;
+        }
+      }
+
+      boolean isPod1Job = job.getJobPod().equals("pod1");
+      if (isPod1Job) {
+        numberOfPod1Jobs++;
+      }
+      boolean isPod1Worker =
+          worker.getNode().getHost().startsWith("dca24")
+              || worker.getNode().getHost().startsWith("phx3");
+      if (isPod1Job) {
+        Assert.assertTrue(isPod1Worker);
+      }
+
+      if (isPod1Worker) {
+        Assert.assertTrue(allPod1Workers.contains(workerId));
+      }
+    }
+    Assert.assertEquals(numberOfCanaryJobs, 50);
+    Assert.assertEquals(numberOfPod1Jobs, 100);
+    Assert.assertFalse(numberOfCanaryJobsOnDefaultWorker == 0);
+    Assert.assertFalse(numberOfCanaryJobsOnPod1Worker == 0);
+    Assert.assertEquals(50, numberOfCanaryJobsOnDefaultWorker + numberOfCanaryJobsOnPod1Worker);
+
+    jobPodProvider = job -> "";
+    workerPodProvider = worker -> "";
+
+    jobPodPlacementProvider =
+        new JobPodPlacementProvider(
+            jobPodProvider, workerPodProvider, ImmutableMap.of("canary", 1, "pod1", 1), 8);
+    rebalancer =
+        new RpcJobColocatingRebalancer(
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
 
     // now disable all pod placement, there will be no canary workers or pod1 workers
     result = runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
