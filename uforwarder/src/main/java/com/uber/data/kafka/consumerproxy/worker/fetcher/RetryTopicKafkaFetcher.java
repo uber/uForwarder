@@ -11,7 +11,6 @@ import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.CheckpointManager;
-import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.DelayProcessManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.InflightMessageTracker;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaCheckpointManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfiguration;
@@ -65,7 +64,6 @@ public final class RetryTopicKafkaFetcher extends AbstractKafkaFetcherThread<byt
         config,
         checkpointManager,
         throughputTracker,
-        DelayProcessManager.NOOP,
         new InflightMessageTracker(),
         kafkaConsumer,
         infra,

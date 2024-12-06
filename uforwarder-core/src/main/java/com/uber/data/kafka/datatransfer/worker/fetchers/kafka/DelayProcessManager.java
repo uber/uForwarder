@@ -27,20 +27,22 @@ public interface DelayProcessManager<K, V> extends Closeable {
         // Default implementation to pause a topic partition. This operation is not supported.
         // It should never reach here as shouldDelayProcess function always returns false.
         @Override
-        public void pausedPartitionsAndRecords(TopicPartition tp, List unprocessedRecords) {
+        public void pause(TopicPartition tp, List unprocessedRecords) {
           throw new UnsupportedOperationException();
         }
 
         // Default implementation for resuming paused topic partitions.
         // It returns an empty list as shouldDelayProcess function always returns false.
         @Override
-        public Map<TopicPartition, List<ConsumerRecord>> resumePausedPartitionsAndRecords() {
+        public Map<TopicPartition, List<ConsumerRecord>> resume() {
           return Collections.emptyMap();
         }
 
         // Default implementation for deleting paused topic partitions.
         @Override
-        public void delete(Collection tps) {}
+        public void delete(Collection tps) {
+          throw new UnsupportedOperationException("This operation is not supported");
+        }
 
         // Default implementation for getting paused topic partitions.
         @Override
@@ -68,14 +70,14 @@ public interface DelayProcessManager<K, V> extends Closeable {
    * @param unprocessedRecords the polled but unprocessed records for the topic partition
    * @return void
    */
-  void pausedPartitionsAndRecords(TopicPartition tp, List<ConsumerRecord<K, V>> unprocessedRecords);
+  void pause(TopicPartition tp, List<ConsumerRecord<K, V>> unprocessedRecords);
 
   /**
    * Gets the list of topic partitions and their records that could be resumed.
    *
    * @return a map of topic partitions and their records that could be resumed
    */
-  Map<TopicPartition, List<ConsumerRecord<K, V>>> resumePausedPartitionsAndRecords();
+  Map<TopicPartition, List<ConsumerRecord<K, V>>> resume();
 
   /**
    * Deletes the paused topic partitions and their unprocessed records.
