@@ -26,9 +26,12 @@ import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.instrumentation.DirectSupplier;
 import com.uber.data.kafka.instrumentation.Instrumentation;
 import com.uber.data.kafka.instrumentation.Tags;
+import com.uber.m3.tally.Buckets;
+import com.uber.m3.tally.DurationBuckets;
 import com.uber.m3.tally.Histogram;
 import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Stopwatch;
+import com.uber.m3.util.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import java.util.concurrent.CancellationException;
@@ -109,6 +112,74 @@ public class ProcessorImpl
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcessorImpl.class);
   private static final double MINIMUM_VALID_RATE = 1.0;
+
+  private static final Buckets E2E_DURATION_BUCKETS =
+      new DurationBuckets(
+          new Duration[] {
+            Duration.ZERO,
+            Duration.ofMillis(10),
+            Duration.ofMillis(12),
+            Duration.ofMillis(14),
+            Duration.ofMillis(16),
+            Duration.ofMillis(18),
+            Duration.ofMillis(20),
+            Duration.ofMillis(25),
+            Duration.ofMillis(30),
+            Duration.ofMillis(35),
+            Duration.ofMillis(40),
+            Duration.ofMillis(45),
+            Duration.ofMillis(50),
+            Duration.ofMillis(60),
+            Duration.ofMillis(70),
+            Duration.ofMillis(80),
+            Duration.ofMillis(90),
+            Duration.ofMillis(100),
+            Duration.ofMillis(150),
+            Duration.ofMillis(200),
+            Duration.ofMillis(250),
+            Duration.ofMillis(300),
+            Duration.ofMillis(350),
+            Duration.ofMillis(400),
+            Duration.ofMillis(450),
+            Duration.ofMillis(500),
+            Duration.ofMillis(600),
+            Duration.ofMillis(700),
+            Duration.ofMillis(800),
+            Duration.ofMillis(900),
+            Duration.ofMillis(1000),
+            Duration.ofMillis(1250),
+            Duration.ofMillis(1500),
+            Duration.ofMillis(1750),
+            Duration.ofMillis(2000),
+            Duration.ofMillis(2250),
+            Duration.ofMillis(2500),
+            Duration.ofMillis(3000),
+            Duration.ofMillis(3500),
+            Duration.ofMillis(4000),
+            Duration.ofMillis(4500),
+            Duration.ofMillis(5000),
+            Duration.ofSeconds(6),
+            Duration.ofSeconds(7),
+            Duration.ofSeconds(8),
+            Duration.ofSeconds(9),
+            Duration.ofSeconds(10),
+            Duration.ofSeconds(20),
+            Duration.ofSeconds(30),
+            Duration.ofSeconds(40),
+            Duration.ofSeconds(50),
+            Duration.ofSeconds(60),
+            Duration.ofMinutes(2),
+            Duration.ofMinutes(4),
+            Duration.ofMinutes(8),
+            Duration.ofMinutes(16),
+            Duration.ofMinutes(32),
+            Duration.ofMinutes(64),
+            Duration.ofHours(2),
+            Duration.ofHours(4),
+            Duration.ofHours(8),
+            Duration.ofHours(16),
+            Duration.ofHours(32)
+          });
   @VisibleForTesting final RateLimiter messageRateLimiter;
   @VisibleForTesting final RateLimiter byteRateLimiter;
   @VisibleForTesting final DlqDispatchManager dlqDispatchManager;
@@ -261,6 +332,18 @@ public class ProcessorImpl
                   processorMessage.getGrpcDispatcherMessage(
                       finalJob.getRpcDispatcherTask().getUri()),
                   finalJob))
+          .whenComplete(
+              (r, e) -> {
+                // measure message end-to-end latency
+                Scope subScope = infra.scope().tagged(getMetricsTags(finalJob));
+                if (r != null && r.getCode() == DispatcherResponse.Code.COMMIT) {
+                  subScope
+                      .histogram(MetricNames.MESSAGE_END_TO_END_LATENCY, E2E_DURATION_BUCKETS)
+                      .recordDuration(
+                          Duration.ofMillis(
+                              System.currentTimeMillis() - processorMessage.getLogicalTimestamp()));
+                }
+              })
           .whenComplete(
               (r, e) -> {
                 // To measure downstream service availability, mark success if
@@ -1334,5 +1417,7 @@ public class ProcessorImpl
     static final String MISSING_RESQ = "processor.dispatch.kafka.missing.resq";
 
     static final String RESPONSE_DISTRIBUTION = "response.distribution";
+
+    static final String MESSAGE_END_TO_END_LATENCY = "message.e2e.latency";
   }
 }

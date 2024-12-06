@@ -61,6 +61,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
   private ArgumentCaptor<ItemAndJob<DispatcherMessage>> dispatcherMessageArgumentCaptor;
   private CoreInfra infra;
   private Gauge inflight;
+  private Histogram endToEndLatency;
   private OutboundMessageLimiter.Builder outboundMessageLimiterBuilder;
   private UnprocessedMessageManager.Builder UnprocessedMessageManagerBuilder;
   private MessageAckStatusManager.Builder messageAckStatusManagerBuilder;
@@ -84,6 +85,9 @@ public class ProcessorImplTest extends ProcessorTestBase {
     Mockito.when(scope.gauge("processor.outbound-cache.size")).thenReturn(inflight);
     Mockito.when(scope.histogram(ArgumentMatchers.anyString(), ArgumentMatchers.any()))
         .thenReturn(histogram);
+    endToEndLatency = Mockito.mock(Histogram.class);
+    Mockito.when(scope.histogram(Mockito.eq("message.e2e.latency"), Mockito.any()))
+        .thenReturn(endToEndLatency);
     Mockito.when(timer.start()).thenReturn(stopwatch);
     infra = CoreInfra.builder().withScope(scope).build();
     adaptiveInflightLimiterBuilder = VegasAdaptiveInflightLimiter.newBuilder();
@@ -276,6 +280,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
         2,
         processor.dlqDispatchManager.getTokens(
             new TopicPartition(ProcessorTestBase.TOPIC, ProcessorTestBase.PARTITION)));
+    Mockito.verify(endToEndLatency, Mockito.times(1)).recordDuration(ArgumentMatchers.any());
     processor.cancel(job).toCompletableFuture().get(); // wait for actual cancel to complete
     offsetFuture = processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
     Assert.assertEquals(-1, (long) offsetFuture.get());
