@@ -35,13 +35,11 @@ public class MockConsumerServiceStarter {
    * Starts test consumer service
    *
    * @param groupName the consumer group name
-   * @param grpcPort the grpc port
    * @param methodDefinitionList the list of to-be-registered methods
    * @throws IOException
    */
   public static Server startTestService(
-      String groupName, int grpcPort, List<ServerMethodDefinition> methodDefinitionList)
-      throws IOException {
+      String groupName, List<ServerMethodDefinition> methodDefinitionList) throws IOException {
     ServerServiceDefinition.Builder serverServiceDefinitionBuilder =
         ServerServiceDefinition.builder("kafka.consumerproxy." + groupName);
 
@@ -51,7 +49,7 @@ public class MockConsumerServiceStarter {
 
     // start the server
     Server grpcServer =
-        NettyServerBuilder.forPort(grpcPort)
+        NettyServerBuilder.forPort(0)
             .addService(
                 ServerInterceptors.intercept(
                     serverServiceDefinitionBuilder.build(), ConsumerMetadata.serverInterceptor()))
@@ -59,7 +57,7 @@ public class MockConsumerServiceStarter {
     // this will leak a thread.
     // this is okay b/c start/stop is only invoked on unittest.
     grpcServer.start();
-    NetworkUtils.assertPortInUseWithTimeout(grpcPort, MAX_AWAIT_TIME_IN_SEC);
+    NetworkUtils.assertPortInUseWithTimeout(grpcServer.getPort(), MAX_AWAIT_TIME_IN_SEC);
     logger.info("mock consumer service started");
     return grpcServer;
   }
