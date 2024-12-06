@@ -92,6 +92,7 @@ public final class JobUtils {
     builder.setRetryConfig(jobGroup.getRetryConfig());
     builder.setResqConfig(jobGroup.getResqConfig());
     builder.setMiscConfig(jobGroup.getMiscConfig());
+    builder.setExtension(jobGroup.getExtension());
     builder
         .getKafkaConsumerTaskBuilder()
         .setCluster(jobGroup.getKafkaConsumerTaskGroup().getCluster())
