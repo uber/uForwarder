@@ -1,6 +1,7 @@
 package com.uber.data.kafka.datatransfer.common;
 
 import com.google.protobuf.Timestamp;
+import com.google.protobuf.util.JsonFormat;
 import com.uber.fievel.testing.base.FievelTestBase;
 import org.junit.Assert;
 import org.junit.Test;
@@ -18,7 +19,8 @@ public class TimestampUtilsTest extends FievelTestBase {
   @Test
   public void serialize() {
     JsonSerializationFactory<Timestamp> jsonSerializationFactory =
-        new JsonSerializationFactory<>(Timestamp.newBuilder().build());
+        new JsonSerializationFactory<>(
+            Timestamp.newBuilder().build(), JsonFormat.TypeRegistry.getEmptyTypeRegistry());
     jsonSerializationFactory.serialize(TimestampUtils.currentTimeMilliseconds());
   }
 }

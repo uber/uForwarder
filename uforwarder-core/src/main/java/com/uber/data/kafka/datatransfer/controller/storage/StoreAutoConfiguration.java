@@ -2,6 +2,7 @@ package com.uber.data.kafka.datatransfer.controller.storage;
 
 import com.google.common.base.Preconditions;
 import com.google.protobuf.Message;
+import com.google.protobuf.util.JsonFormat;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
@@ -56,7 +57,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
   WorkerStoreConfiguration.class,
   ZookeeperConfiguration.class,
 })
-@Import({CoreInfraAutoConfiguration.class})
+@Import({CoreInfraAutoConfiguration.class, TypeRegistryAutoConfiguration.class})
 @Profile("data-transfer-controller")
 @EnableScheduling
 public class StoreAutoConfiguration {
@@ -71,6 +72,7 @@ public class StoreAutoConfiguration {
       JobGroupStoreConfiguration config,
       ZookeeperConfiguration zkConfiguration,
       CoreInfra infra,
+      JsonFormat.TypeRegistry typeRegistry,
       IdProvider<String, StoredJobGroup> idProvider,
       LeaderSelector leaderSelector)
       throws Exception {
@@ -79,6 +81,7 @@ public class StoreAutoConfiguration {
         zkConfiguration.getZkConnection(),
         infra,
         StoredJobGroup.newBuilder().build(),
+        typeRegistry,
         j -> j.getJobGroup().getJobGroupId(),
         idProvider,
         leaderSelector);
@@ -89,6 +92,7 @@ public class StoreAutoConfiguration {
       JobStatusStoreConfiguration jobStatusConfig,
       ZookeeperConfiguration zkConfiguration,
       CoreInfra infra,
+      JsonFormat.TypeRegistry typeRegistry,
       IdProvider<Long, StoredJobStatus> idProvider,
       LeaderSelector leaderSelector)
       throws Exception {
@@ -100,6 +104,7 @@ public class StoreAutoConfiguration {
       WorkerStoreConfiguration workerConfig,
       ZookeeperConfiguration zkConfiguration,
       CoreInfra infra,
+      JsonFormat.TypeRegistry typeRegistry,
       IdProvider<Long, StoredWorker> idProvider,
       LeaderSelector leaderSelector)
       throws Exception {
@@ -108,6 +113,7 @@ public class StoreAutoConfiguration {
         zkConfiguration.getZkConnection(),
         infra,
         StoredWorker.newBuilder().build(),
+        typeRegistry,
         w -> w.getNode().getId(),
         idProvider,
         leaderSelector);
@@ -147,6 +153,7 @@ public class StoreAutoConfiguration {
       String zkConnection,
       CoreInfra infra,
       V prototype,
+      JsonFormat.TypeRegistry typeRegistry,
       Function<V, K> keyFn,
       IdProvider<K, V> idProvider,
       LeaderSelector leaderSelector)
@@ -162,7 +169,7 @@ public class StoreAutoConfiguration {
             logger,
             storeTypeInfra,
             AsyncCuratorFramework.wrap(curatorFramework),
-            serializerType.getSerializer(prototype),
+            serializerType.getSerializer(prototype, typeRegistry),
             idProvider,
             keyFn,
             config.getZkDataPath());
