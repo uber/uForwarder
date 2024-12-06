@@ -614,6 +614,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setMessagesPerSecPerWorker(4000);
     config.setWorkerToReduceRatio(1);
+    config.setPlacementWorkerScaleHardLimit(1.5);
     JobPodPlacementProvider jobPodPlacementProvider =
         new JobPodPlacementProvider(
             job -> "",
@@ -633,7 +634,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Assert.assertTrue(
         validateOverloadedWorkers(
             result1, config, Iterables.getOnlyElement(rebalancer.getRebalancingTable().values())));
-    List<Integer> overloadedWorkers1 = collectOverloadedWorkers(result1);
+    List<Integer> overloadedWorkers1 = collectOverloadedWorkers(result1, config);
 
     List<RebalancingWorkerWithSortedJobs> allWorkersWithWorkload = new ArrayList<>();
     List<Long> idleWorkers = new ArrayList<>();
@@ -652,11 +653,12 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
       }
     }
 
-    // 20 workers less than total workload would need
+    // 1/3 workers less than total workload would need
     Collections.sort(allWorkersWithWorkload, Collections.reverseOrder());
-    int toRemoveWorkerCount = 20;
+    int toRemoveWorkerCount = allWorkersWithWorkload.size() / 3;
     for (RebalancingWorkerWithSortedJobs worker : allWorkersWithWorkload) {
-      if (worker.getLoad() > 1.0 && worker.getNumberOfJobs() == 1) {
+      if (worker.getLoad() > config.getPlacementWorkerScaleHardLimit()
+          && worker.getNumberOfJobs() == 1) {
         continue;
       }
 
@@ -683,11 +685,12 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             .stream()
             .filter(w -> result2.usedWorkers.contains(w.getNode().getId()))
             .allMatch(w -> w.getState() == WorkerState.WORKER_STATE_WORKING));
-    Assert.assertTrue(result1.usedWorkers.size() - result2.usedWorkers.size() >= 20);
+    Assert.assertTrue(
+        result1.usedWorkers.size() - result2.usedWorkers.size() >= toRemoveWorkerCount);
     Assert.assertTrue(
         validateOverloadedWorkers(
             result2, config, Iterables.getOnlyElement(rebalancer.getRebalancingTable().values())));
-    List<Integer> overloadedWorkers2 = collectOverloadedWorkers(result2);
+    List<Integer> overloadedWorkers2 = collectOverloadedWorkers(result2, config);
     Assert.assertTrue(overloadedWorkers2.size() > overloadedWorkers1.size());
   }
 
@@ -1440,8 +1443,9 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
                         ImmutableMap.of())));
   }
 
-  private static List<Integer> collectOverloadedWorkers(RebalanceSimResult rebalanceSimResult) {
-    // Worker should either have a single Job > 1.0 scale, or multiple jobs with total scale < 1.0
+  private static List<Integer> collectOverloadedWorkers(
+      RebalanceSimResult rebalanceSimResult, RebalancerConfiguration config) {
+    // Worker should either have a single Job > 1.5 scale, or multiple jobs with total scale < 1.5
     // scale in happy path
     List<Integer> overloadedWorkers = new ArrayList<>();
     Map<Long, Double> workerIdToWorkload = new HashMap<>();
@@ -1460,7 +1464,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
       } else {
         double oldScale = workerIdToWorkload.get(workerId);
         workerIdToWorkload.put(workerId, oldScale + scale);
-        if (oldScale + scale > 1) {
+        if (oldScale + scale > config.getPlacementWorkerScaleHardLimit()) {
           overloadedWorkers.add(workerId.intValue());
         }
       }
@@ -1473,7 +1477,8 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
       RebalanceSimResult rebalanceSimResult,
       RebalancerConfiguration rebalancerConfiguration,
       RpcJobColocatingRebalancer.RebalancingWorkerTable rebalancingWorkerTable) {
-    List<Integer> overloadedWorkers = collectOverloadedWorkers(rebalanceSimResult);
+    List<Integer> overloadedWorkers =
+        collectOverloadedWorkers(rebalanceSimResult, rebalancerConfiguration);
     List<Long> partitions = rebalancingWorkerTable.getAllPartitions();
     Map<Long, Long> workerToPartition = new HashMap<>();
     for (Long partition : partitions) {
@@ -1496,7 +1501,8 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
         if (otherWorker.getWorkerId() != workerId) {
           Double otherWorkerLoad = otherWorker.getLoad();
           for (RebalancingJob targetJob : targetJobs) {
-            if (otherWorkerLoad + targetJob.getLoad() <= 1.0
+            if (otherWorkerLoad + targetJob.getLoad()
+                    <= rebalancerConfiguration.getPlacementWorkerScaleHardLimit()
                 && otherWorker.getAllJobs().size() + 1
                     <= rebalancerConfiguration.getMaxJobNumberPerWorker()) {
               return false;
