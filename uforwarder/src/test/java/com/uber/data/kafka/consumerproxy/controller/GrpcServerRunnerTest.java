@@ -19,7 +19,7 @@ public class GrpcServerRunnerTest extends FievelTestBase {
   public void testGrpcServerRunner() {
     GrpcServerRunner grpcServerRunner =
         new GrpcServerRunner(
-            8088,
+            0,
             new ControllerAdminService(
                 Mockito.mock(CoreInfra.class),
                 Mockito.mock(Store.class),
@@ -37,7 +37,9 @@ public class GrpcServerRunnerTest extends FievelTestBase {
     grpcServerRunner.start();
 
     Assert.assertTrue(grpcServerRunner.isRunning());
+    Assert.assertTrue(grpcServerRunner.getPort() > 0);
     grpcServerRunner.stop();
     Assert.assertFalse(grpcServerRunner.isRunning());
+    Assert.assertEquals(-1, grpcServerRunner.getPort());
   }
 }
