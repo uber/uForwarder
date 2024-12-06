@@ -11,9 +11,7 @@ import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.CheckpointManager;
-import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.DelayProcessManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaCheckpointManager;
-import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaDelayProcessManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfiguration;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.SeekStartOffsetOption;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.ThroughputTracker;
@@ -59,7 +57,6 @@ public class RetryTopicKafkaFetcherTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
-            DelayProcessManager.NOOP,
             mockConsumer,
             infra,
             retryQueue);
@@ -106,9 +103,8 @@ public class RetryTopicKafkaFetcherTest extends FievelTestBase {
   @Test
   public void testHandleEndOffsetAndDelayWithDelay()
       throws InterruptedException, ExecutionException {
-    int processDelayMs = 100;
     Optional<RetryQueue> retryQueue =
-        Optional.of(RetryQueue.newBuilder().setProcessingDelayMs(processDelayMs).build());
+        Optional.of(RetryQueue.newBuilder().setProcessingDelayMs(100).build());
     Job job =
         Job.newBuilder()
             .setFlowControl(
@@ -120,20 +116,17 @@ public class RetryTopicKafkaFetcherTest extends FievelTestBase {
             .setKafkaConsumerTask(
                 KafkaConsumerTask.newBuilder()
                     .setConsumerGroup(GROUP)
-                    .setProcessingDelayMs(processDelayMs)
+                    .setProcessingDelayMs(100)
                     .build())
             .setRetryConfig(RetryConfig.newBuilder().addRetryQueues(retryQueue.get()).build())
             .build();
 
-    DelayProcessManager<byte[], byte[]> delayProcessManager =
-        new KafkaDelayProcessManager<>(infra.scope(), GROUP, processDelayMs, mockConsumer);
     fetcherThread =
         new RetryTopicKafkaFetcher(
             THREAD_NAME,
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
-            delayProcessManager,
             mockConsumer,
             infra,
             retryQueue);
@@ -148,8 +141,7 @@ public class RetryTopicKafkaFetcherTest extends FievelTestBase {
 
     Mockito.when(pipelineStateManager.shouldJobBeRunning(job)).thenReturn(true).thenReturn(false);
     Mockito.when(consumerRecord.timestamp()).thenReturn(System.currentTimeMillis());
-    Mockito.verify(pipelineStateManager, Mockito.times(1)).shouldJobBeRunning(job);
-    Assert.assertFalse(
+    Assert.assertTrue(
         fetcherThread.handleEndOffsetAndDelay(
             consumerRecord, job, checkpointManager, pipelineStateManager));
   }
@@ -179,7 +171,6 @@ public class RetryTopicKafkaFetcherTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
-            DelayProcessManager.NOOP,
             mockConsumer,
             infra,
             retryQueue);
