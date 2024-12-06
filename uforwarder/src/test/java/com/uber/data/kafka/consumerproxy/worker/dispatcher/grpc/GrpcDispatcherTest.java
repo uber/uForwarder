@@ -157,8 +157,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
               0,
               HEADERS,
               "value".getBytes(),
-              "key".getBytes(),
-              0);
+              "key".getBytes());
       Assert.assertFalse(
           dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture().isDone());
       Mockito.verify(infra.contextManager(), Mockito.times(1))
@@ -208,8 +207,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
             0,
             HEADERS,
             "value".getBytes(),
-            "key".getBytes(),
-            0);
+            "key".getBytes());
     Assert.assertFalse(
         dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture().isDone());
     messageStub.cancel(DispatcherResponse.Code.RETRY);
@@ -242,8 +240,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
             0,
             HEADERS,
             "value".getBytes(),
-            "key".getBytes(),
-            0);
+            "key".getBytes());
     CompletableFuture<GrpcResponse> future =
         dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture();
     Assert.assertTrue(future.isDone());
@@ -278,8 +275,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
             "physicalCluster",
             0,
             0,
-            HEADERS,
-            0);
+            HEADERS);
     Assert.assertFalse(
         dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture().isDone());
     Mockito.verify(infra.contextManager(), Mockito.times(1))
@@ -317,8 +313,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
             0,
             HEADERS,
             "value".getBytes(),
-            "key".getBytes(),
-            0);
+            "key".getBytes());
     CompletableFuture<GrpcResponse> future = grpcRequest.getFuture();
     GrpcDispatcher.ResponseStreamObserver responseStreamObserver =
         dispatcher.new ResponseStreamObserver(future, timeoutMs, grpcRequest);
@@ -421,8 +416,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
             0,
             HEADERS,
             "value".getBytes(),
-            "key".getBytes(),
-            0);
+            "key".getBytes());
     CompletableFuture<GrpcResponse> future =
         dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture();
     Assert.assertTrue(future.isDone());
