@@ -60,6 +60,8 @@ public class UForwarderTest extends FievelTestBase {
 
   @Test
   public void testMain() {
-    UForwarder.main(new String[] {UForwarderAppType.WORKER_APP});
+    // run with ephemeral port to avoid conflicts
+    String[] args = new String[] {UForwarderAppType.WORKER_APP, "--server.port=0"};
+    UForwarder.main(args);
   }
 }
