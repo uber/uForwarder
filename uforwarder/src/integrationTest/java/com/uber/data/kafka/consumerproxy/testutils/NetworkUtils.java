@@ -48,12 +48,7 @@ public class NetworkUtils {
               availablePort + RandomUtils.nextInt(MIN_RANDOM_PORT_OFFSET, MAX_RANDOM_PORT_OFFSET),
               MAX_RANDOM_PORT);
       try (ServerSocket socket = new ServerSocket(port)) {
-        int localPort = socket.getLocalPort();
-        // Set this system property to ensure static random ports provided by this
-        // method is not blocked by the SunNioNetInterceptor which blocks static ports
-        // usage at test runtime.
-        System.setProperty("com.uber.fievel.testing.available.port." + localPort, "true");
-        return localPort;
+        return socket.getLocalPort();
       } catch (IOException e) {
         logger.warn(String.format("Failed to open socket on port %d, attempt = %d", port, i), e);
         // retry if port is not available
