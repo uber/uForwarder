@@ -18,6 +18,7 @@ import java.util.concurrent.ExecutionException;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -167,22 +168,26 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
 
     // run with non-positive quota
     Job job2 = createConsumerJob(2, TOPIC, 0, GROUP, 0, 1000, 1);
-    try {
-      pipelineStateManager.run(job2).toCompletableFuture().get();
-    } catch (ExecutionException e) {
-      Assert.assertEquals(
-          "java.lang.RuntimeException: flow control for job 2 is not positive", e.getMessage());
-    }
+    ExecutionException e3 =
+        Assertions.assertThrows(
+            ExecutionException.class,
+            () -> {
+              pipelineStateManager.run(job2).toCompletableFuture().get();
+            });
+    Assert.assertEquals(
+        "java.lang.RuntimeException: flow control for job 2 is not positive", e3.getMessage());
     validateMap(0);
 
     // run with non-positive quota
     Job job3 = createConsumerJob(3, TOPIC, 0, GROUP, 1000, -1, 1);
-    try {
-      pipelineStateManager.run(job3).toCompletableFuture().get();
-    } catch (ExecutionException e) {
-      Assert.assertEquals(
-          "java.lang.RuntimeException: flow control for job 3 is not positive", e.getMessage());
-    }
+    ExecutionException e0 =
+        Assertions.assertThrows(
+            ExecutionException.class,
+            () -> {
+              pipelineStateManager.run(job3).toCompletableFuture().get();
+            });
+    Assert.assertEquals(
+        "java.lang.RuntimeException: flow control for job 3 is not positive", e0.getMessage());
     validateMap(0);
 
     // a valid job
@@ -217,22 +222,26 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
 
     // update with non-positive quota
     Job job2 = createConsumerJob(2, TOPIC, 0, GROUP, 0, 1000, 1);
-    try {
-      pipelineStateManager.update(job2).toCompletableFuture().get();
-    } catch (ExecutionException e) {
-      Assert.assertEquals(
-          "java.lang.RuntimeException: flow control for job 2 is not positive", e.getMessage());
-    }
+    ExecutionException e2 =
+        Assertions.assertThrows(
+            ExecutionException.class,
+            () -> {
+              pipelineStateManager.update(job2).toCompletableFuture().get();
+            });
+    Assert.assertEquals(
+        "java.lang.RuntimeException: flow control for job 2 is not positive", e2.getMessage());
     validateMap(0);
 
     // update with non-positive quota
     Job job3 = createConsumerJob(3, TOPIC, 0, GROUP, 1000, -1, 1);
-    try {
-      pipelineStateManager.update(job3).toCompletableFuture().get();
-    } catch (ExecutionException e) {
-      Assert.assertEquals(
-          "java.lang.RuntimeException: flow control for job 3 is not positive", e.getMessage());
-    }
+    ExecutionException e1 =
+        Assertions.assertThrows(
+            ExecutionException.class,
+            () -> {
+              pipelineStateManager.update(job3).toCompletableFuture().get();
+            });
+    Assert.assertEquals(
+        "java.lang.RuntimeException: flow control for job 3 is not positive", e1.getMessage());
     validateMap(0);
 
     // a valid job
