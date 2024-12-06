@@ -7,6 +7,8 @@ import com.uber.data.kafka.consumerproxy.config.SchedulerConfiguration;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcDispatcherFactory;
 import com.uber.data.kafka.consumerproxy.worker.fetcher.KafkaFetcherAutoConfiguration;
 import com.uber.data.kafka.consumerproxy.worker.fetcher.KafkaFetcherFactory;
+import com.uber.data.kafka.consumerproxy.worker.filter.Filter;
+import com.uber.data.kafka.consumerproxy.worker.filter.OriginalClusterFilter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.AdaptiveInflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.LongFixedInflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.VegasAdaptiveInflightLimiter;
@@ -61,13 +63,24 @@ public class UForwarderWorkerFactory {
       ProcessorConfiguration configuration,
       OutboundMessageLimiter.Builder outboundMessageLimiterBuilder,
       MessageAckStatusManager.Builder ackStatusManagerBuilder,
-      UnprocessedMessageManager.Builder unprocessedManagerBuilder) {
+      UnprocessedMessageManager.Builder unprocessedManagerBuilder,
+      Filter.Factory filterFactory) {
     return new ProcessorFactory(
         coreInfra,
         configuration,
         outboundMessageLimiterBuilder,
         ackStatusManagerBuilder,
-        unprocessedManagerBuilder);
+        unprocessedManagerBuilder,
+        filterFactory);
+  }
+
+  @Bean
+  public Filter.Factory filterFactory(ProcessorConfiguration configuration) {
+    Filter.Factory ret = job -> Filter.NOOP_FILTER;
+    if (configuration.isClusterFilterEnabled()) {
+      ret = OriginalClusterFilter.newFactory();
+    }
+    return ret;
   }
 
   @Bean

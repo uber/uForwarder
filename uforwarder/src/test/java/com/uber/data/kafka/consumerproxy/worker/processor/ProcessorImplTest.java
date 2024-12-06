@@ -7,6 +7,8 @@ import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherImpl;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherMessage;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcResponse;
+import com.uber.data.kafka.consumerproxy.worker.filter.Filter;
+import com.uber.data.kafka.consumerproxy.worker.filter.OriginalClusterFilter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.AdaptiveInflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.InflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.LongFixedInflightLimiter;
@@ -67,6 +69,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
   private UnprocessedMessageManager.Builder UnprocessedMessageManagerBuilder;
   private MessageAckStatusManager.Builder messageAckStatusManagerBuilder;
   private ProcessorConfiguration config;
+  private Filter filter;
 
   @Before
   public void setUp() throws Exception {
@@ -125,6 +128,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
         new UnprocessedMessageManager.Builder(
             config, Mockito.mock(LongFixedInflightLimiter.class), infra);
     messageAckStatusManagerBuilder = new MessageAckStatusManager.Builder(1, infra);
+    filter = new OriginalClusterFilter(job);
     processor =
         new ProcessorImpl(
             ackManager,
@@ -132,7 +136,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             outboundMessageLimiterBuilder.build(job),
             job.getRpcDispatcherTask().getUri(),
             10,
-            true,
+            filter,
             1,
             1,
             infra);
@@ -161,7 +165,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
         outboundMessageLimiterBuilder,
         messageAckStatusManagerBuilder,
         UnprocessedMessageManagerBuilder,
-        true,
+        filter,
         1,
         infra);
   }

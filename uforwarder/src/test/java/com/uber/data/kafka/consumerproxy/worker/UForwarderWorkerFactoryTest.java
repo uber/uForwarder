@@ -2,6 +2,8 @@ package com.uber.data.kafka.consumerproxy.worker;
 
 import com.uber.data.kafka.consumerproxy.utils.UForwarderSpringJUnit4ClassRunner;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcDispatcherFactory;
+import com.uber.data.kafka.consumerproxy.worker.filter.Filter;
+import com.uber.data.kafka.consumerproxy.worker.filter.OriginalClusterFilter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.AdaptiveInflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.LongFixedInflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.processor.ProcessorFactory;
@@ -42,6 +44,8 @@ public class UForwarderWorkerFactoryTest extends FievelTestBase {
 
   @Autowired Node node;
 
+  @Autowired Filter.Factory filterFactory;
+
   @Test
   public void testProcessorFactory() {
     Assert.assertNotNull(this.processorFactory);
@@ -76,5 +80,11 @@ public class UForwarderWorkerFactoryTest extends FievelTestBase {
   public void testNode() {
     Assert.assertNotNull(this.node);
     Assert.assertEquals(0, node.getPort());
+  }
+
+  @Test
+  public void testFilterFactory() {
+    Assert.assertNotNull(filterFactory);
+    Assert.assertTrue(filterFactory.create(null) instanceof OriginalClusterFilter);
   }
 }
