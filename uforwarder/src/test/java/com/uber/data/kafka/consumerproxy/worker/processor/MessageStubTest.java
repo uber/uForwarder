@@ -220,7 +220,7 @@ public class MessageStubTest extends FievelTestBase {
     try {
       stub.cancel(DispatcherResponse.Code.RETRY);
     } catch (Exception e) {
-      Assert.fail("should not fail");
+      throw new AssertionError("should not fail", e);
     }
     Mockito.verify(scope, Mockito.times(1)).counter("dispatcher.cancel.failure");
     Mockito.verify(counter, Mockito.atLeast(1)).inc(1);
