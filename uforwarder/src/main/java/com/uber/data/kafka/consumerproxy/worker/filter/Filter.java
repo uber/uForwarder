@@ -2,6 +2,7 @@ package com.uber.data.kafka.consumerproxy.worker.filter;
 
 import com.uber.data.kafka.consumerproxy.worker.processor.ProcessorMessage;
 import com.uber.data.kafka.datatransfer.Job;
+import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 
 /**
  * Filters out messages that should be ignored. Ignored message will skip dispatcher and ack
@@ -16,7 +17,7 @@ public interface Filter {
    * @param pm the processor message
    * @return the boolean indicates whether the message should be processed.
    */
-  boolean shouldProcess(ProcessorMessage pm);
+  boolean shouldProcess(ItemAndJob<ProcessorMessage> pm);
 
   /** Factory to create a filter. */
   interface Factory {

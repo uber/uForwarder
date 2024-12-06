@@ -1072,7 +1072,7 @@ public class ProcessorImpl
                     LOGGER,
                     infra.scope(),
                     () -> {
-                      if (!messageFilter.shouldProcess(pm)) {
+                      if (!messageFilter.shouldProcess(ItemAndJob.of(pm, job))) {
                         pm.setOffsetToCommit(ackManager.ack(pm));
                         pm.setShouldDispatch(false);
 
