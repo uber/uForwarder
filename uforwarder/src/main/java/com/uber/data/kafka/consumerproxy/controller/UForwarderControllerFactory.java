@@ -1,5 +1,6 @@
 package com.uber.data.kafka.consumerproxy.controller;
 
+import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.consumerproxy.config.KafkaAdminClientConfiguration;
 import com.uber.data.kafka.consumerproxy.config.NoopTracerAutoConfiguration;
 import com.uber.data.kafka.consumerproxy.config.RebalancerConfiguration;
@@ -26,6 +27,7 @@ import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.creator.BatchJobCreator;
 import com.uber.data.kafka.datatransfer.controller.creator.JobCreator;
 import com.uber.data.kafka.datatransfer.controller.creator.StreamingJobCreator;
+import com.uber.data.kafka.datatransfer.controller.rebalancer.JobPodPlacementProvider;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.Rebalancer;
 import com.uber.data.kafka.datatransfer.controller.rpc.ControllerAdminService;
 import com.uber.data.kafka.datatransfer.controller.rpc.ControllerWorkerService;
@@ -145,14 +147,29 @@ public class UForwarderControllerFactory {
 
   @Bean
   public ShadowRebalancerDelegateImpl shadowRebalancerDelegate(
-      CoreInfra coreInfra, RebalancerConfiguration rebalancerConfiguration, Scalar scalar) {
+      CoreInfra coreInfra,
+      RebalancerConfiguration rebalancerConfiguration,
+      Scalar scalar,
+      JobPodPlacementProvider jobPodPlacementProvider) {
     return new ShadowRebalancerDelegateImpl(
         new RpcJobColocatingRebalancer(
             coreInfra.scope(),
             rebalancerConfiguration,
             scalar,
             new HibernatingJobRebalancer(rebalancerConfiguration),
-            true),
+            jobPodPlacementProvider,
+            false),
         rebalancerConfiguration.getShouldRunShadowRebalancer());
+  }
+
+  @Bean
+  public JobPodPlacementProvider jobPodPlacementChecker(
+      RebalancerConfiguration rebalancerConfiguration) {
+    String placementPod = "placementPod";
+    return new JobPodPlacementProvider(
+        storedJob -> placementPod,
+        storedWorker -> placementPod,
+        ImmutableMap.of(),
+        rebalancerConfiguration.getNumberOfVirtualPartitions());
   }
 }

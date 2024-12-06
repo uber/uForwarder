@@ -1,5 +1,6 @@
 package com.uber.data.kafka.consumerproxy.controller;
 
+import com.uber.data.kafka.consumerproxy.config.RebalancerConfiguration;
 import com.uber.data.kafka.consumerproxy.utils.UForwarderSpringJUnit4ClassRunner;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
@@ -11,6 +12,7 @@ import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
 import com.uber.data.kafka.datatransfer.common.KafkaPartitionExpansionWatcher;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.creator.JobCreator;
+import com.uber.data.kafka.datatransfer.controller.rebalancer.JobPodPlacementProvider;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.Rebalancer;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.ShadowRebalancerDelegate;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
@@ -56,6 +58,8 @@ public class UForwarderControllerFactoryTest extends FievelTestBase {
 
   @Autowired private CoreInfra coreInfra;
 
+  @Autowired private JobPodPlacementProvider jobPodPlacementProvider;
+
   @Test
   public void testDynamicConfiguration() {
     Assert.assertNotNull(this.dynamicConfiguration);
@@ -97,5 +101,12 @@ public class UForwarderControllerFactoryTest extends FievelTestBase {
     JobCreator batchCreator =
         new UForwarderControllerFactory().jobCreator("BatchJobCreator", adminBuilder, coreInfra);
     Assert.assertNotNull(batchCreator);
+  }
+
+  @Test
+  public void testJobPodPlacementChecker() {
+    JobPodPlacementProvider jobPodPlacementProvider =
+        new UForwarderControllerFactory().jobPodPlacementChecker(new RebalancerConfiguration());
+    Assert.assertNotNull(jobPodPlacementProvider);
   }
 }
