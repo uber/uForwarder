@@ -331,19 +331,23 @@ public class GrpcManagedChannelPool extends ManagedChannel {
       concurrentCalls.incrementAndGet();
     }
 
+    @Override
     public void onHeaders(Metadata headers) {
       delegator.onHeaders(headers);
     }
 
+    @Override
     public void onMessage(T message) {
       delegator.onMessage(message);
     }
 
+    @Override
     public void onClose(Status status, Metadata trailers) {
       close();
       delegator.onClose(status, trailers);
     }
 
+    @Override
     public void onReady() {
       delegator.onReady();
     }

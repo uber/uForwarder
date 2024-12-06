@@ -125,6 +125,7 @@ public abstract class AbstractAckTrackingQueue implements AckTrackingQueue {
     reactors.add(reactor);
   }
 
+  @Override
   public abstract void receive(long offset, Map<AttributeKey, Attribute> attributes)
       throws InterruptedException;
 
