@@ -64,7 +64,7 @@ public class StateMachineTest extends FievelTestBase {
     controllable = Mockito.mock(Controllable.class);
     commandExecutors = Mockito.mock(ExecutorService.class);
     lease = Lease.forTest(1000, 0);
-    heartbeatTimeout = Duration.ofMillis(10000);
+    heartbeatTimeout = Duration.ofSeconds(10);
     job1 = Job.newBuilder().setJobId(1).build();
     job2 = Job.newBuilder().setJobId(2).build();
     job3 = Job.newBuilder().setJobId(3).build();
