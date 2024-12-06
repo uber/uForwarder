@@ -147,6 +147,51 @@ public class RetryTopicKafkaFetcherTest extends FievelTestBase {
   }
 
   @Test
+  public void testRetryProcessingDelayMSNotFallbackToOriginalTopicDelayMs()
+      throws InterruptedException, ExecutionException {
+    Job job =
+        Job.newBuilder()
+            .setFlowControl(
+                FlowControl.newBuilder()
+                    .setBytesPerSec(1)
+                    .setMessagesPerSec(1)
+                    .setMaxInflightMessages(1)
+                    .build())
+            .setKafkaConsumerTask(
+                KafkaConsumerTask.newBuilder()
+                    .setConsumerGroup(GROUP)
+                    .setProcessingDelayMs(100)
+                    .build())
+            .build();
+
+    // No retry queue config but has ProcessingDelayMs in KafkaConsumerTask.
+    fetcherThread =
+        new RetryTopicKafkaFetcher(
+            THREAD_NAME,
+            kafkaFetcherConfiguration,
+            checkpointManager,
+            throughputTracker,
+            mockConsumer,
+            infra,
+            retryQueue);
+
+    ConsumerRecord consumerRecord = Mockito.mock(ConsumerRecord.class);
+    Mockito.when(consumerRecord.timestamp()).thenReturn(System.currentTimeMillis());
+
+    Mockito.when(pipelineStateManager.shouldJobBeRunning(job)).thenReturn(true);
+    Assert.assertFalse(
+        fetcherThread.handleEndOffsetAndDelay(
+            consumerRecord, job, checkpointManager, pipelineStateManager));
+
+    Mockito.when(pipelineStateManager.shouldJobBeRunning(job)).thenReturn(true).thenReturn(false);
+    Mockito.when(consumerRecord.timestamp()).thenReturn(System.currentTimeMillis());
+
+    // since ProcessingDelayMs is -1, so it won't go into the loop and call shouldJobBeRunning
+    // again.
+    Mockito.verify(pipelineStateManager, Mockito.times(1)).shouldJobBeRunning(job);
+  }
+
+  @Test
   public void testGetSeekStartOffsetOption() {
     Assert.assertEquals(
         SeekStartOffsetOption.DO_NOT_SEEK,
