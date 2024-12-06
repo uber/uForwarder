@@ -2,6 +2,7 @@ syntax = "proto3";
 
 // These protos are in alpha stage and there is no guarantee of protocol compatibility at this time.
 
+import "google/protobuf/any.proto";
 import "google/protobuf/timestamp.proto";
 
 package uber.data.kafka.datatransfer;
@@ -59,6 +60,8 @@ message Job {
   AvailabilityTask availability_task = 12;
   // ReplicationTask should be populated for Kafka Replication/Ingestion jobs
   ReplicationTask replication_task = 13;
+  // The extensible field, used for 3rdParty application
+  google.protobuf.Any extension = 14;
 }
 
 
@@ -86,8 +89,9 @@ message KafkaConsumerTask {
   // For example, if end_offset = 100, then the last offset to read and process is 99.
   // 0 for unbounded consumption.
   int64 end_offset = 7;
-  // DEPRECATED. Use processing_delay_ms in RetryConfig instead.
-  int32 processing_delay_ms = 8 [deprecated = true];
+  // a delay processing time for the kafka topic. This is a configuration for the original topic.
+  // for retry topics, use processing_delay_ms in RetryConfig.
+  int32 processing_delay_ms = 8;
   // isolation level could be read_uncommitted or read_committed, default read_uncommitted
   IsolationLevel isolation_level = 9;
   // Auditing related metadata. It will be set if the job type is `JOB_TYPE_KAFKA_AUDIT`
@@ -148,6 +152,24 @@ message KafkaDispatcherTask {
   bool is_secure = 5;
   // true when acks=1/lossy, false when acks=all/lossless
   bool is_acks_one = 6;
+  // optional encoded format information
+  EncodedFormatInfo encoded_format_info = 7;
+}
+
+// EncodedFormatType defines the type to encode data
+enum EncodedFormatType {
+  // Per http://t.uber.com/protobuf-style, enum must start with INVALID=0
+  ENCODED_FORMAT_TYPE_INVALID = 0;
+  ENCODED_FORMAT_TYPE_AVRO = 1;
+  ENCODED_FORMAT_TYPE_PROTOBUF = 2;
+}
+
+// EncodedFormatInfo configures the encoded format of the messages
+message EncodedFormatInfo {
+  // encoded format type
+  EncodedFormatType encoded_format_type = 1;
+  // schema version of the encoded format
+  int32 schema_version = 2;
 }
 
 // RetryConfig configures the retry policy for retriable errors.
@@ -423,4 +445,8 @@ message MiscConfig {
   bool enable_debug = 1;
   // the service name which owns this consumer
   string owner_service_name = 2;
+  // enables job scale reset based on quota.
+  // If enabled, each flow control quota update will reset the job scale based on the quota values,
+  // otherwise quota update will not reset the job scale.
+  bool scale_reset_enabled = 3;
 }
