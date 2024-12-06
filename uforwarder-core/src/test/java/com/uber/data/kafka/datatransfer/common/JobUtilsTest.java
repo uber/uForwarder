@@ -1,6 +1,8 @@
 package com.uber.data.kafka.datatransfer.common;
 
 import com.google.common.collect.ImmutableList;
+import com.google.protobuf.Any;
+import com.google.protobuf.InvalidProtocolBufferException;
 import com.uber.data.kafka.datatransfer.AuditConfig;
 import com.uber.data.kafka.datatransfer.AuditMetaData;
 import com.uber.data.kafka.datatransfer.AuditType;
@@ -396,6 +398,7 @@ public class JobUtilsTest extends FievelTestBase {
             .setRetryConfig(RetryConfig.newBuilder().build())
             .setResqConfig(ResqConfig.newBuilder().build())
             .setMiscConfig(MiscConfig.newBuilder().build())
+            .setExtension(Any.getDefaultInstance())
             .setType(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER);
 
     Assert.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
@@ -417,6 +420,7 @@ public class JobUtilsTest extends FievelTestBase {
             .setRetryConfig(RetryConfig.newBuilder().build())
             .setResqConfig(ResqConfig.newBuilder().build())
             .setMiscConfig(MiscConfig.newBuilder().build())
+            .setExtension(Any.getDefaultInstance())
             .setType(JobType.JOB_TYPE_KAFKA_AUDIT);
 
     Assert.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
@@ -455,6 +459,16 @@ public class JobUtilsTest extends FievelTestBase {
     // Created job should have resilience queue configs same as job group
     Assert.assertEquals(
         resqConfig, JobUtils.newJobBuilder(jobGroupBuilder.build()).build().getResqConfig());
+  }
+
+  @Test
+  public void testExtensionPropagatedToJobFromJobGroup() throws InvalidProtocolBufferException {
+    JobGroup.Builder jobGroupBuilder =
+        JobGroup.newBuilder()
+            .setType(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER)
+            .setExtension(Any.pack(MiscConfig.newBuilder().setEnableDebug(true).build()));
+    Job.Builder jobBuilder = JobUtils.newJobBuilder(jobGroupBuilder.build());
+    Assert.assertTrue(jobBuilder.build().getExtension().unpack(MiscConfig.class).getEnableDebug());
   }
 
   @Test
