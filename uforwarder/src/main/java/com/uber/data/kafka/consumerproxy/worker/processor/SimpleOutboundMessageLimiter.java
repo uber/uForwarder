@@ -93,7 +93,6 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
               DEFAULT_MAX_INFLIGHT,
               maxOutboundCacheCount * topicPartitionToScopeAndInflight.size());
     }
-    adaptiveInflightLimiter.setDryRun(dryRunAdaptiveLimiter);
     adaptiveInflightLimiter.setMaxInflight(maxLimit);
     shadowAdaptiveInflightLimiter.setMaxInflight(maxLimit);
     LOGGER.info(
@@ -232,6 +231,7 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     final String topic = scopeAndInflight.job.getKafkaConsumerTask().getTopic();
     final int partition = scopeAndInflight.job.getKafkaConsumerTask().getPartition();
     final String rpcUri = scopeAndInflight.job.getRpcDispatcherTask().getUri();
+    final boolean useStaticLimit = longFixedInflightLimiter.getMetrics().getLimit() > 0;
     try {
       // TODO (T4576171): use tryAcquire instead of blocking forever on lock
       NestedPermitBuilder permitBuilder = new NestedPermitBuilder();
@@ -239,9 +239,9 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
       // effect
       // else, adaptiveInflightLimiter returns NoopPermit, fixedInflightLimiter takes effect
       // shadowAdaptiveInflightLimiter always run in dryrun mode for algorithm performance tuning
-      permitBuilder.withPermit(longFixedInflightLimiter.acquire());
-      permitBuilder.withPermit(adaptiveInflightLimiter.acquire());
-      permitBuilder.withPermit(shadowAdaptiveInflightLimiter.acquire());
+      permitBuilder.withPermit(longFixedInflightLimiter.acquire(!useStaticLimit));
+      permitBuilder.withPermit(adaptiveInflightLimiter.acquire(useStaticLimit));
+      permitBuilder.withPermit(shadowAdaptiveInflightLimiter.acquire(true));
       permitBuilder.withScopeAndInflight(scopeAndInflight);
       return permitBuilder.build();
     } catch (InterruptedException e) {
@@ -286,19 +286,19 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
           String.format(
               "topic-partition %s has not been assigned to this message limiter", topicPartition));
     }
-
+    final boolean useStaticLimit = longFixedInflightLimiter.getMetrics().getLimit() > 0;
     NestedPermitBuilder permitBuilder = new NestedPermitBuilder();
     // if limit <= 0, fixedInflightLimiter returns NoopPermit, adaptiveInflightLimiter takes
     // effect
     // else, adaptiveInflightLimiter returns NoopPermit, fixedInflightLimiter takes effect
     // shadowAdaptiveInflightLimiter always run in dryrun mode for algorithm performance tuning
-    return acquireAsync(processorMessage, asyncStaticLimiterAdapter)
+    return acquireAsync(processorMessage, asyncStaticLimiterAdapter, !useStaticLimit)
         .thenCompose(
             longPermit ->
-                acquireAsync(processorMessage, asyncAdaptiveLimiterAdapter)
+                acquireAsync(processorMessage, asyncAdaptiveLimiterAdapter, useStaticLimit)
                     .thenCompose(
                         adaptivePermit ->
-                            acquireAsync(processorMessage, asyncShadowAdaptiveLimiterAdapter)
+                            acquireAsync(processorMessage, asyncShadowAdaptiveLimiterAdapter, true)
                                 .thenApply(
                                     shadowPermit ->
                                         permitBuilder
@@ -310,7 +310,7 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   }
 
   private CompletableFuture<InflightLimiter.Permit> acquireAsync(
-      ProcessorMessage processorMessage, AsyncInflightLimiterAdapter limiter) {
+      ProcessorMessage processorMessage, AsyncInflightLimiterAdapter limiter, boolean dryRun) {
     TopicPartitionOffset topicPartitionOffset = processorMessage.getPhysicalMetadata();
     return infra
         .contextManager()
@@ -319,7 +319,9 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
                 .getStub()
                 .withFuturePermit(
                     limiter.acquireAsync(
-                        topicPartitionOffset.getPartition(), topicPartitionOffset.getOffset())));
+                        topicPartitionOffset.getPartition(),
+                        topicPartitionOffset.getOffset(),
+                        dryRun)));
   }
 
   Collection<Job> jobs() {

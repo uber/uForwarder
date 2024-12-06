@@ -31,7 +31,7 @@ public class LongFixedInflightLimiter extends AbstractInflightLimiter {
    * @throws InterruptedException the interrupted exception
    */
   public Permit acquire(int n) throws InterruptedException {
-    Permit permit = doAcquire(true, n);
+    Permit permit = doAcquire(AcquireMode.Blocking, n);
     if (permit == null) {
       // this should never happen
       return NoopPermit.INSTANCE;
@@ -48,7 +48,7 @@ public class LongFixedInflightLimiter extends AbstractInflightLimiter {
    */
   public Optional<Permit> tryAcquire(int n) {
     try {
-      return Optional.ofNullable(doAcquire(false, n));
+      return Optional.ofNullable(doAcquire(AcquireMode.NonBlocking, n));
     } catch (InterruptedException e) {
       // this should never happen
       return Optional.empty();
@@ -86,12 +86,12 @@ public class LongFixedInflightLimiter extends AbstractInflightLimiter {
 
   @Nullable
   @Override
-  Permit doAcquire(boolean blocking) throws InterruptedException {
-    return doAcquire(blocking, 1);
+  Permit doAcquire(AcquireMode acquireMode) throws InterruptedException {
+    return doAcquire(acquireMode, 1);
   }
 
   @Nullable
-  Permit doAcquire(boolean blocking, int n) throws InterruptedException {
+  Permit doAcquire(AcquireMode acquireMode, int n) throws InterruptedException {
     if (n < 0) {
       return NoopPermit.INSTANCE;
     }
@@ -107,7 +107,9 @@ public class LongFixedInflightLimiter extends AbstractInflightLimiter {
                 nInflight <= limit - n) {
               inflight.addAndGet(n);
               return new FixedPermit(n);
-            } else if (!blocking) {
+            } else if (acquireMode == AcquireMode.DryRun) {
+              return NoopPermit.INSTANCE;
+            } else if (acquireMode == AcquireMode.NonBlocking) {
               // unblock caller if failed to get permit
               return null;
             }
