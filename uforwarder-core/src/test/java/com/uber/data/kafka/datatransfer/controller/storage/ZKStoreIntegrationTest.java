@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.controller.storage;
 
+import com.google.protobuf.util.JsonFormat;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.WorkerState;
@@ -61,7 +62,8 @@ public class ZKStoreIntegrationTest extends FievelTestBase {
             logger,
             CoreInfra.NOOP,
             AsyncCuratorFramework.wrap(zkClient),
-            new JsonSerializationFactory<>(StoredWorker.newBuilder().build()),
+            new JsonSerializationFactory<>(
+                StoredWorker.newBuilder().build(), JsonFormat.TypeRegistry.getEmptyTypeRegistry()),
             new ZKSequencer(zkClient, "/sequencer/workers"),
             WorkerUtils::getWorkerId,
             "/workers/{id}");

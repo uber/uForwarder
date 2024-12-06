@@ -1,5 +1,9 @@
 package com.uber.data.kafka.datatransfer.common;
 
+import com.google.protobuf.Any;
+import com.google.protobuf.InvalidProtocolBufferException;
+import com.google.protobuf.util.JsonFormat;
+import com.uber.data.kafka.datatransfer.JobGroup;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.WorkerState;
@@ -13,7 +17,9 @@ public class JsonSerializationFactoryTest extends FievelTestBase {
 
   @Before
   public void setup() {
-    factory = new JsonSerializationFactory<>(StoredWorker.newBuilder().build());
+    factory =
+        new JsonSerializationFactory<>(
+            StoredWorker.newBuilder().build(), JsonFormat.TypeRegistry.newBuilder().build());
   }
 
   @Test
@@ -43,5 +49,26 @@ public class JsonSerializationFactoryTest extends FievelTestBase {
   @Test(expected = RuntimeException.class)
   public void testInvalidJsonBytes() {
     factory.deserialize(new byte[] {1, 2, 3, 4});
+  }
+
+  @Test
+  public void testSerializeAndDeserializeExtension() throws InvalidProtocolBufferException {
+    JsonSerializationFactory<JobGroup> factory =
+        new JsonSerializationFactory<>(
+            JobGroup.newBuilder().build(),
+            JsonFormat.TypeRegistry.newBuilder().add(StoredWorker.getDescriptor()).build());
+    byte[] json =
+        factory.serialize(
+            JobGroup.newBuilder()
+                .setExtension(
+                    Any.pack(
+                        StoredWorker.newBuilder()
+                            .setState(WorkerState.WORKER_STATE_WORKING)
+                            .build()))
+                .build());
+    JobGroup group = factory.deserialize(json);
+    Assert.assertEquals(
+        WorkerState.WORKER_STATE_WORKING,
+        group.getExtension().unpack(StoredWorker.class).getState());
   }
 }
