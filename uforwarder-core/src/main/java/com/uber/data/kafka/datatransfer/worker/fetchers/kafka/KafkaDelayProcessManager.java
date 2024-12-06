@@ -61,7 +61,8 @@ public class KafkaDelayProcessManager<K, V> implements DelayProcessManager<K, V>
 
   // Pauses the topic partition and stores its unprocessed records.
   @Override
-  public void pause(TopicPartition tp, List<ConsumerRecord<K, V>> unprocessedRecords) {
+  public void pausedPartitionsAndRecords(
+      TopicPartition tp, List<ConsumerRecord<K, V>> unprocessedRecords) {
     Preconditions.checkArgument(
         unprocessedRecords.size() > 0,
         "It requires unprocessedRecords to be not empty for topic partition %s",
@@ -99,7 +100,7 @@ public class KafkaDelayProcessManager<K, V> implements DelayProcessManager<K, V>
 
   // Gets the list of topic partitions that could be resumed to process.
   @Override
-  public Map<TopicPartition, List<ConsumerRecord<K, V>>> resume() {
+  public Map<TopicPartition, List<ConsumerRecord<K, V>>> resumePausedPartitionsAndRecords() {
     ImmutableList.Builder<TopicPartition> resumedPartitions = ImmutableList.builder();
     ImmutableMap.Builder<TopicPartition, List<ConsumerRecord<K, V>>> resumedRecords =
         ImmutableMap.builder();
