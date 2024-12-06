@@ -105,6 +105,7 @@ public abstract class ShutdownableThread extends Thread {
    */
   public abstract void doWork();
 
+  @Override
   public void run() {
     isStarted = true;
     log.info("Starting");
