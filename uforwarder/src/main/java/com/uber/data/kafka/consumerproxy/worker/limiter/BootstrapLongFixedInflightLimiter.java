@@ -39,12 +39,12 @@ public final class BootstrapLongFixedInflightLimiter extends LongFixedInflightLi
 
   @Override
   @Nullable
-  Permit doAcquire(boolean blocking, int n) throws InterruptedException {
+  Permit doAcquire(AcquireMode acquireMode, int n) throws InterruptedException {
     State state = stateReference.get();
     if (state == null) {
       throw new IllegalStateException("state should not be null");
     }
-    return state.doAcquire(blocking, n);
+    return state.doAcquire(acquireMode, n);
   }
 
   /**
@@ -66,13 +66,13 @@ public final class BootstrapLongFixedInflightLimiter extends LongFixedInflightLi
     /**
      * Do acquire a permit.
      *
-     * @param blocking the blocking
+     * @param acquireMode the acquire mode
      * @param n the n
      * @return the permit
      * @throws InterruptedException the interrupted exception
      */
     @Nullable
-    Permit doAcquire(boolean blocking, int n) throws InterruptedException;
+    Permit doAcquire(AcquireMode acquireMode, int n) throws InterruptedException;
   }
 
   private class BootstrapState implements State {
@@ -80,13 +80,13 @@ public final class BootstrapLongFixedInflightLimiter extends LongFixedInflightLi
 
     @Nullable
     @Override
-    public Permit doAcquire(boolean blocking, int n) throws InterruptedException {
-      Permit permit = BootstrapLongFixedInflightLimiter.super.doAcquire(blocking, n);
+    public Permit doAcquire(AcquireMode acquireMode, int n) throws InterruptedException {
+      Permit permit = BootstrapLongFixedInflightLimiter.super.doAcquire(acquireMode, n);
       if (permit == null) {
         return null;
       }
 
-      Permit bootstrapPermit = bootstrapLimiter.doAcquire(blocking, n);
+      Permit bootstrapPermit = bootstrapLimiter.doAcquire(acquireMode, n);
       if (bootstrapPermit == null) {
         // release acquired permit to avoid leak
         permit.complete();
@@ -129,8 +129,8 @@ public final class BootstrapLongFixedInflightLimiter extends LongFixedInflightLi
   private class WorkingState implements State {
     @Nullable
     @Override
-    public Permit doAcquire(boolean blocking, int n) throws InterruptedException {
-      return BootstrapLongFixedInflightLimiter.super.doAcquire(blocking, n);
+    public Permit doAcquire(AcquireMode acquireMode, int n) throws InterruptedException {
+      return BootstrapLongFixedInflightLimiter.super.doAcquire(acquireMode, n);
     }
   }
 

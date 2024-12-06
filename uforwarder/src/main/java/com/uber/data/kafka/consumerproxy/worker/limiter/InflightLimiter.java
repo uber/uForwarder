@@ -24,14 +24,35 @@ public interface InflightLimiter extends AutoCloseable {
    * @return the permit
    * @throws InterruptedException the interrupted exception
    */
-  Permit acquire() throws InterruptedException;
+  default Permit acquire() throws InterruptedException {
+    return acquire(false);
+  }
 
   /**
-   * Acquires a permit from the limiter, when no enough permit, return null without block caller
+   * Acquires a permit from the limiter The method may be blocked if there is no enough permit
+   *
+   * @param dryRun return NoopPermit without blocking caller
+   * @return the permit
+   * @throws InterruptedException the interrupted exception
+   */
+  Permit acquire(boolean dryRun) throws InterruptedException;
+
+  /**
+   * Acquires a permit from the limiter, when no enough permit, return result without block caller
    *
    * @return optional.Empty if failed to get permit
    */
-  Optional<Permit> tryAcquire();
+  default Optional<Permit> tryAcquire() {
+    return tryAcquire(false);
+  }
+
+  /**
+   * Acquires a permit from the limiter, when no enough permit, return result without block caller
+   *
+   * @param dryRun return NoopPermit without return empty permit
+   * @return optional.Empty if failed to get permit
+   */
+  Optional<Permit> tryAcquire(boolean dryRun);
 
   /**
    * Gets if the limiter is closed

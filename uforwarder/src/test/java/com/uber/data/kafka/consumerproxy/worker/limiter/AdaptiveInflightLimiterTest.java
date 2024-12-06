@@ -50,8 +50,6 @@ public class AdaptiveInflightLimiterTest extends FievelTestBase {
             };
           }
         };
-
-    adaptiveInflightLimiter.setDryRun(false);
   }
 
   @Test
@@ -158,15 +156,13 @@ public class AdaptiveInflightLimiterTest extends FievelTestBase {
 
   @Test
   public void testAcquireWithRryRun() throws InterruptedException {
-    adaptiveInflightLimiter.setDryRun(true);
-
-    adaptiveInflightLimiter.acquire();
+    adaptiveInflightLimiter.acquire(true);
     Assert.assertEquals(1, adaptiveInflightLimiter.getMetrics().getInflight());
 
-    adaptiveInflightLimiter.acquire();
+    adaptiveInflightLimiter.acquire(true);
     Assert.assertEquals(2, adaptiveInflightLimiter.getMetrics().getInflight());
 
-    adaptiveInflightLimiter.acquire();
+    adaptiveInflightLimiter.acquire(true);
     Assert.assertEquals(2, adaptiveInflightLimiter.getMetrics().getInflight());
   }
 
@@ -181,12 +177,5 @@ public class AdaptiveInflightLimiterTest extends FievelTestBase {
     permit1.get().complete(InflightLimiter.Result.Succeed);
     permit3 = adaptiveInflightLimiter.tryAcquire();
     Assert.assertTrue(permit3.isPresent());
-  }
-
-  @Test
-  public void testIsDryRun() {
-    Assert.assertFalse(false);
-    adaptiveInflightLimiter.setDryRun(true);
-    Assert.assertTrue(adaptiveInflightLimiter.isDryRun());
   }
 }
