@@ -29,6 +29,8 @@ public final class MetadataAdapter {
   private static final Metadata.Key<String> OFFSET = asciiMetadataKey("kafka-offset");
   private static final Metadata.Key<String> RETRY_COUNT = asciiMetadataKey("kafka-retrycount");
   private static final Metadata.Key<String> TRACING_INFO = asciiMetadataKey("kafka-tracing-info");
+  private static final Metadata.Key<String> CONSUMER_RECORD_TIMESTAMP_HEADER_KEY =
+      asciiMetadataKey("kafka-record-ts");
 
   // Headers with the following prefix is now allowed for retrieval.
   private static final List<String> DISALLOWED_HEADER_PREFIXES =
@@ -74,6 +76,11 @@ public final class MetadataAdapter {
   /** @return the Kafka retry count associated with this request or -1 if one was not found. */
   public long getRetryCount() {
     return readLong(RETRY_COUNT);
+  }
+
+  /** @return the Kafka consumer record timestamp, also know as produce timestamp for this record */
+  public long getConsumerRecordTimestamp() {
+    return readLong(CONSUMER_RECORD_TIMESTAMP_HEADER_KEY);
   }
 
   /**
