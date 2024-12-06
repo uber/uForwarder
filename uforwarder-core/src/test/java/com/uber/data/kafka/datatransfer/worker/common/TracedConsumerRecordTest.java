@@ -5,7 +5,6 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -146,7 +145,6 @@ public class TracedConsumerRecordTest extends FievelTestBase {
     when(tracer.extract(Mockito.any(Format.class), Mockito.any(TextMap.class))).thenReturn(null);
     ConsumerRecord record = createConsumerRecord("topic");
     record.headers().add(new RecordHeader("header1", "value1".getBytes(StandardCharsets.UTF_8)));
-    record.headers().add(new RecordHeader(TRACE_ID, "trace-id-1".getBytes(StandardCharsets.UTF_8)));
     record.headers().add(new RecordHeader("header2", "value2".getBytes(StandardCharsets.UTF_8)));
 
     Exception e = new IllegalStateException();
@@ -155,8 +153,8 @@ public class TracedConsumerRecordTest extends FievelTestBase {
     Mockito.verify(spanBuilder, Mockito.never()).asChildOf(Mockito.any(SpanContext.class));
     Mockito.verify(spanBuilder, Mockito.never()).withTag(Tags.ERROR, Boolean.TRUE);
     Assert.assertFalse(extracted);
-    Assert.assertFalse(injected);
-    Assert.assertEquals(3, record.headers().toArray().length);
+    Assert.assertTrue(injected);
+    Assert.assertEquals(2, record.headers().toArray().length);
     boolean matched =
         StreamSupport.stream(record.headers().spliterator(), false)
             .filter(
@@ -173,11 +171,11 @@ public class TracedConsumerRecordTest extends FievelTestBase {
                 })
             .allMatch(
                 header -> new String(header.value(), StandardCharsets.UTF_8).equals("trace-id-1"));
-    Assert.assertEquals(1, count);
+    Assert.assertEquals(0, count);
     Assert.assertTrue(matched);
     tracedConsumerRecord.complete(null, e);
-    verify(span, never()).log(ImmutableMap.of("error.object", e));
-    verify(span, never()).finish();
+    verify(span).log(ImmutableMap.of("error.object", e));
+    verify(span).finish();
   }
 
   @Test
