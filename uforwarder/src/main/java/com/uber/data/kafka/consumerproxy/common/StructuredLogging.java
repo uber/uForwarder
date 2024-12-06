@@ -22,6 +22,7 @@ public class StructuredLogging extends com.uber.data.kafka.datatransfer.common.S
   private static final String SPIFFE_ID = "spiffe_id";
   private static final String OFFSET_GAP = "offset_gap";
   private static final String JOB_TYPE = "job_type";
+  private static final String JOB_POD = "job_pod";
 
   private static final String VIRTUAL_PARTITION = "virtual_partition";
 
@@ -69,5 +70,9 @@ public class StructuredLogging extends com.uber.data.kafka.datatransfer.common.S
 
   public static StructuredArgument workerId(long workerId) {
     return StructuredArguments.keyValue(WORKER_ID, workerId);
+  }
+
+  public static StructuredArgument jobPod(String jobPod) {
+    return StructuredArguments.keyValue(JOB_POD, jobPod);
   }
 }

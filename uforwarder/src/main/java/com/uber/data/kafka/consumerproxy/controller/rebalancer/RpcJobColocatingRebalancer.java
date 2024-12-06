@@ -11,11 +11,13 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.config.RebalancerConfiguration;
+import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.Scalar;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.JobPodPlacementProvider;
+import com.uber.data.kafka.datatransfer.controller.rebalancer.Rebalancer;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
 import com.uber.m3.tally.Scope;
 import java.util.ArrayList;
@@ -24,6 +26,7 @@ import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.PriorityQueue;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -62,6 +65,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
 
   private final Map<String, RebalancingWorkerTable> rebalancingWorkerTableMap;
   private final JobGroupAndWorkerPodifier jobGroupAndWorkerPodifier;
+  private final JobPodPlacementProvider jobPodPlacementProvider;
 
   public RpcJobColocatingRebalancer(
       Scope scope,
@@ -71,6 +75,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
       JobPodPlacementProvider jobPodPlacementProvider) {
     super(scope, rebalancerConfiguration, scalar, hibernatingJobRebalancer);
     this.rebalancerConfiguration = rebalancerConfiguration;
+    this.jobPodPlacementProvider = jobPodPlacementProvider;
     this.scope = scope;
     this.rebalancingWorkerTableMap = new HashMap<>();
     this.jobGroupAndWorkerPodifier = new JobGroupAndWorkerPodifier(jobPodPlacementProvider, scope);
@@ -130,6 +135,71 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     totalNumberRequestedWorkers =
         roundUpToNearestNumber(totalNumberRequestedWorkers, TARGET_UNIT_NUMBER);
     scope.gauge(MetricNames.WORKERS_TARGET).update(totalNumberRequestedWorkers);
+  }
+
+  @Override
+  public void computeJobConfiguration(
+      final Map<String, RebalancingJobGroup> jobGroups, final Map<Long, StoredWorker> workers)
+      throws Exception {
+    List<PodAwareRebalanceGroup> podAwareRebalanceGroups =
+        jobGroupAndWorkerPodifier.podifyJobGroupsAndWorkers(jobGroups, workers);
+
+    for (PodAwareRebalanceGroup podAwareRebalanceGroup : podAwareRebalanceGroups) {
+      String pod = podAwareRebalanceGroup.getPod();
+      Optional<Double> maybeFlowControlRatio =
+          jobPodPlacementProvider.getMaybeReservedFlowControlRatioForPods(pod);
+      for (Map.Entry<String, List<StoredJob>> groupIdToJobsPair :
+          podAwareRebalanceGroup.getGroupIdToJobs().entrySet()) {
+        RebalancingJobGroup rebalancingJobGroup = jobGroups.get(groupIdToJobsPair.getKey());
+        Preconditions.checkNotNull(rebalancingJobGroup);
+        List<StoredJob> allJobsInPod = groupIdToJobsPair.getValue();
+        if (allJobsInPod.isEmpty()) {
+          // this will not happen, but warn just in case
+          logger.warn("No jobs for pod", StructuredLogging.jobPod(pod));
+          continue;
+        }
+
+        double flowControlRatio = maybeFlowControlRatio.orElse(1.0);
+        double scalePerJobInPod =
+            rebalancingJobGroup.getScale().orElse(Scalar.ZERO)
+                * flowControlRatio
+                / allJobsInPod.size();
+        double messagePerSecondPerJobInPod =
+            rebalancingJobGroup.getJobGroup().getFlowControl().getMessagesPerSec()
+                * flowControlRatio
+                / allJobsInPod.size();
+        double bytePerSecondPerJobInPod =
+            rebalancingJobGroup.getJobGroup().getFlowControl().getBytesPerSec()
+                * flowControlRatio
+                / allJobsInPod.size();
+        double maxInflightPerJobInPod =
+            rebalancingJobGroup.getJobGroup().getFlowControl().getMaxInflightMessages()
+                * flowControlRatio
+                / allJobsInPod.size();
+
+        FlowControl flowControlForJobInPod =
+            FlowControl.newBuilder()
+                .setBytesPerSec(bytePerSecondPerJobInPod)
+                .setMessagesPerSec(messagePerSecondPerJobInPod)
+                .setMaxInflightMessages(maxInflightPerJobInPod)
+                .build();
+
+        for (StoredJob job : allJobsInPod) {
+          rebalancingJobGroup.updateJob(
+              job.getJob().getJobId(),
+              job.toBuilder()
+                  .setJob(
+                      // use the job util that merges a new job group with the old job.
+                      Rebalancer.mergeJobGroupAndJob(
+                              rebalancingJobGroup.getJobGroup(), job.getJob())
+                          .setFlowControl(
+                              flowControlForJobInPod) // override per partition flow control
+                          .build())
+                  .setScale(scalePerJobInPod)
+                  .build());
+        }
+      }
+    }
   }
 
   private void assignJobsToCorrectVirtualPartition(
