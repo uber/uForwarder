@@ -41,8 +41,6 @@ public final class KafkaFetcherConfiguration {
   private int offsetCommitIntervalMs = 1000;
   private int offsetMonitorIntervalMs = 1000;
 
-  private boolean retrieveCommitOffsetOnFetcherInitialization = false;
-
   public Properties getKafkaConsumerProperties(
       String bootstrapServers,
       String clientId,
@@ -141,15 +139,6 @@ public final class KafkaFetcherConfiguration {
 
   public void setOffsetMonitorIntervalMs(int offsetMonitorIntervalMs) {
     this.offsetMonitorIntervalMs = offsetMonitorIntervalMs;
-  }
-
-  public boolean getRetrieveCommitOffsetOnFetcherInitialization() {
-    return retrieveCommitOffsetOnFetcherInitialization;
-  }
-
-  public void setRetrieveCommitOffsetOnFetcherInitialization(
-      Boolean retrieveCommitOffsetOnFetcherInitialization) {
-    this.retrieveCommitOffsetOnFetcherInitialization = retrieveCommitOffsetOnFetcherInitialization;
   }
 
   private String toConsumerConfig(AutoOffsetResetPolicy autoOffsetResetPolicy) {
