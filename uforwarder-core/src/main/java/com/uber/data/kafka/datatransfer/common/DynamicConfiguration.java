@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.common;
 
+import com.uber.data.kafka.datatransfer.common.utils.PodIsolationStatus;
 import java.util.Map;
 
 /** Data-source of dynamic configuration */
@@ -37,6 +38,11 @@ public interface DynamicConfiguration {
         @Override
         public boolean isAuthClientInterceptorEnabled(Map<String, String> constraints) {
           return IS_AUTH_CLIENT_INTERCEPTOR_ENABLED_DEFAULT_VALUE;
+        }
+
+        @Override
+        public PodIsolationStatus getPodIsolationStatus() {
+          return PodIsolationStatus.DISABLED;
         }
       };
 
@@ -79,4 +85,11 @@ public interface DynamicConfiguration {
    *     false
    */
   boolean isAuthClientInterceptorEnabled(Map<String, String> constraints);
+
+  /**
+   * getPodIsolationStatus checks if the pod isolation status
+   *
+   * @return enum value representing the isolation status
+   */
+  PodIsolationStatus getPodIsolationStatus();
 }
