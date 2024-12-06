@@ -18,9 +18,9 @@ import org.testcontainers.containers.Network;
 public class NetworkUtils {
   private static final Logger logger = LoggerFactory.getLogger(NetworkUtils.class);
   private static final int MAX_RANDOM_PORT_ATTEMPT = 3; // number of attempts to find random port
-  private static final int MIN_RANDOM_PORT_OFFSET = 100; // start offset of random port
-  private static final int MAX_RANDOM_PORT_OFFSET = 1000; // end offset of randoem port
-  private static final int MAX_RANDOM_PORT = 65535; // max port supported
+  private static final int MIN_RANDOM_PORT = 30000; // start of random port
+  private static final int MAX_RANDOM_PORT =
+      32768; // end of random port also start of ephemeral port in linux
   /**
    * Validates the port is in use
    *
@@ -34,19 +34,8 @@ public class NetworkUtils {
   }
 
   public static synchronized int getRandomAvailablePort() {
-    int availablePort;
-    try (ServerSocket socket = new ServerSocket(0); ) {
-      availablePort = socket.getLocalPort();
-    } catch (IOException e) {
-      logger.warn("Failed to open socket on port 0", e);
-      throw new IllegalStateException(e);
-    }
-
     for (int i = 0; i < MAX_RANDOM_PORT_ATTEMPT; ++i) {
-      int port =
-          Math.min(
-              availablePort + RandomUtils.nextInt(MIN_RANDOM_PORT_OFFSET, MAX_RANDOM_PORT_OFFSET),
-              MAX_RANDOM_PORT);
+      int port = RandomUtils.nextInt(MIN_RANDOM_PORT, MAX_RANDOM_PORT);
       try (ServerSocket socket = new ServerSocket(port)) {
         return socket.getLocalPort();
       } catch (IOException e) {
