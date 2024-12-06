@@ -413,12 +413,14 @@ message StoredJob {
   int64 worker_id = 4;
   // scale of the job
   double scale = 5;
+  // this indicates the pod that the job consumes from
+  string job_pod = 6;
 }
 
 // MiscConfig contains the miscellaneous configs of a jobGroup/job
 message MiscConfig {
   // enables extra logging for debugging purpose
   bool enable_debug = 1;
-    // the service name which owns this consumer
+  // the service name which owns this consumer
   string owner_service_name = 2;
 }
