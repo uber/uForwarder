@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
@@ -376,41 +375,6 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
 
   private AdaptiveInflightLimiter buildLimiter(boolean logEnabled) {
     return adaptiveInfligtLimiterBuilder.withLogEnabled(logEnabled).build();
-  }
-
-  class LimiterFunc implements Function<Double, Double> {
-    private final Function<Double, Double> impl;
-    private boolean dryRun = true;
-
-    LimiterFunc(Function<Double, Double> impl) {
-      this.impl = impl;
-    }
-
-    private void logLimit(double limit, double newLimit) {
-      int n = Math.max(1, topicPartitionToScopeAndInflight.size());
-      for (TopicPartition topicPartition : topicPartitionToScopeAndInflight.keySet()) {
-        LOGGER.info(
-            "updateLimit, limit={}, newLimit={}, delta={}",
-            limit / n,
-            newLimit / n,
-            (newLimit - limit) / n,
-            StructuredLogging.kafkaTopic(topicPartition.topic()),
-            StructuredLogging.kafkaPartition(topicPartition.partition()));
-      }
-    }
-
-    void setDryRun(boolean dryRun) {
-      this.dryRun = dryRun;
-    }
-
-    @Override
-    public Double apply(Double limit) {
-      Double newLimit = impl.apply(limit);
-      if (!dryRun) {
-        logLimit(limit, newLimit);
-      }
-      return newLimit;
-    }
   }
 
   private class NestedPermit implements InflightLimiter.Permit {

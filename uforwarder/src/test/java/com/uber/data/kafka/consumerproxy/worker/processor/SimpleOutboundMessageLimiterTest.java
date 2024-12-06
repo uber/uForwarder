@@ -229,14 +229,6 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
     Mockito.verify(adaptiveLimit, Mockito.never()).update(Mockito.anyDouble());
   }
 
-  @Test
-  public void testLimiterFunc() {
-    SimpleOutboundMessageLimiter.LimiterFunc func =
-        outboundMessageLimiter.new LimiterFunc(l -> l * 2);
-    func.setDryRun(false);
-    Assert.assertEquals(0.2, func.apply(0.1), 0.001);
-  }
-
   @Test(expected = IllegalStateException.class)
   public void testAcquireBeforeInit() throws Exception {
     ProcessorMessage pm2 = newProcessMessage(new TopicPartitionOffset("other-topic", 0, 0));
