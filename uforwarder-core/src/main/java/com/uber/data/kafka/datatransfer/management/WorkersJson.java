@@ -16,20 +16,16 @@ import org.springframework.boot.actuate.endpoint.web.annotation.WebEndpoint;
 
 @WebEndpoint(id = "workersJson")
 public class WorkersJson {
-
-  // Format string with the following syntax:
-  // String.format(WORKER_URL_FORMAT, uberRegion, workerUdg, hostPort)
-  private static final String WORKER_URL_FORMAT = "https://system-%s.uberinternal.com/%s/%s/jobs";
   private final Store<Long, StoredWorker> workerStore;
   private final Store<String, StoredJobGroup> jobGroupStore;
   private final JsonFormat.Printer jsonPrinter;
-  private final WorkerManagementConfiguration config;
+  private final NodeUrlResolver workerUrlResolver;
 
   WorkersJson(
       Store<Long, StoredWorker> workerStore,
       Store<String, StoredJobGroup> jobGroupStore,
-      WorkerManagementConfiguration workerManagementConfiguration) {
-    this.config = workerManagementConfiguration;
+      NodeUrlResolver workerUrlResolver) {
+    this.workerUrlResolver = workerUrlResolver;
     this.workerStore = workerStore;
     this.jobGroupStore = jobGroupStore;
     this.jsonPrinter =
@@ -92,9 +88,7 @@ public class WorkersJson {
       DebugWorkerRow.Builder rowBuilder = DebugWorkerRow.newBuilder();
       rowBuilder.setWorker(workerEntry.getValue().model());
       rowBuilder.setExpectedJobCount(jobCountByWorkerId.getOrDefault(workerEntry.getKey(), 0L));
-      rowBuilder.setUrl(
-          String.format(
-              WORKER_URL_FORMAT, config.getUberRegion(), config.getWorkerUdg(), hostPort));
+      rowBuilder.setUrl(workerUrlResolver.resolveLink(workerEntry.getValue().model().getNode()));
       rowBuilder.setRoutingDestination(workerId2RoutingDest.getOrDefault(workerEntry.getKey(), ""));
       rowBuilder.setTotalLoad(totalLoadByWorkerId.getOrDefault(workerEntry.getKey(), 0.0));
       tableBuilder.addData(rowBuilder.build());

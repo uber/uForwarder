@@ -10,6 +10,10 @@ grpc:
   # Port for GRPC Server
   port: 0
 
+server:
+  # Port for jetty
+  port: 0
+
 system:
   port: 0
 
