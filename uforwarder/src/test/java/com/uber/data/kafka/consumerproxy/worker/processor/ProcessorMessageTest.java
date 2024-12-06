@@ -839,6 +839,14 @@ public class ProcessorMessageTest extends FievelTestBase {
   }
 
   @Test
+  public void testGetLogicalTimestamp() {
+    long logicalTimestamp = nonDLQMessage.getLogicalTimestamp();
+    Assert.assertEquals(1000L, logicalTimestamp);
+    logicalTimestamp = dlqMessage.getLogicalTimestamp();
+    Assert.assertEquals(1000L, logicalTimestamp);
+  }
+
+  @Test
   public void testOffsetToCommit() {
     Assert.assertEquals(-1, nonDLQMessage.getOffsetToCommit());
     nonDLQMessage.setOffsetToCommit(100);

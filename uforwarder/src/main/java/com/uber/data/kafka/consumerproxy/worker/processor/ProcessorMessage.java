@@ -433,6 +433,10 @@ public final class ProcessorMessage {
     return stub;
   }
 
+  public long getLogicalTimestamp() {
+    return logicalTimestamp;
+  }
+
   @FunctionalInterface
   private interface ThrowingRunnable<E extends Exception> {
     void run() throws E;
