@@ -17,9 +17,10 @@ public interface GrpcFilter {
    *
    * @param channel the channel
    * @param grpcRequest the grpc request
+   * @param tags the tags
    * @return the channel
    */
-  default Channel interceptChannel(Channel channel, GrpcRequest grpcRequest) {
+  default Channel interceptChannel(Channel channel, GrpcRequest grpcRequest, String... tags) {
     return channel;
   }
 
