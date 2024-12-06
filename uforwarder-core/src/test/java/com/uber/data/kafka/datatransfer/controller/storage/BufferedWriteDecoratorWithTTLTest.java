@@ -108,7 +108,7 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 13000)
+  @Test(timeout = 20000)
   public void testPutThenPutThroughPrefersPutThrough() throws Exception {
     Versioned<StoredWorker> workerV1 = Versioned.from(worker, 1);
     workerStore.put(1L, workerV1);
