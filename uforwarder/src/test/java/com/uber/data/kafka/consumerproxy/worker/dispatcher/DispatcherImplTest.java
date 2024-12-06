@@ -83,7 +83,6 @@ public class DispatcherImplTest extends FievelTestBase {
             0,
             0,
             0,
-            0,
             0);
     kafkaDispatcherMessage =
         new DispatcherMessage(
@@ -103,7 +102,6 @@ public class DispatcherImplTest extends FievelTestBase {
             0,
             0,
             0,
-            0,
             0);
     kafkaResqDispatcherMessage =
         new DispatcherMessage(
@@ -119,7 +117,6 @@ public class DispatcherImplTest extends FievelTestBase {
             mockStub,
             "physicaltopic",
             "physicalCluster",
-            0,
             0,
             0,
             0,
