@@ -16,7 +16,6 @@ public class MetadataAdapterTest extends FievelTestBase {
   private static final String TEST_RETRYCOUNT = "4";
   private static final String TEST_TRACING_ID = "trace-01";
   private static final String TEST_CUSTOM_HEADER = "test01";
-  private static final String TEST_CONSUMER_RECORD_TIMESTAMP = "1709845752";
 
   private Supplier<Metadata> mockMetadataSupplier;
   private MetadataAdapter metadataAdapter;
@@ -42,8 +41,6 @@ public class MetadataAdapterTest extends FievelTestBase {
         .thenReturn(TEST_TRACING_ID);
     Mockito.when(metadata.get(Metadata.Key.of("my-header", Metadata.ASCII_STRING_MARSHALLER)))
         .thenReturn(TEST_CUSTOM_HEADER);
-    Mockito.when(metadata.get(Metadata.Key.of("kafka-record-ts", Metadata.ASCII_STRING_MARSHALLER)))
-        .thenReturn(TEST_CONSUMER_RECORD_TIMESTAMP);
     mockMetadataSupplier = Mockito.mock(Supplier.class);
     Mockito.when(mockMetadataSupplier.get()).thenReturn(metadata);
     metadataAdapter = new MetadataAdapter(mockMetadataSupplier);
@@ -89,11 +86,5 @@ public class MetadataAdapterTest extends FievelTestBase {
   public void testGetCustomHeader() {
     String value = metadataAdapter.getHeader("my-header");
     Assert.assertEquals(TEST_CUSTOM_HEADER, value);
-  }
-
-  @Test
-  public void testGetConsumerRecordTimestamp() {
-    long offset = metadataAdapter.getConsumerRecordTimestamp();
-    Assert.assertEquals(Long.parseLong(TEST_CONSUMER_RECORD_TIMESTAMP), offset);
   }
 }
