@@ -1,5 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
@@ -36,6 +38,7 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   private static final int N_BUCKETS_PER_MINUTE = 10;
   private static final int BUCKET_SECONDS_PER_MINUTE = 60 / N_BUCKETS_PER_MINUTE;
   private static final int DEFAULT_MAX_INFLIGHT = 1000;
+  private static final int BACKPRESSURE_ADAPTIVE_LIMITER_MINUTE = 30;
   protected final Job jobTemplate;
   private final AdaptiveInflightLimiter.Builder adaptiveInfligtLimiterBuilder;
   private final LongFixedInflightLimiter longFixedInflightLimiter;
@@ -48,6 +51,10 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   private final AsyncInflightLimiterAdapter asyncAdaptiveLimiterAdapter;
   private final AsyncInflightLimiterAdapter asyncShadowAdaptiveLimiterAdapter;
   private final int maxOutboundCacheCount;
+  private final Ticker ticker;
+  // time measured in nanoseconds, use adaptive limit if current time is before
+  // useAdaptiveLimiterUntilTick
+  private volatile long useAdaptiveLimiterUntilTick;
 
   protected SimpleOutboundMessageLimiter(Builder builder, Job jobTemplate) {
     this.longFixedInflightLimiter = new LongFixedInflightLimiter(0);
@@ -63,6 +70,8 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     this.inflightTracker = new InflightTracker();
     this.jobTemplate = jobTemplate;
     this.maxOutboundCacheCount = builder.maxOutboundCacheCount;
+    this.ticker = builder.ticker;
+    this.useAdaptiveLimiterUntilTick = ticker.read();
   }
 
   /** Closes the limiter */
@@ -136,6 +145,10 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
               .scope
               .gauge(MetricNames.OUTBOUND_CACHE_SHADOW_ADAPTIVE_LIMIT)
               .update(shadowAdaptiveInflightLimiter.getMetrics().getLimit() / (double) nPartitions);
+          scopeAndInflight
+              .scope
+              .gauge(MetricNames.OUTBOUND_CACHE_ADAPTIVE_LIMIT_ENABLED)
+              .update(useFixedLimiter() ? 0 : 1);
           publishMetrics(
               scopeAndInflight.scope,
               adaptiveInflightLimiter.getMetrics().getExtraMetrics(),
@@ -231,7 +244,7 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     final String topic = scopeAndInflight.job.getKafkaConsumerTask().getTopic();
     final int partition = scopeAndInflight.job.getKafkaConsumerTask().getPartition();
     final String rpcUri = scopeAndInflight.job.getRpcDispatcherTask().getUri();
-    final boolean useStaticLimit = longFixedInflightLimiter.getMetrics().getLimit() > 0;
+    final boolean useFixedLimiter = useFixedLimiter();
     try {
       // TODO (T4576171): use tryAcquire instead of blocking forever on lock
       NestedPermitBuilder permitBuilder = new NestedPermitBuilder();
@@ -239,8 +252,8 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
       // effect
       // else, adaptiveInflightLimiter returns NoopPermit, fixedInflightLimiter takes effect
       // shadowAdaptiveInflightLimiter always run in dryrun mode for algorithm performance tuning
-      permitBuilder.withPermit(longFixedInflightLimiter.acquire(!useStaticLimit));
-      permitBuilder.withPermit(adaptiveInflightLimiter.acquire(useStaticLimit));
+      permitBuilder.withPermit(longFixedInflightLimiter.acquire(!useFixedLimiter));
+      permitBuilder.withPermit(adaptiveInflightLimiter.acquire(useFixedLimiter));
       permitBuilder.withPermit(shadowAdaptiveInflightLimiter.acquire(true));
       permitBuilder.withScopeAndInflight(scopeAndInflight);
       return permitBuilder.build();
@@ -286,16 +299,16 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
           String.format(
               "topic-partition %s has not been assigned to this message limiter", topicPartition));
     }
-    final boolean useStaticLimit = longFixedInflightLimiter.getMetrics().getLimit() > 0;
+    final boolean useFixedLimiter = useFixedLimiter();
     NestedPermitBuilder permitBuilder = new NestedPermitBuilder();
     // if limit <= 0, fixedInflightLimiter returns NoopPermit, adaptiveInflightLimiter takes
     // effect
     // else, adaptiveInflightLimiter returns NoopPermit, fixedInflightLimiter takes effect
     // shadowAdaptiveInflightLimiter always run in dryrun mode for algorithm performance tuning
-    return acquireAsync(processorMessage, asyncStaticLimiterAdapter, !useStaticLimit)
+    return acquireAsync(processorMessage, asyncStaticLimiterAdapter, !useFixedLimiter)
         .thenCompose(
             longPermit ->
-                acquireAsync(processorMessage, asyncAdaptiveLimiterAdapter, useStaticLimit)
+                acquireAsync(processorMessage, asyncAdaptiveLimiterAdapter, useFixedLimiter)
                     .thenCompose(
                         adaptivePermit ->
                             acquireAsync(processorMessage, asyncShadowAdaptiveLimiterAdapter, true)
@@ -307,6 +320,29 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
                                             .withPermit(shadowPermit)
                                             .withScopeAndInflight(scopeAndInflight)
                                             .build())));
+  }
+
+  /**
+   * Tests if to use fixed limiter
+   *
+   * @return the boolean
+   */
+  @VisibleForTesting
+  protected boolean useFixedLimiter() {
+    // use fixed limit only when
+    // there is valid fixed limit
+    // current time is after the time to use adaptive limiter
+    return longFixedInflightLimiter.getMetrics().getLimit() > 0
+        && useAdaptiveLimiterUntilTick < ticker.read();
+  }
+
+  /**
+   * When message dropped by consumer service, enable adaptive flow control for limited time to
+   * reduce pressure to down stream
+   */
+  private void onBackpressure() {
+    useAdaptiveLimiterUntilTick =
+        ticker.read() + TimeUnit.MINUTES.toNanos(BACKPRESSURE_ADAPTIVE_LIMITER_MINUTE);
   }
 
   private CompletableFuture<InflightLimiter.Permit> acquireAsync(
@@ -394,6 +430,9 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
       permits.stream().forEach(permit -> permit.complete(result));
       inflightTracker.decrease();
       scopeAndInflight.ifPresent(obj -> obj.inflight.decrementAndGet());
+      if (result == InflightLimiter.Result.Dropped) {
+        onBackpressure();
+      }
       return true;
     }
   }
@@ -444,6 +483,8 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     static final String OUTBOUND_CACHE_ADAPTIVE_LIMIT = "processor.outbound-cache.adaptive-limit";
     static final String OUTBOUND_CACHE_SHADOW_ADAPTIVE_LIMIT =
         "processor.outbound-cache.shadow-adaptive-limit";
+    static final String OUTBOUND_CACHE_ADAPTIVE_LIMIT_ENABLED =
+        "processor.outbound-cache.adaptive-limit-enabled";
   }
 
   /** TopicPartition related scope and inflight counter; */
@@ -497,6 +538,7 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     protected final AdaptiveInflightLimiter.Builder adaptiveInfligtLimiterBuilder;
     protected final boolean experimentalLimiterEnabled;
     private int maxOutboundCacheCount = 1000;
+    private Ticker ticker = Ticker.systemTicker();
 
     public Builder(
         CoreInfra infra,
@@ -512,6 +554,11 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
         throw new IllegalArgumentException("maxInflightPerPartition must be positive");
       }
       this.maxOutboundCacheCount = maxOutboundCacheCount;
+      return this;
+    }
+
+    public Builder withTicker(Ticker ticker) {
+      this.ticker = ticker;
       return this;
     }
 

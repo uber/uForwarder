@@ -6,10 +6,12 @@ import com.uber.data.kafka.consumerproxy.worker.limiter.VegasAdaptiveInflightLim
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
+import com.uber.data.kafka.datatransfer.common.TestUtils;
 import com.uber.data.kafka.datatransfer.common.context.ContextManager;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
+import java.time.Duration;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
@@ -35,12 +37,15 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
   private Gauge limit;
   private Gauge adaptiveLimit;
   private Gauge shadowAdaptiveLimit;
+  private Gauge adaptiveLimitEnabled;
   private Gauge queueSize;
   private CoreInfra infra;
   private ProcessorMessage pm1;
   private TopicPartition tp1;
   private AdaptiveInflightLimiter.Builder adaptiveInflightLimiterBuilder;
   private AdaptiveInflightLimiter adaptiveInflightLimiter;
+
+  private TestUtils.TestTicker ticker = new TestUtils.TestTicker();
 
   @Before
   public void setUp() throws Exception {
@@ -63,6 +68,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
     limit = Mockito.mock(Gauge.class);
     adaptiveLimit = Mockito.mock(Gauge.class);
     shadowAdaptiveLimit = Mockito.mock(Gauge.class);
+    adaptiveLimitEnabled = Mockito.mock(Gauge.class);
     ContextManager contextManager = Mockito.mock(ContextManager.class);
     Mockito.when(contextManager.wrap(Mockito.any(CompletableFuture.class)))
         .thenAnswer(
@@ -94,15 +100,19 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
     Mockito.when(scope.gauge("processor.outbound-cache.shadow-adaptive-limit"))
         .thenReturn(shadowAdaptiveLimit);
     Mockito.when(scope.gauge("processor.outbound-cache.queue")).thenReturn(queueSize);
+    Mockito.when(scope.gauge("processor.outbound-cache.adaptive-limit-enabled"))
+        .thenReturn(adaptiveLimitEnabled);
     mockMetrics(scope, "processor.outbound-cache.adaptive-limit");
     mockMetrics(scope, "processor.outbound-cache.shadow-adaptive-limit");
     outboundMessageLimiter =
         (SimpleOutboundMessageLimiter)
             (new SimpleOutboundMessageLimiter.Builder(infra, adaptiveInflightLimiterBuilder, false)
-                    .withMaxOutboundCacheCount(800))
+                    .withMaxOutboundCacheCount(800)
+                    .withTicker(ticker))
                 .build(job1);
     outboundMessageLimiter.updateLimit(2);
     outboundMessageLimiter.init(job1);
+    ticker.add(Duration.ofSeconds(1));
   }
 
   private void mockMetrics(Scope scope, String prefix) {
@@ -183,6 +193,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
     Mockito.verify(oneMinuteMaxInflight).update(1.0);
     Mockito.verify(inflight).update(1.0);
     Mockito.verify(adaptiveLimit).update(100.0);
+    Mockito.verify(adaptiveLimitEnabled).update(0.0);
     Mockito.verify(shadowAdaptiveLimit).update(100.0);
     Mockito.verify(queueSize).update(0.0);
     permit.get().complete(InflightLimiter.Result.Succeed);
@@ -283,5 +294,21 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
     outboundMessageLimiter.acquirePermitAsync(pm1);
     Mockito.verify(adaptiveInflightLimiter, Mockito.times(1)).tryAcquire(false);
     Mockito.verify(adaptiveInflightLimiter, Mockito.times(1)).tryAcquire(true);
+  }
+
+  @Test
+  public void testOnBackPressure() {
+    outboundMessageLimiter.updateLimit(50);
+    boolean result = outboundMessageLimiter.useFixedLimiter();
+    Assert.assertTrue(result);
+    InflightLimiter.Permit permit = outboundMessageLimiter.acquirePermit(pm1);
+    permit.complete(InflightLimiter.Result.Dropped);
+    // enable adaptive control for limited time when message dropped
+    result = outboundMessageLimiter.useFixedLimiter();
+    Assert.assertFalse(result);
+    ticker.add(Duration.ofMinutes(35));
+    // use static limiter after limited time elapsed
+    result = outboundMessageLimiter.useFixedLimiter();
+    Assert.assertTrue(result);
   }
 }
