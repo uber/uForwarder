@@ -65,7 +65,8 @@ public class UForwarderStarter {
               }
             });
     uForwarderApplication.start();
-    NetworkUtils.assertPortInUseWithTimeout(port, Constants.MAX_AWAIT_TIME_IN_SEC);
+    ConsoleMatcher.assertMatches(
+        String.format("%s started successfully", profile), Constants.MAX_AWAIT_TIME_IN_SEC);
     logger.info("{} started on port {}", profile, port);
   }
 }
