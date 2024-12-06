@@ -34,6 +34,7 @@ import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.ArgumentMatchers;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
@@ -77,7 +78,10 @@ public class GrpcDispatcherTest extends FievelTestBase {
             (Answer<CompletableFuture>)
                 invocation -> invocation.getArgument(0, CompletableFuture.class));
     Mockito.when(
-            grpcFilter.interceptChannel(Mockito.any(Channel.class), Mockito.any(GrpcRequest.class)))
+            grpcFilter.interceptChannel(
+                Mockito.any(Channel.class),
+                Mockito.any(GrpcRequest.class),
+                ArgumentMatchers.<String>any()))
         .thenReturn(channel);
     Mockito.when(
             grpcFilter.tryHandleError(
@@ -163,7 +167,10 @@ public class GrpcDispatcherTest extends FievelTestBase {
       Mockito.verify(infra.contextManager(), Mockito.times(1))
           .wrap(Mockito.any(CompletableFuture.class));
       Mockito.verify(grpcFilter, Mockito.times(1))
-          .interceptChannel(Mockito.any(Channel.class), Mockito.any(GrpcRequest.class));
+          .interceptChannel(
+              Mockito.any(Channel.class),
+              Mockito.any(GrpcRequest.class),
+              ArgumentMatchers.<String>any());
       GrpcDispatcher.ResponseStreamObserver mockObserver = mock.constructed().get(0);
       CompletableFuture future = (CompletableFuture) constructorArgs.get(mockObserver).get(1);
       future.complete(GrpcResponse.of());
@@ -249,7 +256,10 @@ public class GrpcDispatcherTest extends FievelTestBase {
     Mockito.verify(grpcFilter, Mockito.times(1))
         .tryHandleRequest(Mockito.eq(grpcRequest), Mockito.eq(job));
     Mockito.verify(grpcFilter, Mockito.never())
-        .interceptChannel(Mockito.any(Channel.class), Mockito.any(GrpcRequest.class));
+        .interceptChannel(
+            Mockito.any(Channel.class),
+            Mockito.any(GrpcRequest.class),
+            ArgumentMatchers.<String>any());
     Assert.assertEquals(Status.UNAUTHENTICATED, future.get().status());
   }
 
@@ -281,7 +291,10 @@ public class GrpcDispatcherTest extends FievelTestBase {
     Mockito.verify(infra.contextManager(), Mockito.times(1))
         .wrap(Mockito.any(CompletableFuture.class));
     Mockito.verify(grpcFilter, Mockito.times(1))
-        .interceptChannel(Mockito.any(Channel.class), Mockito.any(GrpcRequest.class));
+        .interceptChannel(
+            Mockito.any(Channel.class),
+            Mockito.any(GrpcRequest.class),
+            ArgumentMatchers.<String>any());
   }
 
   @Test

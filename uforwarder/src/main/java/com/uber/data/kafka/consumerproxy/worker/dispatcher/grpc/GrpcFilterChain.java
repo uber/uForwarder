@@ -26,9 +26,9 @@ public class GrpcFilterChain implements GrpcFilter {
   }
 
   @Override
-  public Channel interceptChannel(Channel channel, GrpcRequest grpcRequest) {
+  public Channel interceptChannel(Channel channel, GrpcRequest grpcRequest, String... tags) {
     for (GrpcFilter grpcFilter : filterList) {
-      channel = grpcFilter.interceptChannel(channel, grpcRequest);
+      channel = grpcFilter.interceptChannel(channel, grpcRequest, tags);
     }
     return channel;
   }
