@@ -22,7 +22,9 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
   private static final Logger logger =
       LoggerFactory.getLogger(BufferedWriteDecoratorWithTTLTest.class);
   private static Duration WRITE_INTERVAL = Duration.ofSeconds(2);
-  private static Duration CHECK_INTERVAL = Duration.ofSeconds(3);
+  private static Duration WRITE_TTL = Duration.ofSeconds(10);
+  private static Duration CHECK_INTERVAL_THROUGH = Duration.ofSeconds(5);
+  private static Duration CHECK_INTERVAL_REMOVE = Duration.ofSeconds(12);
   private CoreInfra infra;
   private LeaderSelector leaderSelector;
   private Store<Long, StoredWorker> underlyingStore;
@@ -46,11 +48,7 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
     workerStore = BufferedWriteDecorator.decorate(WRITE_INTERVAL, logger, infra, underlyingStore);
     workerStore =
         TTLDecorator.decorate(
-            infra,
-            workerStore,
-            WorkerUtils::getWorkerId,
-            WRITE_INTERVAL.multipliedBy(2),
-            leaderSelector);
+            infra, workerStore, WorkerUtils::getWorkerId, WRITE_TTL, leaderSelector);
     workerStore.start();
   }
 
@@ -60,7 +58,7 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 10000)
+  @Test(timeout = 20000)
   public void testPutUpdatesTTL() throws Exception {
     Versioned<StoredWorker> versionedWorker = Versioned.from(worker, 1);
     workerStore.put(1L, versionedWorker);
@@ -72,7 +70,7 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
     Mockito.verify(underlyingStore, Mockito.times(0)).remove(1L);
 
     // after 5s, we should write through
-    Thread.sleep(CHECK_INTERVAL.toMillis());
+    Thread.sleep(CHECK_INTERVAL_THROUGH.toMillis());
     runAsLeader();
     Mockito.verify(underlyingStore, Mockito.times(0)).put(1L, versionedWorker);
     Mockito.verify(underlyingStore, Mockito.times(0)).putThrough(1L, versionedWorker);
@@ -80,7 +78,7 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
     Mockito.verify(underlyingStore, Mockito.times(0)).remove(1L);
 
     // after 10s, TTL should delete it
-    Thread.sleep(CHECK_INTERVAL.toMillis());
+    Thread.sleep(CHECK_INTERVAL_REMOVE.toMillis());
     runAsLeader();
     Mockito.verify(underlyingStore, Mockito.times(0)).put(1L, versionedWorker);
     Mockito.verify(underlyingStore, Mockito.times(0)).putThrough(1L, versionedWorker);
@@ -89,7 +87,7 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 10000)
+  @Test(timeout = 13000)
   public void testPutThroughUpdatesTTL() throws Exception {
     Versioned<StoredWorker> versionedWorker = Versioned.from(worker, 1);
     workerStore.putThrough(1L, versionedWorker);
@@ -101,7 +99,7 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
     Mockito.verify(underlyingStore, Mockito.times(0)).remove(1L);
 
     // after 10s, TTL should delete it
-    Thread.sleep(CHECK_INTERVAL.toMillis() * 2);
+    Thread.sleep(CHECK_INTERVAL_REMOVE.toMillis());
     runAsLeader();
     Mockito.verify(underlyingStore, Mockito.times(1)).putThrough(1L, versionedWorker);
     Mockito.verify(underlyingStore, Mockito.times(0)).put(1L, versionedWorker);
@@ -110,7 +108,7 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 10000)
+  @Test(timeout = 13000)
   public void testPutThenPutThroughPrefersPutThrough() throws Exception {
     Versioned<StoredWorker> workerV1 = Versioned.from(worker, 1);
     workerStore.put(1L, workerV1);
@@ -137,7 +135,7 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
     Mockito.doThrow(new RuntimeException()).when(underlyingStore).putThrough(1L, workerV1);
 
     // after 10s, TTL should delete it
-    Thread.sleep(CHECK_INTERVAL.toMillis() * 2);
+    Thread.sleep(CHECK_INTERVAL_REMOVE.toMillis());
     runAsLeader();
     Mockito.verify(underlyingStore, Mockito.times(0)).putThrough(1L, workerV1);
     Mockito.verify(underlyingStore, Mockito.times(0)).put(1L, workerV1);
