@@ -128,7 +128,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
         new UnprocessedMessageManager.Builder(
             config, Mockito.mock(LongFixedInflightLimiter.class), infra);
     messageAckStatusManagerBuilder = new MessageAckStatusManager.Builder(1, infra);
-    filter = new OriginalClusterFilter(job);
+    filter = new OriginalClusterFilter();
     processor =
         new ProcessorImpl(
             ackManager,

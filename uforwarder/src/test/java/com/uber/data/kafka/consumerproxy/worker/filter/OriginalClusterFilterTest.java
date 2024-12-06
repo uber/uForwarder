@@ -3,6 +3,7 @@ package com.uber.data.kafka.consumerproxy.worker.filter;
 import com.uber.data.kafka.consumerproxy.worker.processor.ProcessorMessage;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
+import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 import com.uber.fievel.testing.base.FievelTestBase;
 import org.junit.Assert;
 import org.junit.Before;
@@ -23,24 +24,24 @@ public class OriginalClusterFilterTest extends FievelTestBase {
             .build();
     Filter.Factory factory = OriginalClusterFilter.newFactory();
     processorMessage = Mockito.mock(ProcessorMessage.class);
-    originalClusterFilter = factory.create(job);
+    originalClusterFilter = factory.create(null);
   }
 
   @Test
   public void testShouldProcessEmptyCluster() {
     Mockito.when(processorMessage.getProducerCluster()).thenReturn("");
-    Assert.assertTrue(originalClusterFilter.shouldProcess(processorMessage));
+    Assert.assertTrue(originalClusterFilter.shouldProcess(ItemAndJob.of(processorMessage, job)));
   }
 
   @Test
   public void testShouldProcessCluster1() {
     Mockito.when(processorMessage.getProducerCluster()).thenReturn(cluster1);
-    Assert.assertTrue(originalClusterFilter.shouldProcess(processorMessage));
+    Assert.assertTrue(originalClusterFilter.shouldProcess(ItemAndJob.of(processorMessage, job)));
   }
 
   @Test
   public void testShouldProcessCluster2() {
     Mockito.when(processorMessage.getProducerCluster()).thenReturn("cluster2");
-    Assert.assertFalse(originalClusterFilter.shouldProcess(processorMessage));
+    Assert.assertFalse(originalClusterFilter.shouldProcess(ItemAndJob.of(processorMessage, job)));
   }
 }
