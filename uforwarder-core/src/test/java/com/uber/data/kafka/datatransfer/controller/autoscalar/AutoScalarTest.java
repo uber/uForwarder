@@ -7,6 +7,7 @@ import com.uber.data.kafka.datatransfer.JobGroup;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTaskGroup;
+import com.uber.data.kafka.datatransfer.MiscConfig;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
@@ -70,6 +71,7 @@ public class AutoScalarTest extends FievelTestBase {
                     .build())
             .setFlowControl(
                 FlowControl.newBuilder().setMessagesPerSec(4000).setBytesPerSec(10000).build())
+            .setMiscConfig(MiscConfig.newBuilder().setScaleResetEnabled(true).build())
             .build();
     rebalancingJobGroup =
         RebalancingJobGroup.of(
@@ -267,12 +269,31 @@ public class AutoScalarTest extends FievelTestBase {
     jobThroughputMonitor.consume(job, 3400, 800);
     autoScalar.runSample();
 
+    // scale reset is disabled
     jobGroup =
         JobGroup.newBuilder(jobGroup)
             .setFlowControl(
                 FlowControl.newBuilder().setMessagesPerSec(6000).setBytesPerSec(10000).build())
+            .setMiscConfig(MiscConfig.newBuilder().setScaleResetEnabled(false).build())
             .build();
 
+    rebalancingJobGroup =
+        RebalancingJobGroup.of(
+            Versioned.from(
+                StoredJobGroup.newBuilder()
+                    .setJobGroup(jobGroup)
+                    .setState(JobState.JOB_STATE_RUNNING)
+                    .build(),
+                1),
+            ImmutableMap.of());
+    autoScalar.apply(rebalancingJobGroup, 0.0d);
+    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+
+    // scale reset is enabled
+    jobGroup =
+        JobGroup.newBuilder(jobGroup)
+            .setMiscConfig(MiscConfig.newBuilder().setScaleResetEnabled(true).build())
+            .build();
     rebalancingJobGroup =
         RebalancingJobGroup.of(
             Versioned.from(
