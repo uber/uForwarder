@@ -1,6 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
 import com.uber.data.kafka.consumerproxy.config.ProcessorConfiguration;
+import com.uber.data.kafka.consumerproxy.worker.filter.Filter;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.fievel.testing.base.FievelTestBase;
@@ -17,6 +18,7 @@ public class ProcessorFactoryTest extends FievelTestBase {
   private MessageAckStatusManager.Builder ackStatusManagerBuilder;
   private UnprocessedMessageManager.Builder unprocessedManagerBuilder;
   private ProcessorFactory processorFactory;
+  private Filter.Factory filterFactory;
 
   @Before
   public void setUP() {
@@ -26,6 +28,7 @@ public class ProcessorFactoryTest extends FievelTestBase {
     ackStatusManagerBuilder = Mockito.mock(MessageAckStatusManager.Builder.class);
     unprocessedManagerBuilder = Mockito.mock(UnprocessedMessageManager.Builder.class);
     outboundMessageLimiter = Mockito.mock(OutboundMessageLimiter.class);
+    filterFactory = Mockito.mock(Filter.Factory.class);
 
     Mockito.when(outboundMessageLimiterBuilder.build(Mockito.any(Job.class)))
         .thenReturn(outboundMessageLimiter);
@@ -35,7 +38,8 @@ public class ProcessorFactoryTest extends FievelTestBase {
             config,
             outboundMessageLimiterBuilder,
             ackStatusManagerBuilder,
-            unprocessedManagerBuilder);
+            unprocessedManagerBuilder,
+            filterFactory);
   }
 
   @Test
