@@ -63,7 +63,7 @@ public class UforwarderIntegrationTests extends FievelTestBase {
   private static final Logger log = LoggerFactory.getLogger(UforwarderIntegrationTests.class);
   // Docker images
   private static final DockerImageName TEST_IMAGE_ZOOKEEPER =
-      DockerImageName.parse("bitnami/zookeeper:3.8.0");
+      DockerImageName.parse("bitnami/zookeeper:3.9.2");
   private static final DockerImageName TEST_IMAGE_KAFKA =
       DockerImageName.parse("confluentinc/cp-kafka:7.6.1");
   // Simple consumer
