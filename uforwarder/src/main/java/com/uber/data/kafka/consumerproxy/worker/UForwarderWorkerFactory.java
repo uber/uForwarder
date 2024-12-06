@@ -4,6 +4,7 @@ import com.uber.data.kafka.consumerproxy.config.GrpcDispatcherConfiguration;
 import com.uber.data.kafka.consumerproxy.config.NoopTracerAutoConfiguration;
 import com.uber.data.kafka.consumerproxy.config.ProcessorConfiguration;
 import com.uber.data.kafka.consumerproxy.config.SchedulerConfiguration;
+import com.uber.data.kafka.consumerproxy.utils.NodeConfigurationUtils;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcDispatcherFactory;
 import com.uber.data.kafka.consumerproxy.worker.fetcher.KafkaFetcherAutoConfiguration;
 import com.uber.data.kafka.consumerproxy.worker.fetcher.KafkaFetcherFactory;
@@ -15,11 +16,10 @@ import com.uber.data.kafka.consumerproxy.worker.processor.OutboundMessageLimiter
 import com.uber.data.kafka.consumerproxy.worker.processor.ProcessorFactory;
 import com.uber.data.kafka.consumerproxy.worker.processor.SimpleOutboundMessageLimiter;
 import com.uber.data.kafka.consumerproxy.worker.processor.UnprocessedMessageManager;
+import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.CoreInfraAutoConfiguration;
 import com.uber.data.kafka.datatransfer.common.MetricsConfiguration;
-import com.uber.data.kafka.datatransfer.common.NodeAutoConfiguration;
-import com.uber.data.kafka.datatransfer.management.WorkerManagementAutoConfiguration;
 import com.uber.data.kafka.datatransfer.worker.controller.ControllerAutoConfiguration;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcherFactory;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcherFactoryAutoConfiguration;
@@ -27,6 +27,7 @@ import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineFactory;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManagerAutoConfiguration;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineMetricPublisher;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -49,9 +50,7 @@ import org.springframework.context.annotation.Profile;
   CoreInfraAutoConfiguration.class,
   MetricsConfiguration.class,
   ControllerAutoConfiguration.class,
-  SchedulerConfiguration.class,
-  NodeAutoConfiguration.class,
-  WorkerManagementAutoConfiguration.class
+  SchedulerConfiguration.class
 })
 public class UForwarderWorkerFactory {
 
@@ -128,7 +127,21 @@ public class UForwarderWorkerFactory {
       AdaptiveInflightLimiter.Builder adaptiveInflightLimiterBuilder,
       ProcessorConfiguration configuration) {
     return new SimpleOutboundMessageLimiter.Builder(
-            coreInfra, adaptiveInflightLimiterBuilder, configuration.isExperimentalLimiterEnabled())
-        .withMaxOutboundCacheCount(configuration.getMaxOutboundCacheCount());
+        coreInfra, adaptiveInflightLimiterBuilder, configuration.isExperimentalLimiterEnabled());
+  }
+
+  @Bean(name = "systemPort")
+  public int systemPort(@Value("${system.port}") int port) {
+    return port;
+  }
+
+  /**
+   * Returns the {@code Node} information for this JVM.
+   *
+   * @return Node to be used within uforwarder framework.
+   */
+  @Bean
+  public Node node(@Qualifier("systemPort") int port) {
+    return Node.newBuilder().setHost(NodeConfigurationUtils.getHost()).setPort(port).build();
   }
 }

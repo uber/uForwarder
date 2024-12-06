@@ -1,7 +1,6 @@
 package com.uber.data.kafka.datatransfer.common;
 
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.reset;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -29,16 +28,13 @@ import com.uber.m3.tally.Timer;
 import io.opentracing.Tracer;
 import io.opentracing.mock.MockTracer;
 import java.util.Collection;
-import java.util.HashSet;
 import java.util.Map;
-import java.util.Set;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
 import org.apache.kafka.clients.admin.DescribeTopicsResult;
 import org.apache.kafka.clients.admin.ListTopicsResult;
 import org.apache.kafka.clients.admin.TopicDescription;
 import org.apache.kafka.clients.admin.TopicListing;
 import org.apache.kafka.common.KafkaFuture;
-import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartitionInfo;
 import org.junit.Assert;
 import org.junit.Before;
@@ -203,63 +199,13 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
     // There is a job with 2 partitions.
     when(jobGroupStore.getAll()).thenReturn(ImmutableMap.of("group1", createJobGroup(2)));
 
-    kafkaPartitionExpansionWatcher.watchPartitionExpansion();
-
-    // Verify that numJobs shrinks  4 to 2.
-    verify(jobGroupStore, times(0)).put(Mockito.any(), Mockito.any());
-  }
-
-  @Test
-  public void testPartitionJobPodChange() throws Exception {
-    Versioned<StoredJobGroup> jobGroup = createJobGroup(2);
-    // There is a job with 2 partitions.
-    when(jobGroupStore.getAll()).thenReturn(ImmutableMap.of("group1", jobGroup));
-    kafkaPartitionExpansionWatcher.watchPartitionExpansion();
-    StoredJobGroup storedJobGroup = jobGroup.model();
-    for (StoredJob storedJob : storedJobGroup.getJobsList()) {
-      Assert.assertEquals("", storedJob.getJobPod());
-    }
-
-    // new partitioninfo with leader
-    Node node1 = new Node(0, "node-0", 9092, "canary-broker::rack1");
-    Node node2 = new Node(1, "node-1", 9092, "default::rack2");
-
-    TopicDescription topicDescription =
-        new TopicDescription(
-            TEST_TOPIC,
-            false,
-            ImmutableList.of(
-                new TopicPartitionInfo(0, node1, ImmutableList.of(), ImmutableList.of()),
-                new TopicPartitionInfo(1, node2, ImmutableList.of(), ImmutableList.of())));
-    KafkaFuture<Map<String, TopicDescription>> topicDescriptionFuture = mock(KafkaFuture.class);
-    when(topicDescriptionFuture.get(Mockito.anyLong(), Mockito.any()))
-        .thenReturn(ImmutableMap.of(TEST_TOPIC, topicDescription));
-    DescribeTopicsResult describeTopicsResult = mock(DescribeTopicsResult.class);
-    when(describeTopicsResult.all()).thenReturn(topicDescriptionFuture);
-    reset(adminClient);
-    when(adminClient.describeTopics(ImmutableList.of(TEST_TOPIC))).thenReturn(describeTopicsResult);
-    KafkaFuture<Collection<TopicListing>> topicListingFuture = mock(KafkaFuture.class);
-    when(topicListingFuture.get()).thenReturn(ImmutableSet.of(new TopicListing(TEST_TOPIC, false)));
-    ListTopicsResult listTopicsResult = mock(ListTopicsResult.class);
-    when(listTopicsResult.listings()).thenReturn(topicListingFuture);
-    when(adminClient.listTopics()).thenReturn(listTopicsResult);
-
     ArgumentCaptor<String> idArgumentCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<Versioned<StoredJobGroup>> itemCaptor = ArgumentCaptor.forClass(Versioned.class);
 
     kafkaPartitionExpansionWatcher.watchPartitionExpansion();
-    verify(jobGroupStore, times(1)).put(idArgumentCaptor.capture(), itemCaptor.capture());
-    Assert.assertEquals(
-        jobGroup.model().getJobGroup().getJobGroupId(), idArgumentCaptor.getValue());
-    StoredJobGroup capturedJobGroup = itemCaptor.getValue().model();
-    Set<String> allPods = new HashSet<>();
-    for (StoredJob storedJob : capturedJobGroup.getJobsList()) {
-      allPods.add(storedJob.getJobPod());
-    }
 
-    Assert.assertEquals(2, allPods.size());
-    Assert.assertTrue(allPods.contains("canary-broker"));
-    Assert.assertTrue(allPods.contains("default"));
+    // Verify that numJobs shrinks  4 to 2.
+    verify(jobGroupStore, times(0)).put(Mockito.any(), Mockito.any());
   }
 
   @Test

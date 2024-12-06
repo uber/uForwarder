@@ -10,6 +10,8 @@ import com.uber.data.kafka.consumerproxy.controller.rebalancer.HibernatingJobReb
 import com.uber.data.kafka.consumerproxy.controller.rebalancer.RpcJobColocatingRebalancer;
 import com.uber.data.kafka.consumerproxy.controller.rebalancer.ShadowRebalancerDelegateImpl;
 import com.uber.data.kafka.consumerproxy.controller.rebalancer.StreamingRpcUriRebalancer;
+import com.uber.data.kafka.consumerproxy.utils.NodeConfigurationUtils;
+import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.common.AdminClient;
@@ -17,7 +19,6 @@ import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
 import com.uber.data.kafka.datatransfer.common.KafkaPartitionExpansionWatcher;
 import com.uber.data.kafka.datatransfer.common.MetricsConfiguration;
-import com.uber.data.kafka.datatransfer.common.NodeAutoConfiguration;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.AutoScalarAutoConfiguration;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.Scalar;
 import com.uber.data.kafka.datatransfer.controller.config.JobStatusStoreConfiguration;
@@ -33,7 +34,6 @@ import com.uber.data.kafka.datatransfer.controller.rpc.RpcAutoConfiguration;
 import com.uber.data.kafka.datatransfer.controller.storage.IdProvider;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
 import com.uber.data.kafka.datatransfer.controller.storage.StoreAutoConfiguration;
-import com.uber.data.kafka.datatransfer.management.MasterManagementAutoConfiguration;
 import com.uber.m3.tally.Scope;
 import java.io.IOException;
 import org.slf4j.Logger;
@@ -61,9 +61,7 @@ import org.springframework.context.annotation.Profile;
   JobStatusStoreConfiguration.JobStatusStoreConfigurationOverride.class,
   WorkerStoreConfiguration.WorkerStoreConfigurationOverride.class,
   RpcAutoConfiguration.class,
-  SchedulerConfiguration.class,
-  NodeAutoConfiguration.class,
-  MasterManagementAutoConfiguration.class
+  SchedulerConfiguration.class
 })
 @Profile("uforwarder-controller")
 public class UForwarderControllerFactory {
@@ -133,6 +131,16 @@ public class UForwarderControllerFactory {
   @Bean(name = "grpcPort")
   public int grpcPort(@Value("${grpc.port}") int port) {
     return port;
+  }
+
+  /**
+   * Returns the {@code Node} information for this JVM.
+   *
+   * @return Node to be used within uforwarder framework.
+   */
+  @Bean
+  public Node node(@Qualifier("grpcPort") int port) {
+    return Node.newBuilder().setHost(NodeConfigurationUtils.getHost()).setPort(port).build();
   }
 
   @Bean
