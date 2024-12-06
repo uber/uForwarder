@@ -128,6 +128,7 @@ public class UForwarderWorkerFactory {
       AdaptiveInflightLimiter.Builder adaptiveInflightLimiterBuilder,
       ProcessorConfiguration configuration) {
     return new SimpleOutboundMessageLimiter.Builder(
-        coreInfra, adaptiveInflightLimiterBuilder, configuration.isExperimentalLimiterEnabled());
+            coreInfra, adaptiveInflightLimiterBuilder, configuration.isExperimentalLimiterEnabled())
+        .withMaxOutboundCacheCount(configuration.getMaxOutboundCacheCount());
   }
 }

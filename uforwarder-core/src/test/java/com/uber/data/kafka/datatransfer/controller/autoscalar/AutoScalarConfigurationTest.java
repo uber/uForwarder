@@ -40,7 +40,7 @@ public class AutoScalarConfigurationTest extends FievelTestBase {
     Assert.assertEquals(1.05, autoScalarConfiguration.getUpScaleMaxFactor(), 0.00001);
     Assert.assertEquals(0.04, autoScalarConfiguration.getDownScaleMaxFactor(), 0.00001);
     Assert.assertEquals(Duration.ofSeconds(10), autoScalarConfiguration.getThroughputTTL());
-    Assert.assertEquals(Duration.ofSeconds(300), autoScalarConfiguration.getJobStatusTTL());
+    Assert.assertEquals(Duration.ofMinutes(5), autoScalarConfiguration.getJobStatusTTL());
     Assert.assertTrue(autoScalarConfiguration.isDryRun());
     Assert.assertEquals(100, autoScalarConfiguration.getMessagesPerSecPerWorker());
     Assert.assertEquals(1000, autoScalarConfiguration.getBytesPerSecPerWorker());

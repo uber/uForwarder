@@ -1,6 +1,5 @@
 package com.uber.data.kafka.consumerproxy.worker.limiter;
 
-import com.netflix.concurrency.limits.Limit;
 import com.netflix.concurrency.limits.Limiter;
 import com.netflix.concurrency.limits.limit.VegasLimit;
 import com.netflix.concurrency.limits.limit.WindowedLimit;
@@ -10,13 +9,18 @@ import java.util.Optional;
 /** Adaptive inflight limiting implemented with Vegas limit */
 public class VegasAdaptiveInflightLimiter extends AdaptiveInflightLimiter {
   private static final int CONCURRENCY_LIMITER_INITIAL_LIMIT = 100;
+  private volatile SimpleLimiter limiter;
+  private volatile AdaptiveMetrics metrics;
 
-  private SimpleLimiter limiter;
-  private AdaptiveMetrics metrics;
+  private VegasAdaptiveInflightLimiter() {
+    this.limiter = buildLimiter(CONCURRENCY_LIMITER_INITIAL_LIMIT);
+    this.metrics = new AdaptiveMetrics(limiter);
+  }
 
-  private VegasAdaptiveInflightLimiter(Limit limit) {
-    this.limiter = SimpleLimiter.newBuilder().limit(limit).build();
-    this.metrics = new AdaptiveMetrics();
+  @Override
+  public void setMaxInflight(int maxInflight) {
+    this.limiter = buildLimiter(maxInflight);
+    this.metrics = new AdaptiveMetrics(limiter);
   }
 
   @Override
@@ -35,15 +39,26 @@ public class VegasAdaptiveInflightLimiter extends AdaptiveInflightLimiter {
    * @return builder of VegasAdaptiveInflightLimiter
    */
   public static AdaptiveInflightLimiter.Builder newBuilder() {
-    return () -> {
-      Limit vegasLimit =
-          VegasLimit.newBuilder().initialLimit(CONCURRENCY_LIMITER_INITIAL_LIMIT).build();
-      WindowedLimit limit = WindowedLimit.newBuilder().build(vegasLimit);
-      return new VegasAdaptiveInflightLimiter(limit);
-    };
+    return () -> new VegasAdaptiveInflightLimiter();
+  }
+
+  private static SimpleLimiter buildLimiter(int maxInflight) {
+    VegasLimit vegasLimit =
+        VegasLimit.newBuilder()
+            .initialLimit(CONCURRENCY_LIMITER_INITIAL_LIMIT)
+            .maxConcurrency(maxInflight)
+            .build();
+    WindowedLimit limit = WindowedLimit.newBuilder().build(vegasLimit);
+    return SimpleLimiter.newBuilder().limit(limit).build();
   }
 
   private class AdaptiveMetrics extends AdaptiveInflightLimiter.Metrics {
+    private final SimpleLimiter limiter;
+
+    private AdaptiveMetrics(SimpleLimiter limiter) {
+      this.limiter = limiter;
+    }
+
     @Override
     public long getInflight() {
       return limiter.getInflight();

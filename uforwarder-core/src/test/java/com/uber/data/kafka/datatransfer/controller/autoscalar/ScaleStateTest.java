@@ -19,7 +19,7 @@ public class ScaleStateTest extends FievelTestBase {
     config.setDryRun(false);
     config.setHibernatingEnabled(true);
     config.setMessagesPerSecPerWorker(2000);
-    config.setJobStatusTTL(Duration.ofHours(48));
+    config.setJobStatusTTL(Duration.ofDays(2));
     config.setUpScaleMaxFactor(1.4);
     config.setUpScaleMinFactor(1.1);
     config.setDownScaleMaxFactor(0.9);
