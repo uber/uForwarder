@@ -43,6 +43,10 @@ public class ProcessorConfiguration {
   // use experimental limiter
   private boolean experimentalLimiterEnabled = false;
 
+  // feature flag of regional filter, should remove after feature rollout
+  // and control will be solely depends on job configuration
+  private boolean regionalFilterEnabled = false;
+
   public int getThreadPoolSize() {
     return threadPoolSize;
   }
@@ -113,5 +117,13 @@ public class ProcessorConfiguration {
 
   public void setMaxProcessorInBoundCacheCount(int maxProcessorInBoundCacheCount) {
     this.maxProcessorInBoundCacheCount = maxProcessorInBoundCacheCount;
+  }
+
+  public boolean isRegionalFilterEnabled() {
+    return regionalFilterEnabled;
+  }
+
+  public void setRegionalFilterEnabled(boolean regionalFilterEnabled) {
+    this.regionalFilterEnabled = regionalFilterEnabled;
   }
 }
