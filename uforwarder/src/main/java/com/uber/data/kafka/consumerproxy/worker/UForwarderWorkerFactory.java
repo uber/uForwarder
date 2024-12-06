@@ -1,5 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker;
 
+import com.uber.data.kafka.consumerproxy.UForwarderAppType;
+import com.uber.data.kafka.consumerproxy.common.ApplicationReadyListener;
 import com.uber.data.kafka.consumerproxy.config.GrpcDispatcherConfiguration;
 import com.uber.data.kafka.consumerproxy.config.NoopTracerAutoConfiguration;
 import com.uber.data.kafka.consumerproxy.config.ProcessorConfiguration;
@@ -146,5 +148,10 @@ public class UForwarderWorkerFactory {
     return new SimpleOutboundMessageLimiter.Builder(
             coreInfra, adaptiveInflightLimiterBuilder, configuration.isExperimentalLimiterEnabled())
         .withMaxOutboundCacheCount(configuration.getMaxOutboundCacheCount());
+  }
+
+  @Bean
+  public ApplicationReadyListener applicationReadyListener() {
+    return ApplicationReadyListener.newBuilder(UForwarderAppType.WORKER_APP).build();
   }
 }
