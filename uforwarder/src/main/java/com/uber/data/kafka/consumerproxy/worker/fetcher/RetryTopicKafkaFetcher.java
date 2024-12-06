@@ -193,7 +193,7 @@ public final class RetryTopicKafkaFetcher extends AbstractKafkaFetcherThread<byt
     if (retryQueueConfig != null && retryQueueConfig.isPresent()) {
       return retryQueueConfig.get().getProcessingDelayMs();
     }
-    return job.getKafkaConsumerTask().getProcessingDelayMs();
+    return -1;
   }
 
   @Override
