@@ -8,6 +8,7 @@ import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherMessage;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcResponse;
 import com.uber.data.kafka.consumerproxy.worker.limiter.AdaptiveInflightLimiter;
+import com.uber.data.kafka.consumerproxy.worker.limiter.InflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.LongFixedInflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.VegasAdaptiveInflightLimiter;
 import com.uber.data.kafka.datatransfer.FlowControl;
@@ -2041,5 +2042,30 @@ public class ProcessorImplTest extends ProcessorTestBase {
     Assert.assertEquals(ProcessorTestBase.CLUSTER, tags.get("kafka_cluster"));
     Assert.assertEquals(Integer.toString(ProcessorTestBase.PARTITION), tags.get("kafka_partition"));
     Assert.assertEquals(ProcessorTestBase.CONSUMER_SERVICE_NAME, tags.get("consumer_service"));
+  }
+
+  @Test
+  public void testHandlePermit() {
+    InflightLimiter.Permit permit = Mockito.mock(InflightLimiter.Permit.class);
+    processor.handlePermit(new DispatcherResponse(DispatcherResponse.Code.BACKOFF), null, permit);
+    processor.handlePermit(new DispatcherResponse(DispatcherResponse.Code.INVALID), null, permit);
+    Mockito.verify(permit, Mockito.times(2)).complete(InflightLimiter.Result.Failed);
+
+    Mockito.reset(permit);
+    processor.handlePermit(new DispatcherResponse(DispatcherResponse.Code.RESQ), null, permit);
+    processor.handlePermit(new DispatcherResponse(DispatcherResponse.Code.COMMIT), null, permit);
+    processor.handlePermit(new DispatcherResponse(DispatcherResponse.Code.SKIP), null, permit);
+    processor.handlePermit(new DispatcherResponse(DispatcherResponse.Code.RETRY), null, permit);
+    processor.handlePermit(new DispatcherResponse(DispatcherResponse.Code.DLQ), null, permit);
+    Mockito.verify(permit, Mockito.times(5)).complete(InflightLimiter.Result.Succeed);
+
+    Mockito.reset(permit);
+    processor.handlePermit(new DispatcherResponse(DispatcherResponse.Code.DROPPED), null, permit);
+    Mockito.verify(permit, Mockito.times(1)).complete(InflightLimiter.Result.Dropped);
+
+    Mockito.reset(permit);
+    processor.handlePermit(
+        new DispatcherResponse(DispatcherResponse.Code.COMMIT), new RuntimeException(), permit);
+    Mockito.verify(permit, Mockito.times(1)).complete();
   }
 }
