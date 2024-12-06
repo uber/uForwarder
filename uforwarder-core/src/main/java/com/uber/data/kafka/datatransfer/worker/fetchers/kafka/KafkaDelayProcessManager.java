@@ -61,13 +61,35 @@ public class KafkaDelayProcessManager<K, V> implements DelayProcessManager<K, V>
 
   // Pauses the topic partition and stores its unprocessed records.
   @Override
-  public void pause(TopicPartition tp, List<ConsumerRecord<K, V>> unprocessedRecords) {
-    Preconditions.checkArgument(
-        unprocessedRecords.size() > 0,
-        "It requires unprocessedRecords to be not empty for topic partition %s",
-        tp);
-    Preconditions.checkArgument(
-        !delayedRecords.containsKey(tp), "The topic partition %s is already in delayedRecords", tp);
+  public void pausedPartitionsAndRecords(
+      TopicPartition tp, List<ConsumerRecord<K, V>> unprocessedRecords) {
+    if (unprocessedRecords.size() == 0) {
+      LOGGER.error(
+          "The unprocessedRecords should not be empty",
+          StructuredLogging.kafkaGroup(consumerGroup),
+          StructuredLogging.kafkaTopic(tp.topic()),
+          StructuredLogging.kafkaPartition(tp.partition()));
+      return;
+    }
+    if (delayedRecords.containsKey(tp) && !delayedRecords.get(tp).isEmpty()) {
+      LOGGER.error(
+          String.format(
+              "The topic partition is already in delayedRecords with %s records",
+              delayedRecords.get(tp).size()),
+          StructuredLogging.kafkaGroup(consumerGroup),
+          StructuredLogging.kafkaTopic(tp.topic()),
+          StructuredLogging.kafkaPartition(tp.partition()));
+      scope
+          .tagged(
+              StructuredTags.builder()
+                  .setKafkaGroup(consumerGroup)
+                  .setKafkaTopic(tp.topic())
+                  .setKafkaPartition(tp.partition())
+                  .build())
+          .counter(MetricNames.TOPIC_PARTITION_REPEAT)
+          .inc(1);
+      Preconditions.checkState(false, "The topic partition %s is already in delayedRecords", tp);
+    }
 
     kafkaConsumer.pause(Collections.singleton(tp));
     delayedRecords.put(tp, unprocessedRecords);
@@ -99,7 +121,7 @@ public class KafkaDelayProcessManager<K, V> implements DelayProcessManager<K, V>
 
   // Gets the list of topic partitions that could be resumed to process.
   @Override
-  public Map<TopicPartition, List<ConsumerRecord<K, V>>> resume() {
+  public Map<TopicPartition, List<ConsumerRecord<K, V>>> resumePausedPartitionsAndRecords() {
     ImmutableList.Builder<TopicPartition> resumedPartitions = ImmutableList.builder();
     ImmutableMap.Builder<TopicPartition, List<ConsumerRecord<K, V>>> resumedRecords =
         ImmutableMap.builder();
@@ -165,5 +187,6 @@ public class KafkaDelayProcessManager<K, V> implements DelayProcessManager<K, V>
   private static class MetricNames {
     static final String TOPIC_PARTITION_PAUSED = "fetcher.kafka.topic.partition.paused";
     static final String TOPIC_PARTITION_RESUME = "fetcher.kafka.topic.partition.resume";
+    static final String TOPIC_PARTITION_REPEAT = "fetcher.kafka.topic.partition.repeat";
   }
 }
