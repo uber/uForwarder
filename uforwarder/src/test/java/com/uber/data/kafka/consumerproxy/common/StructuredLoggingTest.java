@@ -28,5 +28,7 @@ public class StructuredLoggingTest extends FievelTestBase {
     Assert.assertEquals("worker_count=8", keyValue.toString());
     keyValue = StructuredLogging.workerId(1000L);
     Assert.assertEquals("worker_id=1000", keyValue.toString());
+    keyValue = StructuredLogging.jobPod("pod");
+    Assert.assertEquals("job_pod=pod", keyValue.toString());
   }
 }
