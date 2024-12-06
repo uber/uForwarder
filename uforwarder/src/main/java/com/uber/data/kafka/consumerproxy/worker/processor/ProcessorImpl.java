@@ -334,47 +334,21 @@ public class ProcessorImpl
                   finalJob))
           .whenComplete(
               (r, e) -> {
-                // measure message end-to-end latency
                 Scope subScope = infra.scope().tagged(getMetricsTags(finalJob));
-                if (r != null && r.getCode() == DispatcherResponse.Code.COMMIT) {
-                  subScope
-                      .histogram(MetricNames.MESSAGE_END_TO_END_LATENCY, E2E_DURATION_BUCKETS)
-                      .recordDuration(
-                          Duration.ofMillis(
-                              System.currentTimeMillis() - processorMessage.getLogicalTimestamp()));
-                }
-              })
-          .whenComplete(
-              (r, e) -> {
-                // To measure downstream service availability, mark success if
-                // message
-                // is handled successfully
-                // or failed because of non-retryable error
-                // otherwise, mark permit failed
-                if (e != null) {
-                  // For any exception such as CancellationException close
-                  // permit with
-                  // unknown result
-                  // to avoid leak of count
-                  permit.complete();
-                } else {
+                if (r != null) {
                   responseDistribution.recordValue(r.getCode().ordinal());
-                  switch (r.getCode()) {
-                    case SKIP:
-                    case COMMIT:
-                    case RETRY: // RETRY could be message issue or service issue
-                    case DLQ: // DLQ is message issue
-                      permit.complete(InflightLimiter.Result.Succeed);
-                      break;
-                    case DROPPED:
-                      permit.complete(InflightLimiter.Result.Dropped);
-                      break;
-                    case RESQ:
-                    default:
-                      permit.complete(InflightLimiter.Result.Failed);
+                  if (r.getCode() == DispatcherResponse.Code.COMMIT) {
+                    // measure message end-to-end latency
+                    subScope
+                        .histogram(MetricNames.MESSAGE_END_TO_END_LATENCY, E2E_DURATION_BUCKETS)
+                        .recordDuration(
+                            Duration.ofMillis(
+                                System.currentTimeMillis()
+                                    - processorMessage.getLogicalTimestamp()));
                   }
                 }
               })
+          .whenComplete((r, e) -> handlePermit(r, e, permit))
           .thenApply(r -> handleTimeout(r, processorMessage, finalJob))
           .thenApply(
               r -> {
@@ -600,6 +574,41 @@ public class ProcessorImpl
           StructuredLogging.kafkaGroup(group),
           StructuredLogging.kafkaTopic(topic),
           StructuredLogging.kafkaPartition(partition));
+    }
+  }
+
+  /**
+   * Handles inflight limit permit status
+   *
+   * @param response
+   * @param e
+   * @param permit
+   */
+  @VisibleForTesting
+  protected static void handlePermit(
+      DispatcherResponse response, Throwable e, InflightLimiter.Permit permit) {
+    // To measure downstream service availability, mark as unknown failure if
+    // message timeout or with invalid response
+    // mark as dropped if received specific back-pressure propagation signal
+    // otherwise, mark permit succeed
+    if (e != null) {
+      // For any exception such as CancellationException close
+      // permit with
+      // unknown result
+      // to avoid leak of count
+      permit.complete();
+    } else {
+      switch (response.getCode()) {
+        case INVALID: // unknown service error
+        case BACKOFF: // timeout error
+          permit.complete(InflightLimiter.Result.Failed);
+          break;
+        case DROPPED: // specific back-pressure
+          permit.complete(InflightLimiter.Result.Dropped);
+          break;
+        default:
+          permit.complete(InflightLimiter.Result.Succeed);
+      }
     }
   }
 
