@@ -35,7 +35,6 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   private static final Logger LOGGER = LoggerFactory.getLogger(SimpleOutboundMessageLimiter.class);
   private static final int N_BUCKETS_PER_MINUTE = 10;
   private static final int BUCKET_SECONDS_PER_MINUTE = 60 / N_BUCKETS_PER_MINUTE;
-  private static final int DEFAULT_MAX_INFLIGHT = 1000;
   protected final Job jobTemplate;
   private final AdaptiveInflightLimiter.Builder adaptiveInfligtLimiterBuilder;
   private final LongFixedInflightLimiter longFixedInflightLimiter;
@@ -47,7 +46,6 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   private final AsyncInflightLimiterAdapter asyncStaticLimiterAdapter;
   private final AsyncInflightLimiterAdapter asyncAdaptiveLimiterAdapter;
   private final AsyncInflightLimiterAdapter asyncShadowAdaptiveLimiterAdapter;
-  private final int maxOutboundCacheCount;
 
   protected SimpleOutboundMessageLimiter(Builder builder, Job jobTemplate) {
     this.longFixedInflightLimiter = new LongFixedInflightLimiter(0);
@@ -62,7 +60,6 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     this.topicPartitionToScopeAndInflight = new ConcurrentHashMap<>();
     this.inflightTracker = new InflightTracker();
     this.jobTemplate = jobTemplate;
-    this.maxOutboundCacheCount = builder.maxOutboundCacheCount;
   }
 
   /** Closes the limiter */
@@ -162,7 +159,6 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
 
     topicPartitionToScopeAndInflight.computeIfAbsent(
         topicPartition, o -> new ScopeAndInflight(topicPartitionScope, job));
-    updateMaxInflight();
   }
 
   /**
@@ -176,14 +172,12 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
         new TopicPartition(
             job.getKafkaConsumerTask().getTopic(), job.getKafkaConsumerTask().getPartition());
     topicPartitionToScopeAndInflight.remove(topicPartition);
-    updateMaxInflight();
   }
 
   /** Cancel all running topic partition consumer jobs */
   @Override
   public void cancelAll() {
     topicPartitionToScopeAndInflight.clear();
-    updateMaxInflight();
   }
 
   /** Gets if the job exists * */
@@ -294,14 +288,6 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
                                             .withPermit(shadowPermit)
                                             .withScopeAndInflight(scopeAndInflight)
                                             .build())));
-  }
-
-  private void updateMaxInflight() {
-    int maxInflight =
-        Math.max(
-            DEFAULT_MAX_INFLIGHT, maxOutboundCacheCount * topicPartitionToScopeAndInflight.size());
-    adaptiveInflightLimiter.setMaxInflight(maxInflight);
-    shadowAdaptiveInflightLimiter.setMaxInflight(maxInflight);
   }
 
   private CompletableFuture<InflightLimiter.Permit> acquireAsync(
@@ -489,7 +475,6 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     protected final CoreInfra infra;
     protected final AdaptiveInflightLimiter.Builder adaptiveInfligtLimiterBuilder;
     protected final boolean experimentalLimiterEnabled;
-    private int maxOutboundCacheCount = 1000;
 
     public Builder(
         CoreInfra infra,
@@ -498,14 +483,6 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
       this.infra = infra;
       this.adaptiveInfligtLimiterBuilder = adaptiveInfligtLimiterBuilder;
       this.experimentalLimiterEnabled = experimentalLimiterEnabled;
-    }
-
-    public Builder withMaxOutboundCacheCount(int maxOutboundCacheCount) {
-      if (maxOutboundCacheCount <= 0) {
-        throw new IllegalArgumentException("maxInflightPerPartition must be positive");
-      }
-      this.maxOutboundCacheCount = maxOutboundCacheCount;
-      return this;
     }
 
     @Override

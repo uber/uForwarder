@@ -41,13 +41,6 @@ public abstract class AdaptiveInflightLimiter extends AbstractInflightLimiter {
   }
 
   /**
-   * Sets upper limit of adaptive inflight limit
-   *
-   * @param maxInflight the max inflight
-   */
-  public abstract void setMaxInflight(int maxInflight);
-
-  /**
    * internal implementation of tryAcquire
    *
    * @return the optional

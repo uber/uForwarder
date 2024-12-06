@@ -7,9 +7,6 @@ grpc:
 system:
   port: 0
 
-server:
-  port: 1000
-
 logging:
   pattern:
     level: "%X"

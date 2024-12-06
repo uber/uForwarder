@@ -39,8 +39,6 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
   private CoreInfra infra;
   private ProcessorMessage pm1;
   private TopicPartition tp1;
-  private AdaptiveInflightLimiter.Builder adaptiveInflightLimiterBuilder;
-  private AdaptiveInflightLimiter adaptiveInflightLimiter;
 
   @Before
   public void setUp() throws Exception {
@@ -76,11 +74,8 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
         .thenAnswer(
             (Answer<ExecutorService>)
                 invocation -> invocation.getArgument(0, ExecutorService.class));
-    adaptiveInflightLimiterBuilder = Mockito.mock(AdaptiveInflightLimiter.Builder.class);
-    Mockito.when(adaptiveInflightLimiterBuilder.withLogEnabled(Mockito.anyBoolean()))
-        .thenReturn(adaptiveInflightLimiterBuilder);
-    adaptiveInflightLimiter = Mockito.spy(VegasAdaptiveInflightLimiter.newBuilder().build());
-    Mockito.when(adaptiveInflightLimiterBuilder.build()).thenReturn(adaptiveInflightLimiter);
+    AdaptiveInflightLimiter.Builder adaptiveInflightLimiterBuilder =
+        VegasAdaptiveInflightLimiter.newBuilder();
     Mockito.when(scope.subScope(ArgumentMatchers.anyString())).thenReturn(scope);
     Mockito.when(scope.tagged(ArgumentMatchers.anyMap())).thenReturn(scope);
     Mockito.when(scope.counter(ArgumentMatchers.anyString())).thenReturn(counter);
@@ -98,8 +93,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
     mockMetrics(scope, "processor.outbound-cache.shadow-adaptive-limit");
     outboundMessageLimiter =
         (SimpleOutboundMessageLimiter)
-            (new SimpleOutboundMessageLimiter.Builder(infra, adaptiveInflightLimiterBuilder, false)
-                    .withMaxOutboundCacheCount(800))
+            (new SimpleOutboundMessageLimiter.Builder(infra, adaptiveInflightLimiterBuilder, false))
                 .build(job1);
     outboundMessageLimiter.updateLimit(2);
     outboundMessageLimiter.init(job1);
@@ -242,33 +236,5 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
   public void testJobs() {
     Collection<Job> jobs = outboundMessageLimiter.jobs();
     Assert.assertTrue(jobs.contains(job1));
-  }
-
-  @Test
-  public void testCancelJobUpdateMaxInflight() {
-    // 2 updates one for primary another for shadow limiter
-    Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).setMaxInflight(1000);
-    Mockito.reset(adaptiveInflightLimiter);
-    outboundMessageLimiter.cancel(job1);
-    Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).setMaxInflight(1000);
-  }
-
-  @Test
-  public void testInitJobUpdateMaxInflight() {
-    // 2 updates one for primary another for shadow limiter
-    Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).setMaxInflight(1000);
-    Mockito.reset(adaptiveInflightLimiter);
-    outboundMessageLimiter.init(
-        Job.newBuilder()
-            .setJobId(1)
-            .setKafkaConsumerTask(
-                KafkaConsumerTask.newBuilder()
-                    .setCluster("a")
-                    .setConsumerGroup("b")
-                    .setTopic("topic")
-                    .setPartition(2)
-                    .build())
-            .build());
-    Mockito.verify(adaptiveInflightLimiter, Mockito.times(2)).setMaxInflight(1600);
   }
 }

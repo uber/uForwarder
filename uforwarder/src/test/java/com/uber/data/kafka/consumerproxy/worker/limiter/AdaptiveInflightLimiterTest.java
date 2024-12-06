@@ -16,20 +16,13 @@ import org.junit.Test;
 public class AdaptiveInflightLimiterTest extends FievelTestBase {
 
   private AdaptiveInflightLimiter adaptiveInflightLimiter;
-  VegasLimit vegasLimit = VegasLimit.newBuilder().initialLimit(2).build();
-  SimpleLimiter simpleLimiter = SimpleLimiter.newBuilder().limit(vegasLimit).build();
 
   @Before
   public void setup() {
+    VegasLimit vegasLimit = VegasLimit.newBuilder().initialLimit(2).build();
+    SimpleLimiter simpleLimiter = SimpleLimiter.newBuilder().limit(vegasLimit).build();
     adaptiveInflightLimiter =
         new AdaptiveInflightLimiter() {
-          @Override
-          public void setMaxInflight(int maxInflight) {
-            vegasLimit =
-                VegasLimit.newBuilder().initialLimit(2).maxConcurrency(maxInflight).build();
-            simpleLimiter = SimpleLimiter.newBuilder().limit(vegasLimit).build();
-          }
-
           @Override
           Optional<Limiter.Listener> tryAcquireImpl() {
             return simpleLimiter.acquire(null);
