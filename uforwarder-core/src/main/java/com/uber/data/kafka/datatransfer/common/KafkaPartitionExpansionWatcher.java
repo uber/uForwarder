@@ -24,6 +24,7 @@ import java.util.stream.Collectors;
 import javax.annotation.concurrent.ThreadSafe;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
 import org.apache.kafka.clients.admin.TopicListing;
+import org.apache.kafka.common.TopicPartitionInfo;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -75,9 +76,9 @@ public final class KafkaPartitionExpansionWatcher {
           }
           Map<String, Versioned<StoredJobGroup>> jobGroups = jobGroupStore.getAll();
           Map<String, List<String>> clusterTopicsMap = groupTopicsByCluster(jobGroups.values());
-          Map<String, Map<String, Integer>> clusterTopicsPartitionMap =
-              getPartitionsForTopics(clusterTopicsMap);
-          updatePartitionCounts(jobGroups.values(), clusterTopicsPartitionMap);
+          Map<String, Map<String, AllPartitionInfo>> clusterTopicInfosMap =
+              getPartitionInfosForTopics(clusterTopicsMap);
+          updatePartitionCounts(jobGroups.values(), clusterTopicInfosMap);
         },
         "kafka-partition-expansion-watcher.watch");
   }
@@ -106,9 +107,9 @@ public final class KafkaPartitionExpansionWatcher {
         "kafka-partition-expansion-watcher.get-topics-by-cluster");
   }
 
-  private Map<String, Map<String, Integer>> getPartitionsForTopics(
+  private Map<String, Map<String, AllPartitionInfo>> getPartitionInfosForTopics(
       Map<String, List<String>> clusterTopicMap) {
-    ImmutableMap.Builder<String, Map<String, Integer>> clusterTopicPartitionMap =
+    ImmutableMap.Builder<String, Map<String, AllPartitionInfo>> clusterTopicPartitionMap =
         ImmutableMap.builder();
     for (Map.Entry<String, List<String>> entry : clusterTopicMap.entrySet()) {
       Instrumentation.instrument.returnVoidCatchThrowable(
@@ -140,7 +141,7 @@ public final class KafkaPartitionExpansionWatcher {
               entry.getValue().retainAll(allAvailableTopics);
             }
 
-            Map<String, Integer> topicPartitionMap =
+            Map<String, AllPartitionInfo> topicPartitionMap =
                 adminBuilder
                     .build(entry.getKey())
                     .describeTopics(entry.getValue())
@@ -151,7 +152,8 @@ public final class KafkaPartitionExpansionWatcher {
                     .entrySet()
                     .stream()
                     .collect(
-                        Collectors.toMap(k -> k.getKey(), v -> v.getValue().partitions().size()));
+                        Collectors.toMap(
+                            k -> k.getKey(), v -> new AllPartitionInfo(v.getValue().partitions())));
             clusterTopicPartitionMap.put(entry.getKey(), topicPartitionMap);
           },
           "kafka-partition-expansion-watcher.describe-topics",
@@ -161,7 +163,8 @@ public final class KafkaPartitionExpansionWatcher {
     return clusterTopicPartitionMap.build();
   }
 
-  private void expandOrShrink(Versioned<StoredJobGroup> versionedJobGroup, int expectedJobCount) {
+  private void expandOrShrink(
+      Versioned<StoredJobGroup> versionedJobGroup, List<TopicPartitionInfo> partitionInfos) {
     Instrumentation.instrument.returnVoidCatchThrowable(
         logger,
         infra.scope(),
@@ -179,12 +182,20 @@ public final class KafkaPartitionExpansionWatcher {
                   .collect(Collectors.toMap(JobUtils::getJobKey, v -> v));
 
           Map<Integer, StoredJob> newJobs = new HashMap<>();
-          for (int i = 0; i < expectedJobCount; i++) {
+          for (int i = 0; i < partitionInfos.size(); i++) {
+            String jobPod = getJobPod(partitionInfos.get(i));
             if (currentJobs.containsKey(i)) {
               StoredJob oldJob = currentJobs.get(i);
               Preconditions.checkNotNull(
                   oldJob, "oldJob should not be null since we just checked map contains it");
-              newJobs.put(i, oldJob);
+              if (!jobPod.equals(oldJob.getJobPod())) {
+                // update StoredJob if jobPod is changed, this will be persisted into job store
+                StoredJob newJob = StoredJob.newBuilder(oldJob).setJobPod(jobPod).build();
+                newJobs.put(i, newJob);
+                isChanged = true;
+              } else {
+                newJobs.put(i, oldJob);
+              }
               // remove old job from currentJobs map so that we can later check
               // currentJobs map for any jobs that remain. These jobs are removed so we should be
               // aware
@@ -200,6 +211,7 @@ public final class KafkaPartitionExpansionWatcher {
                     jobIdProvider.getId(
                         StoredJob.newBuilder()
                             .setJob(JobUtils.newJob(jobGroup.getJobGroup()))
+                            .setJobPod(jobPod)
                             .build()),
                     i);
 
@@ -236,13 +248,13 @@ public final class KafkaPartitionExpansionWatcher {
 
   private void updatePartitionCounts(
       Collection<Versioned<StoredJobGroup>> jobGroups,
-      Map<String, Map<String, Integer>> clusterTopicPartitionMap) {
+      Map<String, Map<String, AllPartitionInfo>> clusterTopicInfosMap) {
     for (Versioned<StoredJobGroup> jobGroup : jobGroups) {
       String topic = jobGroup.model().getJobGroup().getKafkaConsumerTaskGroup().getTopic();
       String group = jobGroup.model().getJobGroup().getKafkaConsumerTaskGroup().getConsumerGroup();
       String cluster = jobGroup.model().getJobGroup().getKafkaConsumerTaskGroup().getCluster();
-      Map<String, Integer> topicPartitionCountMap = clusterTopicPartitionMap.get(cluster);
-      if (topicPartitionCountMap == null) {
+      Map<String, AllPartitionInfo> topicInfoMap = clusterTopicInfosMap.get(cluster);
+      if (topicInfoMap == null) {
         // if this cluster is not in the clusterTopicPartitionMap, Kafka Admin Client has failed
         // so we cannot make any assumptions on the expected partition counts
         // exceptions are logged in getTopicPartitionCounts so we don't need to re-log.
@@ -256,7 +268,12 @@ public final class KafkaPartitionExpansionWatcher {
                       StructuredFields.KAFKA_CLUSTER, cluster,
                       StructuredFields.KAFKA_TOPIC, topic,
                       StructuredFields.KAFKA_GROUP, group));
-      int expectedPartitionCount = topicPartitionCountMap.getOrDefault(topic, 0);
+      int expectedPartitionCount = 0;
+      List<TopicPartitionInfo> partitionInfos = new ArrayList<>();
+      if (topicInfoMap.containsKey(topic)) {
+        expectedPartitionCount = topicInfoMap.get(topic).partitionInfos.size();
+        partitionInfos.addAll(topicInfoMap.get(topic).partitionInfos);
+      }
       int actualPartitionCount = jobGroup.model().getJobsCount();
       taggedScope
           .gauge("kafka-partition-expansion-watcher.actual-partition-count")
@@ -264,7 +281,24 @@ public final class KafkaPartitionExpansionWatcher {
       taggedScope
           .gauge("kafka-partition-expansion-watcher.expected-partition-count")
           .update((double) expectedPartitionCount);
-      expandOrShrink(jobGroup, expectedPartitionCount);
+      expandOrShrink(jobGroup, partitionInfos);
+    }
+  }
+
+  private String getJobPod(TopicPartitionInfo topicPartitionInfo) {
+    String brokerPod = "";
+    if (topicPartitionInfo.leader() != null && topicPartitionInfo.leader().hasRack()) {
+      brokerPod = PodUtils.podOf(topicPartitionInfo.leader().rack());
+    }
+
+    return brokerPod;
+  }
+
+  private static class AllPartitionInfo {
+    private List<TopicPartitionInfo> partitionInfos;
+
+    AllPartitionInfo(List<TopicPartitionInfo> partitionInfos) {
+      this.partitionInfos = partitionInfos;
     }
   }
 }
