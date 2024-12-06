@@ -7,6 +7,7 @@ import com.uber.data.kafka.consumerproxy.config.SchedulerConfiguration;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcDispatcherFactory;
 import com.uber.data.kafka.consumerproxy.worker.fetcher.KafkaFetcherAutoConfiguration;
 import com.uber.data.kafka.consumerproxy.worker.fetcher.KafkaFetcherFactory;
+import com.uber.data.kafka.consumerproxy.worker.filter.CompositeFilter;
 import com.uber.data.kafka.consumerproxy.worker.filter.Filter;
 import com.uber.data.kafka.consumerproxy.worker.filter.OriginalClusterFilter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.AdaptiveInflightLimiter;
@@ -29,6 +30,8 @@ import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineFactory;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManagerAutoConfiguration;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineMetricPublisher;
+import java.util.ArrayList;
+import java.util.List;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -76,11 +79,11 @@ public class UForwarderWorkerFactory {
 
   @Bean
   public Filter.Factory filterFactory(ProcessorConfiguration configuration) {
-    Filter.Factory ret = job -> Filter.NOOP_FILTER;
+    List<Filter.Factory> filterFactories = new ArrayList<>();
     if (configuration.isClusterFilterEnabled()) {
-      ret = OriginalClusterFilter.newFactory();
+      filterFactories.add(OriginalClusterFilter.newFactory());
     }
-    return ret;
+    return CompositeFilter.newFactory(filterFactories.toArray(new Filter.Factory[0]));
   }
 
   @Bean
