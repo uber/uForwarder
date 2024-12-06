@@ -19,15 +19,18 @@ import org.apache.curator.x.async.modeled.ModelSerializer;
 @InternalApi
 public final class JsonSerializationFactory<M extends Message> implements ModelSerializer<M> {
   private final M prototype;
+  private final JsonFormat.TypeRegistry typeRegistry;
 
   /**
    * Create a new JsonSerializationFactory for object A.
    *
    * @param prototype of a protobuf object that should be serialized and deserialized. This object
    *     itself is a prototype and is not directly returned
+   * @param typeRegistry the type registry
    */
-  public JsonSerializationFactory(M prototype) {
+  public JsonSerializationFactory(M prototype, JsonFormat.TypeRegistry typeRegistry) {
     this.prototype = prototype;
+    this.typeRegistry = typeRegistry;
   }
 
   /**
@@ -41,6 +44,7 @@ public final class JsonSerializationFactory<M extends Message> implements ModelS
   public byte[] serialize(M m) {
     try {
       return JsonFormat.printer()
+          .usingTypeRegistry(typeRegistry)
           .omittingInsignificantWhitespace()
           .print(m)
           .getBytes(StandardCharsets.UTF_8);
@@ -61,6 +65,7 @@ public final class JsonSerializationFactory<M extends Message> implements ModelS
     try {
       Message.Builder builder = prototype.newBuilderForType();
       JsonFormat.parser()
+          .usingTypeRegistry(typeRegistry)
           .ignoringUnknownFields()
           .merge(
               new InputStreamReader(new ByteArrayInputStream(bytes), StandardCharsets.UTF_8),
