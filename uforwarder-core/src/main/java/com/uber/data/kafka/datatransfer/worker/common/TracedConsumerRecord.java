@@ -118,8 +118,6 @@ public class TracedConsumerRecord<K, V> extends ConsumerRecord<K, V> {
           tracer.extract(Format.Builtin.TEXT_MAP, new HeadersMapExtractAdapter(headers));
       if (spanContext != null) {
         spanBuilder.asChildOf(spanContext);
-      } else {
-        return Optional.empty();
       }
     } catch (Throwable throwable) {
       spanBuilder = spanBuilder.withTag(Tags.ERROR, Boolean.TRUE);
