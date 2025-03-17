@@ -64,6 +64,14 @@ For an overview of the project, please read the Uber Engineering blog [Enabling 
   ./gradlew check
   ```
 
+4. Build uforwarer Docker image
+
+  ```
+  ./gradlew jar
+  cd uforwarder-image/build/docker
+  docker build -t uforwarder:latest .
+  ```
+
 ## Usage
 
 ### Prerequisite
