@@ -64,6 +64,14 @@ For an overview of the project, please read the Uber Engineering blog [Enabling 
   ./gradlew check
   ```
 
+4. Build uforwarer Docker image
+
+  ```
+  ./gradlew jar
+  cd uforwarder-image/build/docker
+  docker build -t uforwarder:latest .
+  ```
+
 ## Usage
 
 ### Prerequisite
@@ -86,14 +94,7 @@ docker run --env ALLOW_ANONYMOUS_LOGIN=yes --network docker-network -p 2181:2181
 docker run --env KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181 --env KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 --env KAFKA_LISTENERS=DOCKER://0.0.0.0:9092,HOSTER://0.0.0.0:9093 --env KAFKA_ADVERTISED_LISTENERS=DOCKER://kafka:9092,HOSTER://localhost:9093 -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=DOCKER:PLAINTEXT,HOSTER:PLAINTEXT -e KAFKA_INTER_BROKER_LISTENER_NAME=DOCKER --network docker-network -p 9093:9093 --name kafka confluentinc/cp-kafka:5.2.1
 ```
 
-3. Build uforwarer Docker image
-
-```
-cd uforwarder-image/build/docker
-docker build -t uforwarder:latest .
-```
-
-4. Run Uforwarder controller and worker
+3. Run Uforwarder controller and worker
 
 ```
 docker run --env UFORWARDER_PROFILE=uforwarder-controller --env UFORWARDER_KAFKA_CONNECT=kafka:9092 --env UFORWARDER_ZOOKEEPER_CONNECT=zookeeper:2181/uforwarder --network docker-network --name controller -p 8087:8087 uforwarder:latest
