@@ -6,6 +6,7 @@ import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobStatus;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineHealthIssue;
+import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadTracker;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -78,4 +79,13 @@ public interface PipelineStateManager extends Controllable, MetricSource {
    * @param issue the issue
    */
   default void reportIssue(Job job, PipelineHealthIssue issue) {}
+
+  /**
+   * Gets load tracker
+   *
+   * @return pipeline load tracker
+   */
+  default PipelineLoadTracker getLoadTracker() {
+    return PipelineLoadTracker.NOOP;
+  }
 }

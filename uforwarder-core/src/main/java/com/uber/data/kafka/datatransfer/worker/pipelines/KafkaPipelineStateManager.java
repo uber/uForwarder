@@ -192,6 +192,11 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
     healthManager.reportIssue(job, issue);
   }
 
+  @Override
+  public PipelineLoadTracker getLoadTracker() {
+    return loadTracker;
+  }
+
   // TODO (T4367183): handle the case that the same job definition is assigned to multiple job_ids.
   @Override
   public CompletionStage<Void> run(Job job) {

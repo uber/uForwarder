@@ -418,6 +418,11 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     pipelineStateManager.reportIssue(job, new PipelineHealthIssue("test-issue"));
   }
 
+  @Test
+  public void testGetLoadTracker() {
+    Assert.assertEquals(pipelineLoadTracker, pipelineStateManager.getLoadTracker());
+  }
+
   private Job createConsumerJob(
       long jobID,
       String topicName,

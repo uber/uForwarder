@@ -63,6 +63,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
   private KafkaConsumer mockConsumer;
   private Sink processor;
   private CoreInfra coreInfra;
+  private PipelineLoadTracker pipelineLoadTracker;
 
   private final String TOPIC_NAME = "AbstractKafkaFetcherThreadTest";
   private final String CONSUMER_GROUP = "testgroup1";
@@ -73,6 +74,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     checkpointManager = Mockito.mock(CheckpointManager.class);
     throughputTracker = Mockito.mock(ThroughputTracker.class);
     inflightMessageTracker = Mockito.mock(InflightMessageTracker.class);
+    pipelineLoadTracker = Mockito.mock(PipelineLoadTracker.class);
     Mockito.when(checkpointManager.addCheckpointInfo(any())).thenReturn(checkpointInfo);
     Mockito.when(checkpointManager.getCheckpointInfo(any())).thenReturn(checkpointInfo);
     Mockito.when(checkpointManager.getCheckpointInfo(any())).thenReturn(checkpointInfo);
@@ -81,6 +83,19 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
         .thenReturn(new ThroughputTracker.Throughput(1, 2));
     Mockito.when(inflightMessageTracker.getInflightMessageStats(any()))
         .thenReturn(new InflightMessageTracker.InflightMessageStats(1, 100));
+    Mockito.when(pipelineLoadTracker.getLoad())
+        .thenReturn(
+            new PipelineLoadTracker.PipelineLoad() {
+              @Override
+              public double getCoreCpuUsage() {
+                return 1.0;
+              }
+
+              @Override
+              public double getCpuUsage() {
+                return 1.0;
+              }
+            });
     kafkaFetcherConfiguration = new KafkaFetcherConfiguration();
     kafkaFetcherConfiguration.setPollTimeoutMs(10);
     Scope scope = Mockito.mock(Scope.class);
@@ -110,7 +125,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
                         .setTopic(TOPIC_NAME)
                         .build())
                 .build(),
-            PipelineLoadTracker.NOOP,
+            pipelineLoadTracker,
             scope);
     fetcherThread =
         new KafkaFetcherThread(
@@ -937,6 +952,7 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     Assert.assertEquals(2, jobStatus.getKafkaConsumerTaskStatus().getBytesPerSec(), 0.0001);
     Assert.assertEquals(20L, jobStatus.getKafkaConsumerTaskStatus().getReadOffset());
     Assert.assertEquals(20L, jobStatus.getKafkaConsumerTaskStatus().getCommitOffset());
+    Assert.assertEquals(1.0, jobStatus.getKafkaConsumerTaskStatus().getCpuUsage(), 0.0001);
 
     pipelineStateManager.cancelAll().toCompletableFuture().get();
     // force the doWork()
