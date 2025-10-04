@@ -209,4 +209,13 @@ public class ScaleStateTest extends FievelTestBase {
     Assert.assertEquals(Optional.empty(), scaleComputer.onSample(0.0));
     Assert.assertNotNull(scaleComputer.snapshot());
   }
+
+  @Test
+  public void testBuildStateWithJitter() {
+    AutoScalarConfiguration config = new AutoScalarConfiguration();
+    config.setMaxScaleWindowDurationJitter(0.5);
+    builder = ScaleState.newBuilder().withConfig(config).withTicker(testTicker);
+    ScaleState state = builder.build(2.0);
+    Assert.assertEquals(2.0, state.getScale(), 0.01);
+  }
 }

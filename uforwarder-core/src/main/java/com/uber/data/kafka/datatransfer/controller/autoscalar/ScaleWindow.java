@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
+import com.google.common.base.Preconditions;
 import com.google.common.base.Ticker;
 import com.uber.data.kafka.datatransfer.WindowSnapshot;
 import java.util.concurrent.TimeUnit;
@@ -22,12 +23,14 @@ public class ScaleWindow {
   private final long startTimeNano;
   private final BoundedWindow boundedWindow;
   private final Ticker ticker;
+  private final long jitterNano;
   private int nSamples;
 
   private ScaleWindow(Builder builder) {
     this.windowDurationSupplier = builder.windowDurationSupplier;
     this.minSamples = builder.minSamples;
     this.ticker = builder.ticker;
+    this.jitterNano = (long) (builder.jitter * windowDurationSupplier.get());
     this.startTimeNano = ticker.read();
     this.boundedWindow = new BoundedWindow(builder.nBuckets, builder.minScale, builder.maxScale);
   }
@@ -59,13 +62,15 @@ public class ScaleWindow {
    */
   public boolean isMature() {
     long windowDurationNano = windowDurationSupplier.get();
-    return nSamples >= minSamples && (ticker.read() - startTimeNano) > windowDurationNano;
+    return nSamples >= minSamples
+        && (ticker.read() - startTimeNano) > (windowDurationNano - jitterNano);
   }
 
   public WindowSnapshot snapshot() {
     return WindowSnapshot.newBuilder()
         .setSizeInSeconds(TimeUnit.NANOSECONDS.toSeconds(ticker.read() - startTimeNano))
-        .setMinSizeInSeconds(TimeUnit.NANOSECONDS.toSeconds(windowDurationSupplier.get()))
+        .setMinSizeInSeconds(
+            TimeUnit.NANOSECONDS.toSeconds(windowDurationSupplier.get() - jitterNano))
         .setSizeInSamples(nSamples)
         .setMinSizeInSamples(minSamples)
         .build();
@@ -135,6 +140,7 @@ public class ScaleWindow {
     private double maxScale;
     private int nBuckets = DEFAULT_BUCKETS;
     private Ticker ticker = Ticker.systemTicker();
+    private double jitter = 0.0;
 
     /**
      * Sets number of buckets
@@ -193,11 +199,16 @@ public class ScaleWindow {
      *     scale to min scale
      * @param maxScale the max scale, when actual sample is lager than max scale, it will be down
      *     scale to max scale
+     * @param jitter percentage of window duration that window start time should subtract from
      * @return the throughput window
      */
-    public ScaleWindow build(double minScale, double maxScale) {
+    public ScaleWindow build(double minScale, double maxScale, double jitter) {
+      Preconditions.checkArgument(jitter < 1.0, "jitter must be smaller than 1");
+      Preconditions.checkArgument(
+          minScale <= maxScale, "minScale must be smaller or equals to maxScale");
       this.minScale = minScale;
       this.maxScale = maxScale;
+      this.jitter = jitter;
       return new ScaleWindow(this);
     }
   }

@@ -206,7 +206,7 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
      */
     private State(Duration downScaleWindowDuration) {
       this.stateTimeNano = ticker.read();
-      this.scaleWindow = windowBuilder.build(MIN_LOAD, MAX_LOAD);
+      this.scaleWindow = windowBuilder.build(MIN_LOAD, MAX_LOAD, 0);
       this.downScaleWindowDuration = downScaleWindowDuration;
     }
 
