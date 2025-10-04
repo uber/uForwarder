@@ -72,8 +72,8 @@ public class DispatcherImplTest extends FievelTestBase {
     latencyTracker = Mockito.mock(LatencyTracker.class);
     Mockito.when(latencyTracker.startSpan())
         .thenReturn(Mockito.mock(LatencyTracker.LatencySpan.class));
-    Mockito.when(latencyTracker.getSample())
-        .thenReturn(new LatencyTracker.Sample(1000, 100, 200, 200, 2000));
+    Mockito.when(latencyTracker.getStats())
+        .thenReturn(new LatencyTracker.Stats(1000, 100, 200, 200, 2000));
     dispatcher =
         new DispatcherImpl(
             coreInfra, grpcDispatcher, dlqProducer, Optional.of(resqProducer), latencyTracker);
@@ -348,8 +348,8 @@ public class DispatcherImplTest extends FievelTestBase {
         .thenReturn(
             CompletableFuture.completedFuture(
                 GrpcResponse.of(Status.fromCode(Status.Code.OK), null, false)));
-    Mockito.when(latencyTracker.getSample())
-        .thenReturn(new LatencyTracker.Sample(1000, 100, 50, 2000, 1000));
+    Mockito.when(latencyTracker.getStats())
+        .thenReturn(new LatencyTracker.Stats(10000, 100, 50, 2000, 1000));
     Assert.assertEquals(
         DispatcherResponse.Code.COMMIT,
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
@@ -363,8 +363,8 @@ public class DispatcherImplTest extends FievelTestBase {
         .thenReturn(
             CompletableFuture.completedFuture(
                 GrpcResponse.of(Status.fromCode(Status.Code.OK), null, false)));
-    Mockito.when(latencyTracker.getSample())
-        .thenReturn(new LatencyTracker.Sample(1000, 100, 200, 2000, 1000));
+    Mockito.when(latencyTracker.getStats())
+        .thenReturn(new LatencyTracker.Stats(10000, 100, 200, 2000, 1000));
     Assert.assertEquals(
         DispatcherResponse.Code.COMMIT,
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());

@@ -12,8 +12,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicLong;
-import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nullable;
 
 /**
@@ -22,37 +20,31 @@ import javax.annotation.Nullable;
  */
 public class LatencyTracker implements Configurable {
   private static final int LATENCY_RESERVOIR_SIZE = 10000;
-  // default interval between samples, reduce to improve precision at cost of more CPU
-  private static final int DEFAULT_SAMPLE_INTERVAL_SECONDS = 10;
   private static final double EPSILON = 0.000001;
-  private final Linger linger;
   private final LatencySpan[] latencySpans;
   private final AtomicInteger index = new AtomicInteger(0);
   private final Ticker ticker;
   private final int maxInboundMessages;
   private final int maxCommitSkew;
-  private final AtomicReference<Sample> sampleRef;
   @Nullable private volatile PipelineStateManager pipelineStateManager;
 
   /** Instantiates a new Latency tracker with default configuration */
   public LatencyTracker(int maxInboundMessages, int maxCommitSkew) {
-    this(maxInboundMessages, maxCommitSkew, Ticker.systemTicker(), DEFAULT_SAMPLE_INTERVAL_SECONDS);
+    this(maxInboundMessages, maxCommitSkew, Ticker.systemTicker());
   }
 
   /**
    * Instantiates a new Latency tracker.
    *
+   * @param maxInboundMessages the max inbound messages
+   * @param maxCommitSkew the max commit skew
    * @param ticker the ticker
-   * @param sampleIntervalSeconds the interval between each sample in seconds
    */
-  public LatencyTracker(
-      int maxInboundMessages, int maxCommitSkew, Ticker ticker, int sampleIntervalSeconds) {
+  public LatencyTracker(int maxInboundMessages, int maxCommitSkew, Ticker ticker) {
     this.maxInboundMessages = maxInboundMessages;
     this.maxCommitSkew = maxCommitSkew;
     this.latencySpans = new LatencySpan[LATENCY_RESERVOIR_SIZE];
     this.ticker = ticker;
-    this.linger = new Linger(ticker, TimeUnit.SECONDS.toNanos(sampleIntervalSeconds));
-    this.sampleRef = new AtomicReference<>();
   }
 
   public LatencySpan startSpan() {
@@ -66,18 +58,17 @@ public class LatencyTracker implements Configurable {
   }
 
   /** Gets a sample of latency statistics */
-  public Sample getSample() {
-    if (linger.tickIfNecessary()) {
-      // refresh sample
-      Snapshot snapshot = getLatencySnapshot(latencySpans, ticker.read());
-      sampleRef.set(newSample(snapshot, messagesPerSec(), maxInboundMessages, maxCommitSkew));
-    }
-    Sample ret = sampleRef.get();
-    if (ret == null) {
-      return Sample.EMPTY_SAMPLE;
-    } else {
-      return ret;
-    }
+  public Stats getStats() {
+    double messagesPerSec = messagesPerSec();
+    Snapshot snapshot = getLatencySnapshot(latencySpans, ticker.read());
+    long maxMedianLatency = getMaxLatency(messagesPerSec, maxInboundMessages);
+    long maxMaxLatency = getMaxLatency(messagesPerSec, maxCommitSkew);
+    return new Stats(
+        snapshot.size(),
+        (long) snapshot.getMedian(),
+        maxMedianLatency,
+        snapshot.getMax(),
+        maxMaxLatency);
   }
 
   @Override
@@ -103,29 +94,6 @@ public class LatencyTracker implements Configurable {
       }
     }
     return new UniformSnapshot(latencies);
-  }
-
-  /**
-   * Creates a new statistics sample from a snapshot of latencies Includes latency thresholds
-   * computed from throughput and concurrency limits
-   *
-   * @param snapshot the snapshot
-   * @param messagesPerSec the messages per sec
-   * @param maxInboundMessages the max inbound messages
-   * @param maxCommitSkew the max commit skew
-   * @return the sample
-   */
-  @VisibleForTesting
-  protected static Sample newSample(
-      Snapshot snapshot, double messagesPerSec, int maxInboundMessages, int maxCommitSkew) {
-    long maxMedianLatency = getMaxLatency(messagesPerSec, maxInboundMessages);
-    long maxMaxLatency = getMaxLatency(messagesPerSec, maxCommitSkew);
-    return new Sample(
-        snapshot.size(),
-        (long) snapshot.getMedian(),
-        maxMedianLatency,
-        snapshot.getMax(),
-        maxMaxLatency);
   }
 
   private double messagesPerSec() {
@@ -156,8 +124,8 @@ public class LatencyTracker implements Configurable {
   }
 
   /** The type Sample. */
-  public static class Sample {
-    public static Sample EMPTY_SAMPLE = new Sample(0, 0, 0, 0, 0);
+  public static class Stats {
+    public static Stats EMPTY_STATS = new Stats(0, 0, 0, 0, 0);
     private final int size;
     private final long median;
     private final long max;
@@ -165,7 +133,7 @@ public class LatencyTracker implements Configurable {
     private final long maxMax;
 
     /**
-     * Instantiates a new Sample.
+     * Instantiates a new stats.
      *
      * @param size the size of completed requests in the sample
      * @param median the median
@@ -173,7 +141,7 @@ public class LatencyTracker implements Configurable {
      * @param max the max
      * @param maxMax the max max
      */
-    Sample(int size, long median, long maxMedian, long max, long maxMax) {
+    Stats(int size, long median, long maxMedian, long max, long maxMax) {
       this.size = size;
       this.median = median;
       this.maxMedian = maxMedian;
@@ -182,12 +150,12 @@ public class LatencyTracker implements Configurable {
     }
 
     /**
-     * Gets number of events in the sample
+     * Is the stats mature, meaning the sample size is large enough to be considered
      *
-     * @return the int
+     * @return the boolean
      */
-    public int size() {
-      return size;
+    public boolean isMature() {
+      return size == LATENCY_RESERVOIR_SIZE;
     }
 
     @VisibleForTesting
@@ -216,33 +184,6 @@ public class LatencyTracker implements Configurable {
      */
     public boolean isMaxLatencyHigh() {
       return max > maxMax;
-    }
-  }
-
-  protected class Linger {
-    private final long intervalNano;
-    private final Ticker ticker;
-    private AtomicLong lastTickNano = new AtomicLong(0);
-
-    Linger(Ticker ticker, long intervalNano) {
-      this.ticker = ticker;
-      this.intervalNano = intervalNano;
-    }
-
-    /**
-     * Tick if interval is larger than the intervalNano, and update the last tick time
-     *
-     * @return true if interval is larger than the intervalNano
-     */
-    public boolean tickIfNecessary() {
-      long now = ticker.read();
-      long oldTick = lastTickNano.get();
-      if (now - oldTick > intervalNano) {
-        if (lastTickNano.compareAndSet(oldTick, now)) {
-          return true;
-        }
-      }
-      return false;
     }
   }
 

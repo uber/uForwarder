@@ -1,7 +1,6 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher;
 
 import com.codahale.metrics.Snapshot;
-import com.codahale.metrics.UniformSnapshot;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
@@ -19,8 +18,6 @@ import org.junit.Test;
 import org.mockito.Mockito;
 
 public class LatencyTrackerTest extends FievelTestBase {
-  private static final int interval = 10;
-
   private static final int maxInboundMessages = 1000;
   private static final int maxCommitSkew = 10000;
   private TestUtils.TestTicker ticker;
@@ -40,21 +37,21 @@ public class LatencyTrackerTest extends FievelTestBase {
     Mockito.when(pipelineStateManager.getFlowControl()).thenReturn(flowControl);
     Mockito.when(pipelineStateManager.getExpectedRunningJobMap()).thenReturn(runningJobMap);
 
-    latencyTracker = new LatencyTracker(maxInboundMessages, maxCommitSkew, ticker, interval);
+    latencyTracker = new LatencyTracker(maxInboundMessages, maxCommitSkew, ticker);
     latencyTracker.setPipelineStateManager(pipelineStateManager);
   }
 
   @Test
-  public void testLatencyTrackerEmptySample() {
+  public void testLatencyTrackerEmptyStats() {
     LatencyTracker latencyTracker = new LatencyTracker(maxInboundMessages, maxCommitSkew);
     latencyTracker.setPipelineStateManager(pipelineStateManager);
-    LatencyTracker.Sample sample = latencyTracker.getSample();
-    Assert.assertEquals(sample.size(), 0);
+    LatencyTracker.Stats stats = latencyTracker.getStats();
+    Assert.assertFalse(stats.isMature());
   }
 
   @Test
-  public void testGetSampleWithOneSample() {
-    LatencyTracker.Sample sample = null;
+  public void testGetStatsWithOneStats() {
+    LatencyTracker.Stats stats = null;
     List<LatencyTracker.LatencySpan> spans = new ArrayList<>();
 
     for (int i = 0; i < 1000; ++i) {
@@ -64,21 +61,20 @@ public class LatencyTrackerTest extends FievelTestBase {
     for (LatencyTracker.LatencySpan span : spans) {
       ticker.add(Duration.ofNanos(1));
       span.complete();
-      sample = latencyTracker.getSample();
+      stats = latencyTracker.getStats();
     }
 
-    Assert.assertEquals(0, sample.size());
     ticker.add(Duration.ofSeconds(11));
-    sample = latencyTracker.getSample();
-    Assert.assertEquals(1000, sample.size());
-    Assert.assertEquals(500, sample.getMedian(), 1);
-    Assert.assertEquals(1000, sample.getMax(), 1);
-    Assert.assertEquals(false, sample.isMedianLatencyHigh());
-    Assert.assertEquals(false, sample.isMaxLatencyHigh());
+    stats = latencyTracker.getStats();
+    Assert.assertEquals(false, stats.isMature());
+    Assert.assertEquals(500, stats.getMedian(), 1);
+    Assert.assertEquals(1000, stats.getMax(), 1);
+    Assert.assertEquals(false, stats.isMedianLatencyHigh());
+    Assert.assertEquals(false, stats.isMaxLatencyHigh());
   }
 
   @Test
-  public void testGetSampleWithZeroThroughput() {
+  public void testGetStatsWithZeroThroughput() {
     Mockito.when(pipelineStateManager.getFlowControl())
         .thenReturn(FlowControl.getDefaultInstance());
     List<LatencyTracker.LatencySpan> spans = new ArrayList<>();
@@ -92,16 +88,16 @@ public class LatencyTrackerTest extends FievelTestBase {
       span.complete();
     }
 
-    LatencyTracker.Sample sample = latencyTracker.getSample();
-    Assert.assertEquals(1000, sample.size());
-    Assert.assertEquals(0.0, percentDiff(sample.getMedian(), TimeUnit.DAYS.toNanos(500)), 0.01d);
-    Assert.assertEquals(0.0, percentDiff(sample.getMax(), TimeUnit.DAYS.toNanos(1000)), 0.01d);
-    Assert.assertEquals(false, sample.isMedianLatencyHigh());
-    Assert.assertEquals(false, sample.isMaxLatencyHigh());
+    LatencyTracker.Stats stats = latencyTracker.getStats();
+    Assert.assertFalse(stats.isMature());
+    Assert.assertEquals(0.0, percentDiff(stats.getMedian(), TimeUnit.DAYS.toNanos(500)), 0.01d);
+    Assert.assertEquals(0.0, percentDiff(stats.getMax(), TimeUnit.DAYS.toNanos(1000)), 0.01d);
+    Assert.assertEquals(false, stats.isMedianLatencyHigh());
+    Assert.assertEquals(false, stats.isMaxLatencyHigh());
   }
 
   @Test
-  public void testGetSampleWithZeroPartition() {
+  public void testGetStatsWithZeroPartition() {
     Mockito.when(pipelineStateManager.getExpectedRunningJobMap())
         .thenReturn(Collections.emptyMap());
     List<LatencyTracker.LatencySpan> spans = new ArrayList<>();
@@ -115,12 +111,12 @@ public class LatencyTrackerTest extends FievelTestBase {
       span.complete();
     }
 
-    LatencyTracker.Sample sample = latencyTracker.getSample();
-    Assert.assertEquals(1000, sample.size());
-    Assert.assertEquals(0.0, percentDiff(sample.getMedian(), TimeUnit.DAYS.toNanos(500)), 0.01d);
-    Assert.assertEquals(0.0, percentDiff(sample.getMax(), TimeUnit.DAYS.toNanos(1000)), 0.01d);
-    Assert.assertEquals(false, sample.isMedianLatencyHigh());
-    Assert.assertEquals(false, sample.isMaxLatencyHigh());
+    LatencyTracker.Stats stats = latencyTracker.getStats();
+    Assert.assertEquals(false, stats.isMature());
+    Assert.assertEquals(0.0, percentDiff(stats.getMedian(), TimeUnit.DAYS.toNanos(500)), 0.01d);
+    Assert.assertEquals(0.0, percentDiff(stats.getMax(), TimeUnit.DAYS.toNanos(1000)), 0.01d);
+    Assert.assertEquals(false, stats.isMedianLatencyHigh());
+    Assert.assertEquals(false, stats.isMaxLatencyHigh());
   }
 
   @Test
@@ -162,40 +158,46 @@ public class LatencyTrackerTest extends FievelTestBase {
   }
 
   @Test
-  public void testNewSample() {
-    long[] values = java.util.stream.LongStream.rangeClosed(1L, 1000L).toArray();
-    Snapshot snapshot = new UniformSnapshot(values);
-    LatencyTracker.Sample sample = LatencyTracker.newSample(snapshot, 1000, 1000, 10000);
-    Assert.assertEquals(1000, sample.size());
-    Assert.assertEquals(500, sample.getMedian());
-    Assert.assertEquals(1000, sample.getMax());
-    Assert.assertEquals(false, sample.isMaxLatencyHigh());
-    Assert.assertEquals(false, sample.isMedianLatencyHigh());
+  public void testNewStatsWithZeroThroughput() {
+    List<LatencyTracker.LatencySpan> spans = new ArrayList<>();
+    for (int i = 0; i < 1000; ++i) {
+      spans.add(latencyTracker.startSpan());
+    }
+    for (LatencyTracker.LatencySpan span : spans) {
+      ticker.add(Duration.ofNanos(1));
+      span.complete();
+    }
+
+    Mockito.when(pipelineStateManager.getFlowControl())
+        .thenReturn(FlowControl.getDefaultInstance());
+
+    LatencyTracker.Stats stats = latencyTracker.getStats();
+    Assert.assertEquals(false, stats.isMature());
+    Assert.assertEquals(500, stats.getMedian());
+    Assert.assertEquals(1000, stats.getMax());
+    Assert.assertEquals(false, stats.isMaxLatencyHigh());
+    Assert.assertEquals(false, stats.isMedianLatencyHigh());
   }
 
   @Test
-  public void testNewSampleWithZeroThroughput() {
-    long[] values = java.util.stream.LongStream.rangeClosed(1L, 1000L).toArray();
-    Snapshot snapshot = new UniformSnapshot(values);
-    LatencyTracker.Sample sample = LatencyTracker.newSample(snapshot, 0, 1000, 10000);
-    Assert.assertEquals(1000, sample.size());
-    Assert.assertEquals(500, sample.getMedian());
-    Assert.assertEquals(1000, sample.getMax());
-    Assert.assertEquals(false, sample.isMaxLatencyHigh());
-    Assert.assertEquals(false, sample.isMedianLatencyHigh());
-  }
+  public void testNewStatsWithHighThroughput() {
+    List<LatencyTracker.LatencySpan> spans = new ArrayList<>();
+    for (int i = 0; i < 1000; ++i) {
+      spans.add(latencyTracker.startSpan());
+    }
+    for (LatencyTracker.LatencySpan span : spans) {
+      ticker.add(Duration.ofNanos(1));
+      span.complete();
+    }
 
-  @Test
-  public void testNewSampleWithHighThroughput() {
-    long[] values = java.util.stream.LongStream.rangeClosed(1L, 1000L).toArray();
-    Snapshot snapshot = new UniformSnapshot(values);
-    LatencyTracker.Sample sample =
-        LatencyTracker.newSample(snapshot, Integer.MAX_VALUE, 1000, 10000);
-    Assert.assertEquals(1000, sample.size());
-    Assert.assertEquals(500, sample.getMedian());
-    Assert.assertEquals(1000, sample.getMax());
-    Assert.assertEquals(true, sample.isMaxLatencyHigh());
-    Assert.assertEquals(true, sample.isMedianLatencyHigh());
+    Mockito.when(pipelineStateManager.getFlowControl())
+        .thenReturn(FlowControl.newBuilder().setMessagesPerSec(Double.MAX_VALUE).build());
+    LatencyTracker.Stats stats = latencyTracker.getStats();
+    Assert.assertEquals(false, stats.isMature());
+    Assert.assertEquals(500, stats.getMedian());
+    Assert.assertEquals(1000, stats.getMax());
+    Assert.assertEquals(true, stats.isMaxLatencyHigh());
+    Assert.assertEquals(true, stats.isMedianLatencyHigh());
   }
 
   private double percentDiff(double v1, double v2) {
