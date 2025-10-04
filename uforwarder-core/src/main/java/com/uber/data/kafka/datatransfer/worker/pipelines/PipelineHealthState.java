@@ -11,7 +11,6 @@ class PipelineHealthState {
   private final Ticker ticker;
   private final MutableHealthStateWindow[] windows;
   private final Duration windowDuration;
-  private volatile int index;
 
   /**
    * Instantiates a new Pipeline heath state.
@@ -24,17 +23,23 @@ class PipelineHealthState {
     this.ticker = ticker;
     this.windows = new MutableHealthStateWindow[windowCount];
     this.windowDuration = windowDuration;
-    this.index = 0;
     Arrays.fill(windows, new MutableHealthStateWindow());
   }
 
   /**
-   * Record issue into the state
+   * Record issue into the state States store is lossy, concurrent record may cause some issue lost
    *
    * @param issue the issue
    */
   void recordIssue(PipelineHealthIssue issue) {
-    // TODO: implement the logic to record issue
+    long newId = newId();
+    int index = (int) (newId % windows.length);
+    MutableHealthStateWindow currentWindow = windows[index];
+    if (currentWindow.id() != newId) {
+      currentWindow = new MutableHealthStateWindow();
+      windows[index] = currentWindow;
+    }
+    currentWindow.recordIssue(issue);
   }
 
   /**
@@ -43,19 +48,31 @@ class PipelineHealthState {
    * @return the state value
    */
   int getStateValue() {
+    long newId = newId();
+    int index = (int) (newId % windows.length);
     int value = 0;
-    for (MutableHealthStateWindow window : windows) {
-      value |= window.getValue();
+    for (int i = 0; i < windows.length; ++i) {
+      MutableHealthStateWindow thisWindow = windows[(index - i + windows.length) % windows.length];
+      if (thisWindow.id() == newId - i) {
+        // include value when window id is adjacent to current window
+        value |= thisWindow.getValue();
+      }
     }
     return value;
+  }
+
+  private long newId() {
+    return ticker.read() / windowDuration.toNanos();
   }
 
   /** The type Mutable health state window. */
   @VisibleForTesting
   protected class MutableHealthStateWindow {
     private AtomicInteger value;
+    private final long id;
 
     protected MutableHealthStateWindow() {
+      this.id = newId();
       this.value = new AtomicInteger();
     }
 
@@ -71,6 +88,10 @@ class PipelineHealthState {
           break;
         }
       }
+    }
+
+    long id() {
+      return id;
     }
 
     /**

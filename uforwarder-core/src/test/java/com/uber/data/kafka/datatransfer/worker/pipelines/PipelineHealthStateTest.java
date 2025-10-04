@@ -25,10 +25,10 @@ public class PipelineHealthStateTest extends FievelTestBase {
 
   @Test
   public void testRecordIssue() {
-    // TODO implement test
     // Record the issue
     pipelineHealthState.recordIssue(PipelineHealthIssue.INFLIGHT_MESSAGE_LIMITED);
-    Assert.assertEquals(0L, pipelineHealthState.getStateValue());
+    Assert.assertEquals(
+        PipelineHealthIssue.INFLIGHT_MESSAGE_LIMITED.value(), pipelineHealthState.getStateValue());
   }
 
   @Test
