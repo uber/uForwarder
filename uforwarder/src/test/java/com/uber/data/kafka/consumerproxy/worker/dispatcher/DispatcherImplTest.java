@@ -1,5 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcDispatcher;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcResponse;
 import com.uber.data.kafka.consumerproxy.worker.processor.MessageStub;
@@ -11,7 +13,6 @@ import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcher;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineIssue;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Timer;
@@ -21,13 +22,13 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class DispatcherImplTest extends FievelTestBase {
+public class DispatcherImplTest {
   private static final String RESQ_TOPIC = "topic__resq";
   private GrpcDispatcher grpcDispatcher;
   private KafkaDispatcher dlqProducer;
@@ -46,7 +47,7 @@ public class DispatcherImplTest extends FievelTestBase {
 
   private LatencyTracker latencyTracker;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     headers = new RecordHeaders();
     grpcDispatcher = Mockito.mock(GrpcDispatcher.class);
@@ -140,15 +141,15 @@ public class DispatcherImplTest extends FievelTestBase {
 
   @Test
   public void testStartAndClose() throws Exception {
-    Assert.assertFalse(dispatcher.isRunning());
+    Assertions.assertFalse(dispatcher.isRunning());
     dispatcher.start();
-    Assert.assertTrue(dispatcher.isRunning());
+    Assertions.assertTrue(dispatcher.isRunning());
     dispatcher.stop();
-    Assert.assertFalse(dispatcher.isRunning());
+    Assertions.assertFalse(dispatcher.isRunning());
     Mockito.verify(resqProducer, Mockito.times(1)).stop();
     // close one more time
     dispatcher.stop();
-    Assert.assertFalse(dispatcher.isRunning());
+    Assertions.assertFalse(dispatcher.isRunning());
 
     Mockito.doThrow(new RuntimeException()).when(grpcDispatcher).stop();
     Mockito.when(grpcDispatcher.isRunning()).thenReturn(true);
@@ -158,7 +159,7 @@ public class DispatcherImplTest extends FievelTestBase {
     } catch (RuntimeException e) {
       exception = e;
     }
-    Assert.assertNotNull(exception);
+    Assertions.assertNotNull(exception);
   }
 
   @Test
@@ -169,7 +170,7 @@ public class DispatcherImplTest extends FievelTestBase {
     Mockito.when(grpcDispatcher.submit(ItemAndJob.of(grpcDispatcherMessage.getGrpcMessage(), job)))
         .thenReturn(
             CompletableFuture.completedFuture(GrpcResponse.of(Status.fromCode(Status.Code.OK))));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.COMMIT,
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
 
@@ -178,7 +179,7 @@ public class DispatcherImplTest extends FievelTestBase {
     future.completeExceptionally(new RuntimeException());
     Mockito.when(grpcDispatcher.submit(ItemAndJob.of(grpcDispatcherMessage.getGrpcMessage(), job)))
         .thenReturn(future);
-    Assert.assertTrue(
+    Assertions.assertTrue(
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).isCompletedExceptionally());
   }
 
@@ -192,7 +193,7 @@ public class DispatcherImplTest extends FievelTestBase {
             CompletableFuture.completedFuture(
                 GrpcResponse.of(
                     Status.fromCode(Status.Code.DEADLINE_EXCEEDED), DispatcherResponse.Code.DLQ)));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.DLQ,
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
   }
@@ -202,7 +203,7 @@ public class DispatcherImplTest extends FievelTestBase {
     // Test that null return on CompletableFuture<Void> is translated to COMMIT response code
     Mockito.when(dlqProducer.submit(ItemAndJob.of(kafkaDispatcherMessage.getProducerRecord(), job)))
         .thenReturn(CompletableFuture.completedFuture(null));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.COMMIT,
         dispatcher.submit(ItemAndJob.of(kafkaDispatcherMessage, job)).get().getCode());
 
@@ -211,7 +212,7 @@ public class DispatcherImplTest extends FievelTestBase {
     future.completeExceptionally(new RuntimeException());
     Mockito.when(dlqProducer.submit(ItemAndJob.of(kafkaDispatcherMessage.getProducerRecord(), job)))
         .thenReturn(future);
-    Assert.assertTrue(
+    Assertions.assertTrue(
         dispatcher.submit(ItemAndJob.of(kafkaDispatcherMessage, job)).isCompletedExceptionally());
   }
 
@@ -220,21 +221,25 @@ public class DispatcherImplTest extends FievelTestBase {
     Mockito.when(
             resqProducer.submit(ItemAndJob.of(kafkaResqDispatcherMessage.getProducerRecord(), job)))
         .thenReturn(CompletableFuture.completedFuture(null));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.COMMIT,
         dispatcher.submit(ItemAndJob.of(kafkaResqDispatcherMessage, job)).get().getCode());
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testSubmitResqKafkaMessageWithoutResqProducer() throws Throwable {
-    DispatcherImpl badDispatcher =
-        new DispatcherImpl(
-            coreInfra, grpcDispatcher, dlqProducer, Optional.empty(), latencyTracker);
-    try {
-      badDispatcher.submit(ItemAndJob.of(kafkaResqDispatcherMessage, job)).get();
-    } catch (ExecutionException e) {
-      throw e.getCause();
-    }
+    assertThrows(
+        IllegalStateException.class,
+        () -> {
+          DispatcherImpl badDispatcher =
+              new DispatcherImpl(
+                  coreInfra, grpcDispatcher, dlqProducer, Optional.empty(), latencyTracker);
+          try {
+            badDispatcher.submit(ItemAndJob.of(kafkaResqDispatcherMessage, job)).get();
+          } catch (ExecutionException e) {
+            throw e.getCause();
+          }
+        });
   }
 
   @Test
@@ -244,14 +249,14 @@ public class DispatcherImplTest extends FievelTestBase {
             CompletableFuture.completedFuture(
                 GrpcResponse.of(
                     Status.fromCode(Status.Code.DEADLINE_EXCEEDED), DispatcherResponse.Code.SKIP)));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.SKIP,
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
   }
 
   @Test
   public void testDispatcherResponseFromGrpcStatusOverDue() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.BACKOFF,
         DispatcherImpl.dispatcherResponseFromGrpcStatus(
                 GrpcResponse.of(Status.fromCode(Status.Code.UNAVAILABLE), Optional.empty(), true))
@@ -260,7 +265,7 @@ public class DispatcherImplTest extends FievelTestBase {
 
   @Test
   public void testDispatcherResponseFromGrpcStatus_CodeOk() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.COMMIT,
         DispatcherImpl.dispatcherResponseFromGrpcStatus(
                 GrpcResponse.of(Status.fromCode(Status.Code.OK), Optional.empty(), false))
@@ -269,7 +274,7 @@ public class DispatcherImplTest extends FievelTestBase {
 
   @Test
   public void testDispatcherResponseFromGrpcStatus_CodeAlreadyExists() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.SKIP,
         DispatcherImpl.dispatcherResponseFromGrpcStatus(
                 GrpcResponse.of(
@@ -279,7 +284,7 @@ public class DispatcherImplTest extends FievelTestBase {
 
   @Test
   public void testDispatcherResponseFromGrpcStatus_CodeResourceExhausted() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.RETRY,
         DispatcherImpl.dispatcherResponseFromGrpcStatus(
                 GrpcResponse.of(
@@ -289,7 +294,7 @@ public class DispatcherImplTest extends FievelTestBase {
 
   @Test
   public void testDispatcherResponseFromGrpcStatus_CodeFailedPrecondition() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.DLQ,
         DispatcherImpl.dispatcherResponseFromGrpcStatus(
                 GrpcResponse.of(
@@ -299,7 +304,7 @@ public class DispatcherImplTest extends FievelTestBase {
 
   @Test
   public void testDispatcherResponseFromGrpcStatus_CodeUnknown() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.INVALID,
         DispatcherImpl.dispatcherResponseFromGrpcStatus(
                 GrpcResponse.of(Status.fromCode(Status.Code.UNKNOWN), Optional.empty(), false))
@@ -308,7 +313,7 @@ public class DispatcherImplTest extends FievelTestBase {
 
   @Test
   public void testDispatcherResponseFromGrpcStatus_CodeUnimplemented() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.INVALID,
         DispatcherImpl.dispatcherResponseFromGrpcStatus(
                 GrpcResponse.of(
@@ -322,7 +327,7 @@ public class DispatcherImplTest extends FievelTestBase {
         .thenReturn(
             CompletableFuture.completedFuture(
                 GrpcResponse.of(Status.fromCode(Status.Code.PERMISSION_DENIED), null, false)));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.INVALID,
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
     Mockito.verify(pipelineStateManager, Mockito.times(1))
@@ -335,7 +340,7 @@ public class DispatcherImplTest extends FievelTestBase {
         .thenReturn(
             CompletableFuture.completedFuture(
                 GrpcResponse.of(Status.fromCode(Status.Code.UNAVAILABLE), null, false)));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.INVALID,
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
     Mockito.verify(pipelineStateManager, Mockito.times(1))
@@ -350,7 +355,7 @@ public class DispatcherImplTest extends FievelTestBase {
                 GrpcResponse.of(Status.fromCode(Status.Code.OK), null, false)));
     Mockito.when(latencyTracker.getStats())
         .thenReturn(new LatencyTracker.Stats(10000, 100, 50, 2000, 1000));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.COMMIT,
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
     Mockito.verify(pipelineStateManager, Mockito.times(1))
@@ -365,7 +370,7 @@ public class DispatcherImplTest extends FievelTestBase {
                 GrpcResponse.of(Status.fromCode(Status.Code.OK), null, false)));
     Mockito.when(latencyTracker.getStats())
         .thenReturn(new LatencyTracker.Stats(10000, 100, 200, 2000, 1000));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherResponse.Code.COMMIT,
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
     Mockito.verify(pipelineStateManager, Mockito.times(1))

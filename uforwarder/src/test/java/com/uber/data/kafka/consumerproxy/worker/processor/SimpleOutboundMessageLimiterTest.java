@@ -1,5 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.uber.data.kafka.consumerproxy.worker.limiter.AdaptiveInflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.InflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.VegasAdaptiveInflightLimiter;
@@ -22,9 +24,9 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
@@ -49,7 +51,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
 
   private TestUtils.TestTicker ticker = new TestUtils.TestTicker();
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     tp1 = new TopicPartition("topic", 1);
     pm1 = newProcessMessage(new TopicPartitionOffset(tp1.topic(), tp1.partition(), 0));
@@ -126,7 +128,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
   public void testAcquire() throws ExecutionException, InterruptedException {
     CompletableFuture<InflightLimiter.Permit> permit =
         outboundMessageLimiter.acquirePermitAsync(pm1);
-    Assert.assertNotNull(permit.get());
+    Assertions.assertNotNull(permit.get());
   }
 
   @Test
@@ -163,7 +165,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
             100,
             TimeUnit.MILLISECONDS);
     outboundMessageLimiter.acquirePermit(pm1);
-    Assert.assertEquals(1, sequence.get());
+    Assertions.assertEquals(1, sequence.get());
 
     Executors.newSingleThreadScheduledExecutor()
         .schedule(
@@ -176,7 +178,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
             100,
             TimeUnit.MILLISECONDS);
     outboundMessageLimiter.acquirePermit(pm1);
-    Assert.assertEquals(3, sequence.get());
+    Assertions.assertEquals(3, sequence.get());
   }
 
   @Test
@@ -231,22 +233,30 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
     Mockito.verify(adaptiveLimit, Mockito.never()).update(Mockito.anyDouble());
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testAcquireBeforeInit() throws Exception {
-    ProcessorMessage pm2 = newProcessMessage(new TopicPartitionOffset("other-topic", 0, 0));
-    outboundMessageLimiter.acquirePermit(pm2);
+    assertThrows(
+        IllegalStateException.class,
+        () -> {
+          ProcessorMessage pm2 = newProcessMessage(new TopicPartitionOffset("other-topic", 0, 0));
+          outboundMessageLimiter.acquirePermit(pm2);
+        });
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testAcquireAfterCancel() {
-    outboundMessageLimiter.cancelAll();
-    outboundMessageLimiter.acquirePermit(pm1);
+    assertThrows(
+        IllegalStateException.class,
+        () -> {
+          outboundMessageLimiter.cancelAll();
+          outboundMessageLimiter.acquirePermit(pm1);
+        });
   }
 
   @Test
   public void testJobs() {
     Collection<Job> jobs = outboundMessageLimiter.jobs();
-    Assert.assertTrue(jobs.contains(job1));
+    Assertions.assertTrue(jobs.contains(job1));
   }
 
   @Test
@@ -294,16 +304,16 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
   public void testOnBackPressure() {
     outboundMessageLimiter.updateLimit(50);
     boolean result = outboundMessageLimiter.useFixedLimiter();
-    Assert.assertTrue(result);
+    Assertions.assertTrue(result);
     InflightLimiter.Permit permit = outboundMessageLimiter.acquirePermit(pm1);
     permit.complete(InflightLimiter.Result.Dropped);
     // enable adaptive control for limited time when message dropped
     result = outboundMessageLimiter.useFixedLimiter();
-    Assert.assertFalse(result);
+    Assertions.assertFalse(result);
     ticker.add(Duration.ofMinutes(35));
     // use static limiter after limited time elapsed
     result = outboundMessageLimiter.useFixedLimiter();
-    Assert.assertTrue(result);
+    Assertions.assertTrue(result);
   }
 
   @Test
@@ -314,7 +324,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
       permits.add(outboundMessageLimiter.acquirePermit(pm1));
     }
     OutboundMessageLimiter.Stats stats = outboundMessageLimiter.getStats();
-    Assert.assertFalse(stats.isCloseToFull());
-    Assert.assertEquals(0.05, stats.oneMinAverageUsage(), 0.001);
+    Assertions.assertFalse(stats.isCloseToFull());
+    Assertions.assertEquals(0.05, stats.oneMinAverageUsage(), 0.001);
   }
 }

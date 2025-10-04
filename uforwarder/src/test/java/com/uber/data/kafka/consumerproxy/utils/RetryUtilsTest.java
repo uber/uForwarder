@@ -4,12 +4,11 @@ import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.RetryConfig;
 import com.uber.data.kafka.datatransfer.RetryQueue;
 import com.uber.data.kafka.datatransfer.RpcDispatcherTask;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class RetryUtilsTest extends FievelTestBase {
+public class RetryUtilsTest {
 
   private Job job = null;
   private RetryConfig retryConfig = null;
@@ -17,7 +16,7 @@ public class RetryUtilsTest extends FievelTestBase {
   private RetryQueue queue2 = null;
   private RetryQueue queue3 = null;
 
-  @Before
+  @BeforeEach
   public void setup() {
     queue1 =
         RetryQueue.newBuilder()
@@ -58,19 +57,19 @@ public class RetryUtilsTest extends FievelTestBase {
   @Test
   public void testGettingRetryTopicBasedOnCounts() {
     // Case 1
-    Assert.assertEquals("topic1", RetryUtils.getKafkaDestinationRetryTopic(job, 4));
+    Assertions.assertEquals("topic1", RetryUtils.getKafkaDestinationRetryTopic(job, 4));
 
     // Case 2
-    Assert.assertEquals("topic2", RetryUtils.getKafkaDestinationRetryTopic(job, 10));
+    Assertions.assertEquals("topic2", RetryUtils.getKafkaDestinationRetryTopic(job, 10));
 
     // Case 3
-    Assert.assertEquals("dlqtopic", RetryUtils.getKafkaDestinationRetryTopic(job, 15));
+    Assertions.assertEquals("dlqtopic", RetryUtils.getKafkaDestinationRetryTopic(job, 15));
 
     // Case 4: when retryConfig is empty
     String topic =
         RetryUtils.getKafkaDestinationRetryTopic(
             Job.newBuilder(job).setRetryConfig(RetryConfig.newBuilder().build()).build(), 3);
-    Assert.assertEquals("dlqtopic", topic);
+    Assertions.assertEquals("dlqtopic", topic);
 
     // Case 4: when retry queues are not enabled
     topic =
@@ -79,7 +78,7 @@ public class RetryUtilsTest extends FievelTestBase {
                 .setRetryConfig(RetryConfig.newBuilder(retryConfig).setRetryEnabled(false).build())
                 .build(),
             3);
-    Assert.assertEquals("dlqtopic", topic);
+    Assertions.assertEquals("dlqtopic", topic);
 
     // Case 5: when DLQ is empty
     topic =
@@ -88,7 +87,7 @@ public class RetryUtilsTest extends FievelTestBase {
                 .setRpcDispatcherTask(RpcDispatcherTask.newBuilder().build())
                 .build(),
             15);
-    Assert.assertEquals("topic2", topic);
+    Assertions.assertEquals("topic2", topic);
   }
 
   @Test
@@ -103,7 +102,7 @@ public class RetryUtilsTest extends FievelTestBase {
             .build();
 
     // Case1: normal just use sorting
-    Assert.assertEquals(
+    Assertions.assertEquals(
         "topic1", RetryUtils.getSortedRetryQueues(retryConfig).get(0).getRetryQueueTopic());
   }
 
@@ -121,13 +120,13 @@ public class RetryUtilsTest extends FievelTestBase {
 
     Job job = Job.newBuilder().setRetryConfig(retryConfig).build();
 
-    Assert.assertTrue(RetryUtils.isTieredRetryConfigAvailable(job));
+    Assertions.assertTrue(RetryUtils.isTieredRetryConfigAvailable(job));
     // Case2: when retryConfig is empty
     retryConfig = RetryConfig.newBuilder().build();
     job = Job.newBuilder().setRetryConfig(retryConfig).build();
 
     RetryConfig retryConfig12 = RetryConfig.newBuilder().build();
-    Assert.assertFalse(RetryUtils.isTieredRetryConfigAvailable(job));
+    Assertions.assertFalse(RetryUtils.isTieredRetryConfigAvailable(job));
   }
 
   @Test
@@ -142,13 +141,13 @@ public class RetryUtilsTest extends FievelTestBase {
     Job job = Job.newBuilder().setRetryConfig(retryConfig).build();
 
     // Case1: Not null
-    Assert.assertEquals(queue1, RetryUtils.findRetryQueueWithTopicName(job, "topic1").get());
+    Assertions.assertEquals(queue1, RetryUtils.findRetryQueueWithTopicName(job, "topic1").get());
 
     // Case2: null due to non-exist retry queue
-    Assert.assertFalse(RetryUtils.findRetryQueueWithTopicName(job, "topic4").isPresent());
+    Assertions.assertFalse(RetryUtils.findRetryQueueWithTopicName(job, "topic4").isPresent());
 
     // Case3: null due to no configured retry queue
-    Assert.assertFalse(
+    Assertions.assertFalse(
         RetryUtils.findRetryQueueWithTopicName(Job.newBuilder().build(), "topic1").isPresent());
   }
 
@@ -164,7 +163,7 @@ public class RetryUtilsTest extends FievelTestBase {
                     .build())
             .build();
 
-    Assert.assertTrue(RetryUtils.isRetryTopic("foo__bar__retry", jobWithRetryQueue));
+    Assertions.assertTrue(RetryUtils.isRetryTopic("foo__bar__retry", jobWithRetryQueue));
   }
 
   @Test
@@ -174,6 +173,6 @@ public class RetryUtilsTest extends FievelTestBase {
             .setRpcDispatcherTask(
                 RpcDispatcherTask.newBuilder().setDlqTopic("foo__bar__dlq").build())
             .build();
-    Assert.assertTrue(RetryUtils.isDLQTopic("foo__bar__dlq", jobWithDLQ));
+    Assertions.assertTrue(RetryUtils.isDLQTopic("foo__bar__dlq", jobWithDLQ));
   }
 }

@@ -4,18 +4,19 @@ import com.uber.data.kafka.consumerproxy.controller.confg.CoordinatorAutoConfigu
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.controller.config.ZookeeperConfiguration;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import com.uber.m3.tally.Scope;
 import io.opentracing.Tracer;
 import io.opentracing.mock.MockTracer;
+import java.util.concurrent.TimeUnit;
 import org.apache.curator.test.TestingServer;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
-public class CoordinatorAutoConfigurationTest extends FievelTestBase {
+public class CoordinatorAutoConfigurationTest {
   private Node node;
   private Scope scope;
   private Tracer tracer;
@@ -24,7 +25,7 @@ public class CoordinatorAutoConfigurationTest extends FievelTestBase {
   ZookeeperConfiguration config;
   CoordinatorAutoConfiguration autoConfiguration;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     zkServer = new TestingServer(-1, true);
     int port = zkServer.getPort();
@@ -38,14 +39,15 @@ public class CoordinatorAutoConfigurationTest extends FievelTestBase {
     autoConfiguration = new CoordinatorAutoConfiguration();
   }
 
-  @After
+  @AfterEach
   public void teardown() throws Exception {
     zkServer.close();
   }
 
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void testLeaderSelector() throws Exception {
-    Assert.assertNotNull(
+    Assertions.assertNotNull(
         autoConfiguration.leaderSelector(
             config, node, CoreInfra.builder().withScope(scope).withTracer(tracer).build()));
   }

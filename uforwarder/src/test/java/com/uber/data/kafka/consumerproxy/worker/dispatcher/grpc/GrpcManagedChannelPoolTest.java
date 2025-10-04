@@ -1,7 +1,8 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.common.collect.ImmutableList;
-import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.CallOptions;
 import io.grpc.ClientCall;
 import io.grpc.ManagedChannel;
@@ -10,13 +11,13 @@ import io.grpc.MethodDescriptor;
 import io.grpc.Status;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
-public class GrpcManagedChannelPoolTest extends FievelTestBase {
+public class GrpcManagedChannelPoolTest {
   private ManagedChannel channelOne;
   private ManagedChannel channelTwo;
 
@@ -26,7 +27,7 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
   private CallOptions callOptions;
   private ClientCall clientCall;
 
-  @Before
+  @BeforeEach
   public void setup() {
     channelOne = Mockito.mock(ManagedChannel.class);
     channelTwo = Mockito.mock(ManagedChannel.class);
@@ -45,9 +46,13 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
     Mockito.doReturn("authority-two").when(channelTwo).authority();
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testEmptyPool() {
-    new GrpcManagedChannelPool(Mockito.mock(Supplier.class), 0, 10);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new GrpcManagedChannelPool(Mockito.mock(Supplier.class), 0, 10);
+        });
   }
 
   @Test
@@ -60,7 +65,7 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
 
   @Test
   public void testAuthority() {
-    Assert.assertEquals("authority", poolWithTwoChannels.authority());
+    Assertions.assertEquals("authority", poolWithTwoChannels.authority());
   }
 
   @Test
@@ -71,35 +76,35 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
   @Test
   public void testIsShutdownAllShutdown() {
     poolWithTwoChannels.shutdown();
-    Assert.assertTrue(poolWithTwoChannels.isShutdown());
+    Assertions.assertTrue(poolWithTwoChannels.isShutdown());
   }
 
   @Test
   public void testIsShutdownOneNotShutdown() {
     Mockito.doReturn(true).when(channelOne).isShutdown();
     Mockito.doReturn(false).when(channelTwo).isShutdown();
-    Assert.assertFalse(poolWithTwoChannels.isShutdown());
+    Assertions.assertFalse(poolWithTwoChannels.isShutdown());
   }
 
   @Test
   public void testIsTerminatedAllTerminated() {
     Mockito.doReturn(true).when(channelOne).isTerminated();
     Mockito.doReturn(true).when(channelTwo).isTerminated();
-    Assert.assertTrue(poolWithTwoChannels.isTerminated());
+    Assertions.assertTrue(poolWithTwoChannels.isTerminated());
   }
 
   @Test
   public void testIsTerminatedAllNotTerminated() {
     Mockito.doReturn(false).when(channelOne).isTerminated();
     Mockito.doReturn(false).when(channelTwo).isTerminated();
-    Assert.assertFalse(poolWithTwoChannels.isTerminated());
+    Assertions.assertFalse(poolWithTwoChannels.isTerminated());
   }
 
   @Test
   public void testIsTerminatedOneNotTerminated() {
     Mockito.doReturn(false).when(channelOne).isTerminated();
     Mockito.doReturn(true).when(channelTwo).isTerminated();
-    Assert.assertFalse(poolWithTwoChannels.isTerminated());
+    Assertions.assertFalse(poolWithTwoChannels.isTerminated());
   }
 
   @Test
@@ -111,14 +116,14 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
   public void testAwaitTerminationAllTermianted() throws Exception {
     Mockito.doReturn(true).when(channelOne).awaitTermination(Mockito.anyLong(), Mockito.any());
     Mockito.doReturn(true).when(channelTwo).awaitTermination(Mockito.anyLong(), Mockito.any());
-    Assert.assertTrue(poolWithTwoChannels.awaitTermination(1, TimeUnit.SECONDS));
+    Assertions.assertTrue(poolWithTwoChannels.awaitTermination(1, TimeUnit.SECONDS));
   }
 
   @Test
   public void testAwaitTerminationOneNotTerminated() throws Exception {
     Mockito.doReturn(true).when(channelOne).awaitTermination(Mockito.anyLong(), Mockito.any());
     Mockito.doReturn(false).when(channelTwo).awaitTermination(Mockito.anyLong(), Mockito.any());
-    Assert.assertFalse(poolWithTwoChannels.awaitTermination(1, TimeUnit.SECONDS));
+    Assertions.assertFalse(poolWithTwoChannels.awaitTermination(1, TimeUnit.SECONDS));
   }
 
   @Test
@@ -126,14 +131,14 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
     ClientCall poolCall = poolWithTwoChannels.newCall(methodDescriptor, callOptions);
     poolCall.start(Mockito.mock(ClientCall.Listener.class), Mockito.mock(Metadata.class));
     double usage = poolWithTwoChannels.getMetrics().usage();
-    Assert.assertEquals(0.05, usage, 0.0001);
+    Assertions.assertEquals(0.05, usage, 0.0001);
     ArgumentCaptor<ClientCall.Listener> listenerArgumentCaptor =
         ArgumentCaptor.forClass(ClientCall.Listener.class);
     Mockito.verify(clientCall).start(listenerArgumentCaptor.capture(), Mockito.any());
     ClientCall.Listener listener = listenerArgumentCaptor.getValue();
     listener.onClose(Status.OK, Mockito.mock(Metadata.class));
     usage = poolWithTwoChannels.getMetrics().usage();
-    Assert.assertEquals(0.00, usage, 0.0001);
+    Assertions.assertEquals(0.00, usage, 0.0001);
   }
 
   @Test
@@ -144,7 +149,7 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
     }
 
     double usage = poolWithTwoChannels.getMetrics().usage();
-    Assert.assertEquals(0.9, usage, 0.0001);
+    Assertions.assertEquals(0.9, usage, 0.0001);
 
     // over usage limit trigger connection pool scaling
     for (int i = 0; i < 2; ++i) {
@@ -153,23 +158,27 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
     }
 
     usage = poolWithTwoChannels.getMetrics().usage();
-    Assert.assertEquals(0.66666, usage, 0.0001);
+    Assertions.assertEquals(0.66666, usage, 0.0001);
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testStartCallThrowException() {
-    Assert.assertEquals(0, poolWithTwoChannels.getMetrics().inflight());
-    Mockito.doThrow(new IllegalStateException())
-        .when(clientCall)
-        .start(Mockito.any(), Mockito.any());
-    ClientCall poolCall = poolWithTwoChannels.newCall(methodDescriptor, callOptions);
-    // Assert.assertEquals(1, poolWithTwoChannels.getMetrics().inflight());
-    try {
-      poolCall.start(Mockito.mock(ClientCall.Listener.class), new Metadata());
-    } catch (Exception e) {
-      Assert.assertEquals(0, poolWithTwoChannels.getMetrics().inflight());
-      throw e;
-    }
+    assertThrows(
+        IllegalStateException.class,
+        () -> {
+          Assertions.assertEquals(0, poolWithTwoChannels.getMetrics().inflight());
+          Mockito.doThrow(new IllegalStateException())
+              .when(clientCall)
+              .start(Mockito.any(), Mockito.any());
+          ClientCall poolCall = poolWithTwoChannels.newCall(methodDescriptor, callOptions);
+          // Assert.assertEquals(1, poolWithTwoChannels.getMetrics().inflight());
+          try {
+            poolCall.start(Mockito.mock(ClientCall.Listener.class), new Metadata());
+          } catch (Exception e) {
+            Assertions.assertEquals(0, poolWithTwoChannels.getMetrics().inflight());
+            throw e;
+          }
+        });
   }
 
   @Test
@@ -184,8 +193,8 @@ public class GrpcManagedChannelPoolTest extends FievelTestBase {
         poolWithTwoChannels.new ImmutableChannelPool(poolBuilder.build());
 
     pool.setIndex(Integer.MAX_VALUE);
-    Assert.assertNotNull(pool.next());
+    Assertions.assertNotNull(pool.next());
     // this should not overflow
-    Assert.assertNotNull(pool.next());
+    Assertions.assertNotNull(pool.next());
   }
 }

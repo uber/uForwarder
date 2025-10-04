@@ -9,12 +9,11 @@ import com.uber.data.kafka.datatransfer.controller.rpc.ControllerAdminService;
 import com.uber.data.kafka.datatransfer.controller.rpc.ControllerWorkerService;
 import com.uber.data.kafka.datatransfer.controller.rpc.JobWorkloadSink;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class GrpcServerRunnerTest extends FievelTestBase {
+public class GrpcServerRunnerTest {
 
   @Test
   public void testGrpcServerRunner() {
@@ -36,13 +35,13 @@ public class GrpcServerRunnerTest extends FievelTestBase {
                 Mockito.mock(Store.class),
                 Mockito.mock(LeaderSelector.class),
                 Mockito.mock(JobWorkloadSink.class)));
-    Assert.assertFalse(grpcServerRunner.isRunning());
+    Assertions.assertFalse(grpcServerRunner.isRunning());
     grpcServerRunner.start();
 
-    Assert.assertTrue(grpcServerRunner.isRunning());
-    Assert.assertTrue(grpcServerRunner.getPort() > 0);
+    Assertions.assertTrue(grpcServerRunner.isRunning());
+    Assertions.assertTrue(grpcServerRunner.getPort() > 0);
     grpcServerRunner.stop();
-    Assert.assertFalse(grpcServerRunner.isRunning());
-    Assert.assertEquals(-1, grpcServerRunner.getPort());
+    Assertions.assertFalse(grpcServerRunner.isRunning());
+    Assertions.assertEquals(-1, grpcServerRunner.getPort());
   }
 }

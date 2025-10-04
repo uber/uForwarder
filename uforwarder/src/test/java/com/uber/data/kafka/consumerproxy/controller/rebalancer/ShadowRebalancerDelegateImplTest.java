@@ -15,20 +15,19 @@ import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.Rebalancer;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.ShadowRebalancerDelegate;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.HashMap;
 import java.util.Map;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class ShadowRebalancerDelegateImplTest extends FievelTestBase {
+public class ShadowRebalancerDelegateImplTest {
   private ShadowRebalancerDelegate shadowRebalancerDelegate;
   private Rebalancer shadowRebalancer;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     shadowRebalancer = Mockito.mock(Rebalancer.class);
     shadowRebalancerDelegate = new ShadowRebalancerDelegateImpl(shadowRebalancer, true);
@@ -57,7 +56,7 @@ public class ShadowRebalancerDelegateImplTest extends FievelTestBase {
 
   @Test
   public void testRunShaodowRebalancer() throws Exception {
-    Assert.assertTrue(shadowRebalancerDelegate.runShadowRebalancer());
+    Assertions.assertTrue(shadowRebalancerDelegate.runShadowRebalancer());
   }
 
   @Test
@@ -103,11 +102,11 @@ public class ShadowRebalancerDelegateImplTest extends FievelTestBase {
         customizedShadowRebalacerDelegate.getCachedJobGroupStatus();
     Map<Long, Long> jobWorkerMap = cachedJobGroupStatus.get("jobGroup1");
     for (int i = 0; i < 3; i++) {
-      Assert.assertEquals(jobWorkerMap.get(1L + i).longValue(), 2 * (3L + i * 2L));
+      Assertions.assertEquals(jobWorkerMap.get(1L + i).longValue(), 2 * (3L + i * 2L));
     }
     jobWorkerMap = cachedJobGroupStatus.get("jobGroup2");
     for (int i = 0; i < 5; i++) {
-      Assert.assertEquals(jobWorkerMap.get(1L + i).longValue(), 2 * (3L + i * 2L));
+      Assertions.assertEquals(jobWorkerMap.get(1L + i).longValue(), 2 * (3L + i * 2L));
     }
   }
 
@@ -163,9 +162,9 @@ public class ShadowRebalancerDelegateImplTest extends FievelTestBase {
     Map<Long, Long> jobWorkerMap = cachedJobGroupStatus.get("jobGroup1");
     // job1 should use 1L as worker id in rebalance, job2 and 3 should use the cached worker id in
     // rebalance
-    Assert.assertEquals(jobWorkerMap.get(1L).longValue(), 2L);
-    Assert.assertEquals(jobWorkerMap.get(2L).longValue(), 20L);
-    Assert.assertEquals(jobWorkerMap.get(3L).longValue(), 28L);
+    Assertions.assertEquals(jobWorkerMap.get(1L).longValue(), 2L);
+    Assertions.assertEquals(jobWorkerMap.get(2L).longValue(), 20L);
+    Assertions.assertEquals(jobWorkerMap.get(3L).longValue(), 28L);
   }
 
   private Map<String, RebalancingJobGroup> buildJobGroup(String jobGroupId, int numberOfJobs) {

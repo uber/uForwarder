@@ -1,12 +1,11 @@
 package com.uber.data.kafka.consumerproxy.common;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
 
-public class ApplicationReadyListenerTest extends FievelTestBase {
+public class ApplicationReadyListenerTest {
   @Test
   public void testOnApplicationEvent() {
     Logger logger = Mockito.mock(Logger.class);

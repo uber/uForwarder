@@ -8,7 +8,6 @@ import com.uber.data.kafka.consumerproxy.worker.processor.MessageStub;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
-import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.ManagedChannelBuilder;
 import io.grpc.MethodDescriptor;
 import io.grpc.Server;
@@ -29,14 +28,14 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 import org.apache.kafka.common.header.internals.RecordHeaders;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GrpcDispatcherCancelTest extends FievelTestBase {
+public class GrpcDispatcherCancelTest {
   private static final Logger LOGGER = LoggerFactory.getLogger(GrpcDispatcherCancelTest.class);
   private GrpcDispatcher dispatcher;
   private CoreInfra infra;
@@ -50,7 +49,7 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
   private CountDownLatch latch;
   private volatile int finishCount;
 
-  @Before
+  @BeforeEach
   public void setUp() throws IOException {
     this.config = new GrpcDispatcherConfiguration();
     this.infra = CoreInfra.NOOP;
@@ -100,7 +99,7 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
     dispatcher.start();
   }
 
-  @After
+  @AfterEach
   public void close() {
     dispatcher.stop();
     server.shutdown();
@@ -114,9 +113,9 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
     GrpcRequest grpcRequest = newGrpcRequest();
     GrpcResponse response =
         dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture().get();
-    Assert.assertEquals(0, latch.getCount());
-    Assert.assertEquals(1, finishCount);
-    Assert.assertEquals(Status.Code.OK, response.status().getCode());
+    Assertions.assertEquals(0, latch.getCount());
+    Assertions.assertEquals(1, finishCount);
+    Assertions.assertEquals(Status.Code.OK, response.status().getCode());
   }
 
   @Test
@@ -129,9 +128,9 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
     stub.cancel(DispatcherResponse.Code.RETRY);
     GrpcResponse response =
         dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture().get();
-    Assert.assertEquals(Status.Code.CANCELLED, response.status().getCode());
-    Assert.assertEquals(1, latch.getCount());
-    Assert.assertEquals(0, finishCount);
+    Assertions.assertEquals(Status.Code.CANCELLED, response.status().getCode());
+    Assertions.assertEquals(1, latch.getCount());
+    Assertions.assertEquals(0, finishCount);
   }
 
   @Test
@@ -146,9 +145,9 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
     latch.await();
     stub.cancel(DispatcherResponse.Code.RETRY);
     GrpcResponse response = future.get();
-    Assert.assertEquals(Status.Code.CANCELLED, response.status().getCode());
-    Assert.assertEquals(0, latch.getCount());
-    Assert.assertEquals(0, finishCount);
+    Assertions.assertEquals(Status.Code.CANCELLED, response.status().getCode());
+    Assertions.assertEquals(0, latch.getCount());
+    Assertions.assertEquals(0, finishCount);
   }
 
   private GrpcRequest newGrpcRequest() {

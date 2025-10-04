@@ -18,7 +18,6 @@ import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.SeekStartOffsetOpt
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.ThroughputTracker;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadTracker;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Histogram;
@@ -39,14 +38,14 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class DlqTopicKafkaFetcherTest extends FievelTestBase {
+public class DlqTopicKafkaFetcherTest {
   private final String THREAD_NAME = "thread-name";
   private final String TOPIC = "topic";
   private final String GROUP = "group";
@@ -61,7 +60,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
   private AbstractKafkaFetcherThread fetcherThread;
   private PipelineLoadTracker pipelineLoadTracker;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     Scope scope = Mockito.mock(Scope.class);
     Tracer tracer = Mockito.mock(Tracer.class);
@@ -135,7 +134,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
             .build();
     pipelineStateManager.run(job).toCompletableFuture().get();
     // offset is not bounded by the end offset, this job is assigned to this pipeline
-    Assert.assertFalse(
+    Assertions.assertFalse(
         fetcherThread.handleEndOffsetAndDelay(
             consumerRecord, job, checkpointManager, pipelineStateManager));
 
@@ -150,67 +149,67 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
             .setFlowControl(FlowControl.newBuilder().setBytesPerSec(1).setMessagesPerSec(1).build())
             .build();
     // offset is not bounded by the end offset, this job is not assigned to this pipeline
-    Assert.assertTrue(
+    Assertions.assertTrue(
         fetcherThread.handleEndOffsetAndDelay(
             consumerRecord, job2, checkpointManager, pipelineStateManager));
 
     Mockito.when(consumerRecord.offset()).thenReturn(100L);
     // offset is bounded by the end offset, this job is assigned to this pipeline
-    Assert.assertTrue(
+    Assertions.assertTrue(
         fetcherThread.handleEndOffsetAndDelay(
             consumerRecord, job, checkpointManager, pipelineStateManager));
   }
 
   @Test
   public void testGetSeekStartOffsetOption() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_EARLIEST_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             1, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_INVALID));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.DO_NOT_SEEK,
         fetcherThread.getSeekStartOffsetOption(
             7, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_INVALID));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_LATEST_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             12, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_INVALID));
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_EARLIEST_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             1, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.DO_NOT_SEEK,
         fetcherThread.getSeekStartOffsetOption(
             7, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_LATEST_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             12, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST));
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_EARLIEST_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             1, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.DO_NOT_SEEK,
         fetcherThread.getSeekStartOffsetOption(
             7, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_LATEST_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             12, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST));
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.DO_NOT_SEEK,
         fetcherThread.getSeekStartOffsetOption(
             1, null, null, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_INVALID));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.DO_NOT_SEEK,
         fetcherThread.getSeekStartOffsetOption(
             1, null, null, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.DO_NOT_SEEK,
         fetcherThread.getSeekStartOffsetOption(
             1, null, null, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST));
@@ -290,7 +289,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
     // commit offset even if the commit offset is not moving
     Mockito.verify(mockConsumer, Mockito.times(1)).commitSync(mapCaptor.capture());
     CheckpointInfo checkpointInfo = checkpointManager.getCheckpointInfo(job);
-    Assert.assertNotNull(checkpointInfo);
+    Assertions.assertNotNull(checkpointInfo);
     // wait at most 5s
     for (int i = 0; i < 5000 && checkpointInfo.getFetchOffset() != 100L; i++) {
       Thread.sleep(1);
@@ -299,16 +298,16 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
     // process 100 -> 200. Verify this is delivered to processor.
     Mockito.verify(mockConsumer, Mockito.times(1)).poll(java.time.Duration.ofMillis(100));
     Mockito.verify(processor, Mockito.times(100)).submit(ArgumentMatchers.any());
-    Assert.assertEquals(0L, checkpointInfo.getStartingOffset());
-    Assert.assertEquals(50L, checkpointInfo.getOffsetToCommit());
-    Assert.assertEquals(0L, checkpointInfo.getCommittedOffset());
-    Assert.assertEquals(100L, checkpointInfo.getFetchOffset());
+    Assertions.assertEquals(0L, checkpointInfo.getStartingOffset());
+    Assertions.assertEquals(50L, checkpointInfo.getOffsetToCommit());
+    Assertions.assertEquals(0L, checkpointInfo.getCommittedOffset());
+    Assertions.assertEquals(100L, checkpointInfo.getFetchOffset());
 
     Thread.sleep(1000);
     // force to do work
     fetcherThread.doWork();
     Mockito.verify(mockConsumer, Mockito.times(2)).commitSync(mapCaptor.capture());
-    Assert.assertEquals(50L, checkpointInfo.getCommittedOffset());
+    Assertions.assertEquals(50L, checkpointInfo.getCommittedOffset());
     // cancel the job
     pipelineStateManager.cancel(job).toCompletableFuture().get();
     fetcherThread.doWork();
@@ -352,16 +351,16 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
     fetcherThread.doWork();
 
     checkpointInfo = checkpointManager.getCheckpointInfo(newJob);
-    Assert.assertNotNull(checkpointInfo);
+    Assertions.assertNotNull(checkpointInfo);
     // wait at most 5s
     for (int i = 0; i < 5000 && checkpointInfo.getFetchOffset() != 200L; i++) {
       Thread.sleep(1);
     }
     Mockito.verify(mockConsumer, Mockito.times(1)).seek(tp, 100L);
-    Assert.assertEquals(100L, checkpointInfo.getStartingOffset());
-    Assert.assertEquals(200L, checkpointInfo.getFetchOffset());
+    Assertions.assertEquals(100L, checkpointInfo.getStartingOffset());
+    Assertions.assertEquals(200L, checkpointInfo.getFetchOffset());
     // as we always commit 50, which is < 100
-    Assert.assertEquals(100L, checkpointInfo.getOffsetToCommit());
+    Assertions.assertEquals(100L, checkpointInfo.getOffsetToCommit());
     // this is accumulated from the previous test
     Mockito.verify(processor, Mockito.times(200)).submit(ArgumentMatchers.any());
   }

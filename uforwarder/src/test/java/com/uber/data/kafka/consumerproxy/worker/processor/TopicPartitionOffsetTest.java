@@ -1,11 +1,10 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class TopicPartitionOffsetTest extends FievelTestBase {
+public class TopicPartitionOffsetTest {
   private String topic = "topic";
   private int partition = 1;
   private long offset = 2;
@@ -15,7 +14,7 @@ public class TopicPartitionOffsetTest extends FievelTestBase {
   private TopicPartitionOffset topicPartitionOffset3;
   private TopicPartitionOffset topicPartitionOffset4;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     topicPartitionOffset = new TopicPartitionOffset(topic, partition, offset);
     topicPartitionOffset1 = new TopicPartitionOffset(topic, partition, offset);
@@ -26,27 +25,27 @@ public class TopicPartitionOffsetTest extends FievelTestBase {
 
   @Test
   public void testGetters() {
-    Assert.assertEquals(topic, topicPartitionOffset.getTopic());
-    Assert.assertEquals(partition, topicPartitionOffset.getPartition());
-    Assert.assertEquals(offset, topicPartitionOffset.getOffset());
+    Assertions.assertEquals(topic, topicPartitionOffset.getTopic());
+    Assertions.assertEquals(partition, topicPartitionOffset.getPartition());
+    Assertions.assertEquals(offset, topicPartitionOffset.getOffset());
   }
 
   @Test
   public void testEquals() {
-    Assert.assertEquals(topicPartitionOffset, topicPartitionOffset);
-    Assert.assertNotEquals(topicPartitionOffset, null);
-    Assert.assertNotEquals(topicPartitionOffset, "");
-    Assert.assertEquals(topicPartitionOffset, topicPartitionOffset1);
-    Assert.assertNotEquals(topicPartitionOffset, topicPartitionOffset2);
-    Assert.assertNotEquals(topicPartitionOffset, topicPartitionOffset3);
-    Assert.assertNotEquals(topicPartitionOffset, topicPartitionOffset4);
+    Assertions.assertEquals(topicPartitionOffset, topicPartitionOffset);
+    Assertions.assertNotEquals(topicPartitionOffset, null);
+    Assertions.assertNotEquals(topicPartitionOffset, "");
+    Assertions.assertEquals(topicPartitionOffset, topicPartitionOffset1);
+    Assertions.assertNotEquals(topicPartitionOffset, topicPartitionOffset2);
+    Assertions.assertNotEquals(topicPartitionOffset, topicPartitionOffset3);
+    Assertions.assertNotEquals(topicPartitionOffset, topicPartitionOffset4);
   }
 
   @Test
   public void testHash() {
-    Assert.assertEquals(topicPartitionOffset.hashCode(), topicPartitionOffset1.hashCode());
-    Assert.assertNotEquals(topicPartitionOffset.hashCode(), topicPartitionOffset2.hashCode());
-    Assert.assertNotEquals(topicPartitionOffset.hashCode(), topicPartitionOffset3.hashCode());
-    Assert.assertNotEquals(topicPartitionOffset.hashCode(), topicPartitionOffset4.hashCode());
+    Assertions.assertEquals(topicPartitionOffset.hashCode(), topicPartitionOffset1.hashCode());
+    Assertions.assertNotEquals(topicPartitionOffset.hashCode(), topicPartitionOffset2.hashCode());
+    Assertions.assertNotEquals(topicPartitionOffset.hashCode(), topicPartitionOffset3.hashCode());
+    Assertions.assertNotEquals(topicPartitionOffset.hashCode(), topicPartitionOffset4.hashCode());
   }
 }

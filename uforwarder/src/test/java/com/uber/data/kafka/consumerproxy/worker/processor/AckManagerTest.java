@@ -2,14 +2,13 @@ package com.uber.data.kafka.consumerproxy.worker.processor;
 
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
-import com.uber.fievel.testing.base.FievelTestBase;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.InOrder;
 import org.mockito.Mockito;
 
-public class AckManagerTest extends FievelTestBase {
+public class AckManagerTest {
   private Job job;
   private TopicPartitionOffset physicalKafkaMetadata;
   private ProcessorMessage processorMessage;
@@ -18,7 +17,7 @@ public class AckManagerTest extends FievelTestBase {
   private BlockingQueueStubManager stubManager;
   private AckManager ackManager;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     job =
         Job.newBuilder()

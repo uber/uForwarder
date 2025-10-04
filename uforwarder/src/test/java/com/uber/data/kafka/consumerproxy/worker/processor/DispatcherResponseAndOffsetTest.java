@@ -1,17 +1,16 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class DispatcherResponseAndOffsetTest extends FievelTestBase {
+public class DispatcherResponseAndOffsetTest {
   DispatcherResponseAndOffset dispatcherResponseAndOffset;
   DispatcherResponseAndOffset sameDispatcherResponseAndOffset;
   DispatcherResponseAndOffset differentDispatcherResponseAndOffset;
 
-  @Before
+  @BeforeEach
   public void setup() {
     dispatcherResponseAndOffset =
         new DispatcherResponseAndOffset(DispatcherResponse.Code.COMMIT, 10);
@@ -23,27 +22,27 @@ public class DispatcherResponseAndOffsetTest extends FievelTestBase {
 
   @Test
   public void testGetCode() {
-    Assert.assertEquals(DispatcherResponse.Code.COMMIT, dispatcherResponseAndOffset.getCode());
+    Assertions.assertEquals(DispatcherResponse.Code.COMMIT, dispatcherResponseAndOffset.getCode());
   }
 
   @Test
   public void testGetOffset() {
-    Assert.assertEquals(10, dispatcherResponseAndOffset.getOffset());
+    Assertions.assertEquals(10, dispatcherResponseAndOffset.getOffset());
   }
 
   @Test
   public void testEquals() {
-    Assert.assertFalse(dispatcherResponseAndOffset.equals(null));
-    Assert.assertFalse(dispatcherResponseAndOffset.equals(new Object()));
-    Assert.assertEquals(sameDispatcherResponseAndOffset, dispatcherResponseAndOffset);
-    Assert.assertNotEquals(differentDispatcherResponseAndOffset, dispatcherResponseAndOffset);
+    Assertions.assertFalse(dispatcherResponseAndOffset.equals(null));
+    Assertions.assertFalse(dispatcherResponseAndOffset.equals(new Object()));
+    Assertions.assertEquals(sameDispatcherResponseAndOffset, dispatcherResponseAndOffset);
+    Assertions.assertNotEquals(differentDispatcherResponseAndOffset, dispatcherResponseAndOffset);
   }
 
   @Test
   public void testHashCode() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         sameDispatcherResponseAndOffset.hashCode(), dispatcherResponseAndOffset.hashCode());
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         differentDispatcherResponseAndOffset.hashCode(), dispatcherResponseAndOffset.hashCode());
   }
 }

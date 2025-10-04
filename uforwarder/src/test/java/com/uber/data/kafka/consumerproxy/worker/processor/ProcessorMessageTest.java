@@ -10,7 +10,6 @@ import com.uber.data.kafka.datatransfer.RetryConfig;
 import com.uber.data.kafka.datatransfer.RetryQueue;
 import com.uber.data.kafka.datatransfer.RpcDispatcherTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
-import com.uber.fievel.testing.base.FievelTestBase;
 import io.opentracing.Scope;
 import io.opentracing.Span;
 import io.opentracing.Tracer;
@@ -22,12 +21,12 @@ import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class ProcessorMessageTest extends FievelTestBase {
+public class ProcessorMessageTest {
   private static String KEY = "key";
   private static String VALUE = "value";
   private static Headers HEADERS =
@@ -67,7 +66,7 @@ public class ProcessorMessageTest extends FievelTestBase {
   private DLQMetadata dlqMetadata;
   protected CoreInfra infra;
 
-  @Before
+  @BeforeEach
   public void setup() {
     Tracer tracer = new MockTracer();
     infra = CoreInfra.builder().withTracer(tracer).build();
@@ -163,7 +162,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             nonDLQJob,
             infra,
             stub);
-    Assert.assertEquals(nonDLQMessage, otherNonDLQMessage);
+    Assertions.assertEquals(nonDLQMessage, otherNonDLQMessage);
 
     ProcessorMessage otherDLQMessage =
         ProcessorMessage.of(
@@ -181,7 +180,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             dlqJob,
             infra,
             stub);
-    Assert.assertEquals(dlqMessage, otherDLQMessage);
+    Assertions.assertEquals(dlqMessage, otherDLQMessage);
   }
 
   @Test
@@ -241,7 +240,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             retryJob,
             infra,
             stub);
-    Assert.assertEquals(retryMessage, otherRetryMessage);
+    Assertions.assertEquals(retryMessage, otherRetryMessage);
   }
 
   @Test
@@ -298,12 +297,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             resqJob,
             infra,
             stub);
-    Assert.assertEquals(resqMessage, otherResqMessage);
+    Assertions.assertEquals(resqMessage, otherResqMessage);
   }
 
   @Test
   public void testGetValueByteSize() {
-    Assert.assertEquals(VALUE.getBytes().length, nonDLQMessage.getValueByteSize());
+    Assertions.assertEquals(VALUE.getBytes().length, nonDLQMessage.getValueByteSize());
     nonDLQMessage =
         new ProcessorMessage(
             KEY.getBytes(),
@@ -324,28 +323,28 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub);
-    Assert.assertEquals(0, nonDLQMessage.getValueByteSize());
+    Assertions.assertEquals(0, nonDLQMessage.getValueByteSize());
   }
 
   @Test
   public void incrementAndGetDispatchAttemptCount() {
-    Assert.assertEquals(0, nonDLQMessage.getRetryCount());
-    Assert.assertEquals(0, nonDLQMessage.getDispatchAttempt());
+    Assertions.assertEquals(0, nonDLQMessage.getRetryCount());
+    Assertions.assertEquals(0, nonDLQMessage.getDispatchAttempt());
     // For non DLQ message only dispatch attempt count should be increased.
     nonDLQMessage.increaseAttemptCount();
-    Assert.assertEquals(1, nonDLQMessage.getDispatchAttempt());
+    Assertions.assertEquals(1, nonDLQMessage.getDispatchAttempt());
   }
 
   @Test
   public void incrementAndGetTimeoutCount() {
-    Assert.assertEquals(0, nonDLQMessage.getTimeoutCount());
+    Assertions.assertEquals(0, nonDLQMessage.getTimeoutCount());
     nonDLQMessage.increaseTimeoutCount();
-    Assert.assertEquals(1, nonDLQMessage.getTimeoutCount());
+    Assertions.assertEquals(1, nonDLQMessage.getTimeoutCount());
   }
 
   @Test
   public void testEquals() {
-    Assert.assertEquals(nonDLQMessage, nonDLQMessage);
+    Assertions.assertEquals(nonDLQMessage, nonDLQMessage);
     ProcessorMessage processorMessage =
         new ProcessorMessage(
             KEY.getBytes(),
@@ -366,15 +365,15 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub);
-    Assert.assertEquals(nonDLQMessage, processorMessage);
-    Assert.assertNotEquals(nonDLQMessage, dlqMessage);
-    Assert.assertNotEquals(null, nonDLQMessage);
-    Assert.assertNotEquals(nonDLQMessage, null);
-    Assert.assertNotEquals(new Object(), nonDLQMessage);
-    Assert.assertNotEquals(nonDLQMessage, new Object());
+    Assertions.assertEquals(nonDLQMessage, processorMessage);
+    Assertions.assertNotEquals(nonDLQMessage, dlqMessage);
+    Assertions.assertNotEquals(null, nonDLQMessage);
+    Assertions.assertNotEquals(nonDLQMessage, null);
+    Assertions.assertNotEquals(new Object(), nonDLQMessage);
+    Assertions.assertNotEquals(nonDLQMessage, new Object());
 
     // validate any single field difference results in not equal
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             VALUE.getBytes(),
@@ -395,7 +394,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             KEY.getBytes(),
@@ -416,7 +415,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             KEY.getBytes(),
@@ -437,7 +436,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             KEY.getBytes(),
@@ -458,7 +457,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             KEY.getBytes(),
@@ -479,7 +478,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             KEY.getBytes(),
@@ -500,7 +499,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             KEY.getBytes(),
@@ -521,7 +520,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             KEY.getBytes(),
@@ -542,7 +541,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             KEY.getBytes(),
@@ -563,7 +562,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             KEY.getBytes(),
@@ -584,7 +583,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             KEY.getBytes(),
@@ -605,7 +604,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         nonDLQMessage,
         new ProcessorMessage(
             KEY.getBytes(),
@@ -628,12 +627,12 @@ public class ProcessorMessageTest extends FievelTestBase {
             stub));
     // For non DLQ message only dispatch attempt count should be increased.
     nonDLQMessage.increaseAttemptCount();
-    Assert.assertNotEquals(nonDLQMessage, processorMessage);
+    Assertions.assertNotEquals(nonDLQMessage, processorMessage);
   }
 
   @Test
   public void testHashCode() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         nonDLQMessage.hashCode(),
         new ProcessorMessage(
                 KEY.getBytes(),
@@ -655,12 +654,12 @@ public class ProcessorMessageTest extends FievelTestBase {
                 infra,
                 stub)
             .hashCode());
-    Assert.assertNotEquals(nonDLQMessage.hashCode(), dlqMessage.hashCode());
+    Assertions.assertNotEquals(nonDLQMessage.hashCode(), dlqMessage.hashCode());
   }
 
   @Test
   public void testGetGrpcDispatcherMessage() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
             "muttley://routing-key",
@@ -684,7 +683,7 @@ public class ProcessorMessageTest extends FievelTestBase {
 
   @Test
   public void testGetKafkaDispatcherMessage() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         new DispatcherMessage(
             DispatcherMessage.Type.KAFKA,
             DLQ_TOPIC,
@@ -734,7 +733,7 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         new DispatcherMessage(
             DispatcherMessage.Type.KAFKA,
             DLQ_TOPIC,
@@ -827,35 +826,35 @@ public class ProcessorMessageTest extends FievelTestBase {
 
   @Test
   public void testShouldDispatch() {
-    Assert.assertTrue(nonDLQMessage.shouldDispatch());
+    Assertions.assertTrue(nonDLQMessage.shouldDispatch());
     nonDLQMessage.setShouldDispatch(false);
-    Assert.assertFalse(nonDLQMessage.shouldDispatch());
+    Assertions.assertFalse(nonDLQMessage.shouldDispatch());
   }
 
   @Test
   public void testGetHeaders() {
     Headers headers = nonDLQMessage.getHeaders();
-    Assert.assertEquals(1, headers.toArray().length);
+    Assertions.assertEquals(1, headers.toArray().length);
   }
 
   @Test
   public void testGetLogicalTimestamp() {
     long logicalTimestamp = nonDLQMessage.getLogicalTimestamp();
-    Assert.assertEquals(1000L, logicalTimestamp);
+    Assertions.assertEquals(1000L, logicalTimestamp);
     logicalTimestamp = dlqMessage.getLogicalTimestamp();
-    Assert.assertEquals(1000L, logicalTimestamp);
+    Assertions.assertEquals(1000L, logicalTimestamp);
   }
 
   @Test
   public void testOffsetToCommit() {
-    Assert.assertEquals(-1, nonDLQMessage.getOffsetToCommit());
+    Assertions.assertEquals(-1, nonDLQMessage.getOffsetToCommit());
     nonDLQMessage.setOffsetToCommit(100);
-    Assert.assertEquals(100, nonDLQMessage.getOffsetToCommit());
+    Assertions.assertEquals(100, nonDLQMessage.getOffsetToCommit());
   }
 
   @Test
   public void testGetProducerCluster() {
-    Assert.assertEquals("", nonDLQMessage.getProducerCluster());
+    Assertions.assertEquals("", nonDLQMessage.getProducerCluster());
 
     Headers headers = new RecordHeaders();
     headers.add("original_cluster", "clustername".getBytes(StandardCharsets.UTF_8));
@@ -879,6 +878,6 @@ public class ProcessorMessageTest extends FievelTestBase {
             SPAN,
             infra,
             stub);
-    Assert.assertEquals("clustername", nonNullHeader.getProducerCluster());
+    Assertions.assertEquals("clustername", nonNullHeader.getProducerCluster());
   }
 }

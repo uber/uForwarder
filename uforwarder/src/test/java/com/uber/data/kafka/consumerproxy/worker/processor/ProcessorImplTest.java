@@ -1,5 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.uber.data.kafka.consumer.DLQMetadata;
@@ -47,11 +49,11 @@ import java.util.concurrent.atomic.AtomicInteger;
 import net.jodah.failsafe.function.CheckedSupplier;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
@@ -77,7 +79,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
   private RateLimiter rateLimiter;
   private MockedStatic<RateLimiter> staticContext;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     setupRateLimier(0.0);
     Scope scope = Mockito.mock(Scope.class);
@@ -159,7 +161,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
     dispatcherMessageArgumentCaptor = ArgumentCaptor.forClass(ItemAndJob.class);
   }
 
-  @After
+  @AfterEach
   public void tearDown() {
     staticContext.close();
   }
@@ -193,11 +195,11 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
   @Test
   public void testStartAndClose() {
-    Assert.assertFalse(processor.isRunning());
+    Assertions.assertFalse(processor.isRunning());
     processor.start();
-    Assert.assertTrue(processor.isRunning());
+    Assertions.assertTrue(processor.isRunning());
     processor.stop();
-    Assert.assertFalse(processor.isRunning());
+    Assertions.assertFalse(processor.isRunning());
 
     Mockito.doThrow(new RuntimeException()).when(ackManager).cancelAll();
     RuntimeException exception = null;
@@ -206,7 +208,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
     } catch (RuntimeException e) {
       exception = e;
     }
-    Assert.assertNotNull(exception);
+    Assertions.assertNotNull(exception);
   }
 
   @Test
@@ -229,26 +231,32 @@ public class ProcessorImplTest extends ProcessorTestBase {
     processor.cancelAll();
   }
 
-  @Test(expected = ExecutionException.class)
-  public void testSubmitWithException() throws ExecutionException, InterruptedException {
-    processor.start();
-    Mockito.when(infra.scope().counter(ArgumentMatchers.anyString()))
-        .thenThrow(new RuntimeException());
-    CompletionStage<Long> offsetFuture = processor.submit(ItemAndJob.of(consumerRecord, job));
-    offsetFuture.toCompletableFuture().get();
+  @Test
+  public void testSubmitWithException() throws InterruptedException {
+    assertThrows(
+        ExecutionException.class,
+        () -> {
+          processor.start();
+          Mockito.when(infra.scope().counter(ArgumentMatchers.anyString()))
+              .thenThrow(new RuntimeException());
+          CompletionStage<Long> offsetFuture = processor.submit(ItemAndJob.of(consumerRecord, job));
+          offsetFuture.toCompletableFuture().get();
+        });
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithDifferentClusterShouldBeFiltered() throws Exception {
     processor.start();
     consumerRecord.headers().add("original_cluster", "wrong-cluster".getBytes());
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
     Mockito.verify(dispatcher, Mockito.times(0)).submit(Mockito.any());
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithSameClusterShouldNotBeFiltered() throws Exception {
     processor.start();
     CompletableFuture<DispatcherResponse> dispatcherFuture = new CompletableFuture<>();
@@ -259,25 +267,26 @@ public class ProcessorImplTest extends ProcessorTestBase {
     consumerRecord.headers().add("cluster", "CLUSTER".getBytes(StandardCharsets.UTF_8));
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns success so it should not retry anywhere.
     Mockito.verify(dispatcher, Mockito.times(1)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getValue().getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getValue().getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0, dispatcherMessageArgumentCaptor.getValue().getItem().getGrpcMessage().getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor.getValue().getItem().getGrpcMessage().getDispatchAttempt());
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithCommitResponse() throws Exception {
     processor.start();
     CompletableFuture<DispatcherResponse> dispatcherFuture = new CompletableFuture<>();
@@ -286,55 +295,61 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns success so it should not retry anywhere.
     Mockito.verify(dispatcher, Mockito.times(1)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getValue().getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getValue().getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0, dispatcherMessageArgumentCaptor.getValue().getItem().getGrpcMessage().getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor.getValue().getItem().getGrpcMessage().getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         2,
         processor.dlqDispatchManager.getTokens(
             new TopicPartition(ProcessorTestBase.TOPIC, ProcessorTestBase.PARTITION)));
     Mockito.verify(endToEndLatency, Mockito.times(1)).recordDuration(ArgumentMatchers.any());
     processor.cancel(job).toCompletableFuture().get(); // wait for actual cancel to complete
     offsetFuture = processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(-1, (long) offsetFuture.get());
+    Assertions.assertEquals(-1, (long) offsetFuture.get());
   }
 
-  @Test(expected = java.util.concurrent.CompletionException.class, timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithCanceledFuture() {
-    // canceled message will not retry
-    processor.start();
-    CompletableFuture<DispatcherResponse> dispatcherFuture = new CompletableFuture<>();
-    Mockito.when(dispatcher.submit(Mockito.any())).thenReturn(dispatcherFuture);
-    CompletableFuture<Long> offsetFuture =
-        processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    try {
-      dispatcherFuture.cancel(false);
-      offsetFuture.join();
-    } catch (Exception e) {
-      Mockito.verify(dispatcher, Mockito.times(2))
-          .submit(dispatcherMessageArgumentCaptor.capture());
-      Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-      Mockito.verify(inflight, Mockito.never()).update(Mockito.anyDouble());
-      processor.publishMetrics();
-      Mockito.verify(inflight).update(0.0);
-      throw e;
-    }
+    assertThrows(
+        java.util.concurrent.CompletionException.class,
+        () -> {
+          // canceled message will not retry
+          processor.start();
+          CompletableFuture<DispatcherResponse> dispatcherFuture = new CompletableFuture<>();
+          Mockito.when(dispatcher.submit(Mockito.any())).thenReturn(dispatcherFuture);
+          CompletableFuture<Long> offsetFuture =
+              processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
+          try {
+            dispatcherFuture.cancel(false);
+            offsetFuture.join();
+          } catch (Exception e) {
+            Mockito.verify(dispatcher, Mockito.times(2))
+                .submit(dispatcherMessageArgumentCaptor.capture());
+            Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+            Mockito.verify(inflight, Mockito.never()).update(Mockito.anyDouble());
+            processor.publishMetrics();
+            Mockito.verify(inflight).update(0.0);
+            throw e;
+          }
+        });
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitTwoMessagesWithCommitResponse() throws Exception {
     processor.start();
     CompletableFuture<DispatcherResponse> dispatcherFuture = new CompletableFuture<>();
@@ -343,19 +358,20 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
     offsetFuture = processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns success so it should not retry anywhere.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         3,
         processor.dlqDispatchManager.getTokens(
             new TopicPartition(ProcessorTestBase.TOPIC, ProcessorTestBase.PARTITION)));
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitWithEmptyRecord() throws Exception {
     processor.start();
     CompletableFuture<DispatcherResponse> dispatcherFuture = new CompletableFuture<>();
@@ -363,17 +379,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
     Mockito.when(dispatcher.submit(Mockito.any())).thenReturn(dispatcherFuture);
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(emptyConsumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns success so it should not retry anywhere.
     Mockito.verify(dispatcher, Mockito.times(1)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         2,
         processor.dlqDispatchManager.getTokens(
             new TopicPartition(ProcessorTestBase.TOPIC, ProcessorTestBase.PARTITION)));
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithRetryResponse() throws Exception {
     processor.start();
     Mockito.when(dispatcher.submit(Mockito.any()))
@@ -388,18 +405,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns RETRY so it should have been retried to KAFKA.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -407,7 +424,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -415,10 +432,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.RETRY_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
     DLQMetadata dlqMetadata =
@@ -429,10 +446,11 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithRetryResponseForTieredRetry() throws Exception {
     job =
         Job.newBuilder(job)
@@ -474,18 +492,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns RETRY so it should have been retried to KAFKA.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -493,7 +511,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -501,10 +519,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         "topic1__retry",
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
     DLQMetadata dlqMetadata =
@@ -515,10 +533,11 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithGrpcException() throws Exception {
     processor.start();
     // first call to gRPC endpoint throws exception
@@ -533,7 +552,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
     testSubmitMessageWithGrpcExceptionMessageCheck();
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithGrpcException2() throws Exception {
     processor.start();
     CompletableFuture completableFuture = new CompletableFuture();
@@ -551,7 +571,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
     testSubmitMessageWithGrpcExceptionMessageCheck();
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testPipelineStateManagerDoesNotContainTheJob() throws Exception {
     Mockito.when(pipelineStateManager.getExpectedJob(100)).thenReturn(Optional.empty());
     testSubmitMessageWithGrpcException();
@@ -562,18 +583,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
     processor.start();
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns RETRY so it should have been retried to KAFKA.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -581,7 +602,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -589,13 +610,13 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -603,7 +624,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -613,7 +634,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getDispatchAttempt());
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithInvalidResponse() throws Exception {
     processor.start();
     Mockito.when(dispatcher.submit(Mockito.any()))
@@ -628,18 +650,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns INVALID so we should have retried to gRPC.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -647,7 +669,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -655,13 +677,13 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -671,7 +693,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getDispatchAttempt());
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithInvalidResponseNotRunning() throws Exception {
     Mockito.when(dispatcher.submit(Mockito.any()))
         // first call to gRPC endpoint returns INVALID.
@@ -685,18 +708,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(-1, (long) offsetFuture.get());
+    Assertions.assertEquals(-1, (long) offsetFuture.get());
 
     // gRPC endpoint returns INVALID so we should have retried to gRPC.
     Mockito.verify(dispatcher, Mockito.times(1)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -704,7 +727,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -714,7 +737,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getDispatchAttempt());
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithBackoffResponse() throws Exception {
     processor.start();
     Mockito.when(dispatcher.submit(Mockito.any()))
@@ -729,18 +753,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns INVALID so we should have retried to gRPC.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -748,7 +772,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -756,10 +780,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.RETRY_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
     DLQMetadata dlqMetadata =
@@ -770,8 +794,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getTimeoutCount());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(1, dlqMetadata.getTimeoutCount());
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
   }
 
   @Test
@@ -790,18 +814,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns INVALID so we should have retried to gRPC.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -809,7 +833,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -817,13 +841,13 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -833,7 +857,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getDispatchAttempt());
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithBackoffResponseNotRunning() throws Exception {
     Mockito.when(dispatcher.submit(Mockito.any()))
         // first call to gRPC endpoint returns INVALID.
@@ -847,18 +872,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
     // gRPC endpoint returns INVALID so we should have retried to gRPC.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
     // GRPC
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -866,7 +891,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -875,10 +900,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getGrpcMessage()
             .getDispatchAttempt());
     // RQ
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.RETRY_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
   }
@@ -891,8 +916,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
             new DispatcherResponse(DispatcherResponse.Code.SKIP),
             processorMessage,
             Job.newBuilder().build());
-    Assert.assertEquals(DispatcherResponse.Code.SKIP, result.getCode());
-    Assert.assertEquals(0, processorMessage.getTimeoutCount());
+    Assertions.assertEquals(DispatcherResponse.Code.SKIP, result.getCode());
+    Assertions.assertEquals(0, processorMessage.getTimeoutCount());
 
     Job dlqJob = newJob(DLQ_TOPIC, PARTITION);
     DLQMetadata dlqMeta = DLQMetadata.newBuilder().setTimeoutCount(2).build();
@@ -902,8 +927,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
             new DispatcherResponse(DispatcherResponse.Code.COMMIT),
             processorMessage,
             Job.newBuilder().build());
-    Assert.assertEquals(DispatcherResponse.Code.COMMIT, result.getCode());
-    Assert.assertEquals(2, processorMessage.getTimeoutCount());
+    Assertions.assertEquals(DispatcherResponse.Code.COMMIT, result.getCode());
+    Assertions.assertEquals(2, processorMessage.getTimeoutCount());
   }
 
   @Test
@@ -914,8 +939,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
     DispatcherResponse result =
         processor.handleTimeout(
             new DispatcherResponse(DispatcherResponse.Code.BACKOFF), processorMessage, dlqJob);
-    Assert.assertEquals(DispatcherResponse.Code.DLQ, result.getCode());
-    Assert.assertEquals(3, processorMessage.getTimeoutCount());
+    Assertions.assertEquals(DispatcherResponse.Code.DLQ, result.getCode());
+    Assertions.assertEquals(3, processorMessage.getTimeoutCount());
   }
 
   @Test
@@ -926,8 +951,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
     DispatcherResponse result =
         processor.handleTimeout(
             new DispatcherResponse(DispatcherResponse.Code.BACKOFF), processorMessage, resqJob);
-    Assert.assertEquals(DispatcherResponse.Code.INVALID, result.getCode());
-    Assert.assertEquals(2, processorMessage.getTimeoutCount());
+    Assertions.assertEquals(DispatcherResponse.Code.INVALID, result.getCode());
+    Assertions.assertEquals(2, processorMessage.getTimeoutCount());
   }
 
   @Test
@@ -938,11 +963,12 @@ public class ProcessorImplTest extends ProcessorTestBase {
     DispatcherResponse result =
         processor.handleTimeout(
             new DispatcherResponse(DispatcherResponse.Code.COMMIT), processorMessage, job);
-    Assert.assertEquals(DispatcherResponse.Code.COMMIT, result.getCode());
-    Assert.assertEquals(nToken + 1, processor.dlqDispatchManager.getTokens(topicPartition));
+    Assertions.assertEquals(DispatcherResponse.Code.COMMIT, result.getCode());
+    Assertions.assertEquals(nToken + 1, processor.dlqDispatchManager.getTokens(topicPartition));
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithStashResponse() throws Exception {
     processor.start();
     Mockito.when(dispatcher.submit(Mockito.any()))
@@ -956,18 +982,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns STASH so we should have retried to KAFKA.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -975,7 +1001,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -983,10 +1009,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.DLQ_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
     DLQMetadata dlqMetadata =
@@ -997,10 +1023,11 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithSkipResponse() throws Exception {
     processor.start();
     Mockito.when(dispatcher.submit(Mockito.any()))
@@ -1011,18 +1038,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns SKIP so we commit this.
     Mockito.verify(dispatcher, Mockito.times(1)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1030,7 +1057,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1040,7 +1067,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getDispatchAttempt());
   }
 
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithRetryResponseAndKafkaProduceFailure() throws Exception {
     processor.start();
     Mockito.when(dispatcher.submit(Mockito.any()))
@@ -1059,19 +1087,19 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns RETRY so we sent to KAFKA.
     // Kafka send then returns INVALID, so we should retry to KAFKA.
     Mockito.verify(dispatcher, Mockito.times(3)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(3, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(3, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1079,7 +1107,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1087,10 +1115,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.RETRY_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
     DLQMetadata dlqMetadata =
@@ -1101,11 +1129,11 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(2).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.RETRY_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(2).getItem().getDestination());
     dlqMetadata =
@@ -1116,10 +1144,11 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
   }
 
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithRetryResponseAndKafkaProduceFailureNotRunning()
       throws Exception {
     Mockito.when(dispatcher.submit(Mockito.any()))
@@ -1138,19 +1167,19 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(-1, (long) offsetFuture.get());
+    Assertions.assertEquals(-1, (long) offsetFuture.get());
 
     // gRPC endpoint returns RETRY so we sent to KAFKA.
     // Kafka send then returns INVALID, so we should retry to KAFKA.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1158,7 +1187,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1166,10 +1195,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.RETRY_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
     DLQMetadata dlqMetadata =
@@ -1180,11 +1209,12 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
   }
 
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithRetryResponseAndKafkaProduceException() throws Exception {
     processor.start();
     Mockito.doReturn(
@@ -1200,7 +1230,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
     testSubmitMessageWithRetryResponseAndKafkaProduceExceptionMessageCheck();
   }
 
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithRetryResponseAndKafkaProduceException2() throws Exception {
     processor.start();
     CompletableFuture completableFuture = new CompletableFuture();
@@ -1219,7 +1250,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
     testSubmitMessageWithRetryResponseAndKafkaProduceExceptionMessageCheck();
   }
 
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitMessageWithResqResponseAndKafkaProduceException() throws Exception {
     processor.start();
     CompletableFuture completableFuture = new CompletableFuture();
@@ -1236,18 +1268,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
     // gRPC endpoint returns RETRY so we sent to KAFKA.
     // Kafka send then returns INVALID, so we should retry to KAFKA.
     Mockito.verify(dispatcher, Mockito.times(3)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(3, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(3, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1255,7 +1287,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1263,10 +1295,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.RESQ_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
     DLQMetadata dlqMetadata =
@@ -1277,11 +1309,11 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(2).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.RESQ_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(2).getItem().getDestination());
     dlqMetadata =
@@ -1292,7 +1324,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
   }
 
   private void testSubmitMessageWithRetryResponseAndKafkaProduceExceptionMessageCheck()
@@ -1300,18 +1332,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
     processor.start();
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
     // gRPC endpoint returns RETRY so we sent to KAFKA.
     // Kafka send then returns INVALID, so we should retry to KAFKA.
     Mockito.verify(dispatcher, Mockito.times(3)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(3, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(3, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1319,7 +1351,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1327,10 +1359,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.RETRY_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
     DLQMetadata dlqMetadata =
@@ -1341,11 +1373,11 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(2).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.RETRY_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(2).getItem().getDestination());
     dlqMetadata =
@@ -1356,7 +1388,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
   }
 
   @Test
@@ -1378,7 +1410,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
     } catch (ExecutionException e) {
       exception = e;
     }
-    Assert.assertNotNull(exception);
+    Assertions.assertNotNull(exception);
   }
 
   @Test
@@ -1397,7 +1429,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
     } catch (ExecutionException e) {
       exception = e;
     }
-    Assert.assertNotNull(exception);
+    Assertions.assertNotNull(exception);
   }
 
   @Test
@@ -1412,7 +1444,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
     }
     // after job cancel, message should be skipped without being dispatched
     Mockito.verify(dispatcher, Mockito.never()).submit(Mockito.any());
-    Assert.assertNull(exception);
+    Assertions.assertNull(exception);
   }
 
   @Test
@@ -1433,7 +1465,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
     } catch (ExecutionException e) {
       exception = e;
     }
-    Assert.assertNotNull(exception);
+    Assertions.assertNotNull(exception);
   }
 
   @Test
@@ -1449,7 +1481,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
         .when(dispatcher)
         .submit(Mockito.any());
     long offset = processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture().get();
-    Assert.assertEquals(-1, offset);
+    Assertions.assertEquals(-1, offset);
   }
 
   @Test
@@ -1470,7 +1502,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(-1, (long) offsetFuture.get());
+    Assertions.assertEquals(-1, (long) offsetFuture.get());
   }
 
   @Test
@@ -1492,18 +1524,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, jobWithoutDLQTopic)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns RETRY so it should have been retried to KAFKA.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1511,7 +1543,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1519,10 +1551,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.RETRY_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
     DLQMetadata dlqMetadata =
@@ -1533,7 +1565,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(1, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(1, dlqMetadata.getRetryCount());
   }
 
   @Test
@@ -1556,18 +1588,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, jobWithoutRetryTopic)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns RETRY so it should have been retried to KAFKA.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1575,7 +1607,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1583,13 +1615,13 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1597,7 +1629,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1630,19 +1662,19 @@ public class ProcessorImplTest extends ProcessorTestBase {
         processor
             .submit(ItemAndJob.of(consumerRecord, jobWithoutDLQAndRetryQueueTopic))
             .toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns STASH but dlq topic and retry queue topic are empty so it should have
     // been resent to GRPC.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1650,7 +1682,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1658,13 +1690,13 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1672,7 +1704,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1700,19 +1732,19 @@ public class ProcessorImplTest extends ProcessorTestBase {
         processor
             .submit(ItemAndJob.of(consumerRecord, jobWithoutDLQAndRetryQueueTopic))
             .toCompletableFuture();
-    Assert.assertEquals(-1, (long) offsetFuture.get());
+    Assertions.assertEquals(-1, (long) offsetFuture.get());
 
     // gRPC endpoint returns STASH but dlq topic and retry queue topic are empty so it should have
     // been resent to GRPC. However, the processor is not running, so no more action.
     Mockito.verify(dispatcher, Mockito.times(1)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1722,7 +1754,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getRetryCount());
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testEmptyRetryQueueTopicFallbackToRetry()
       throws ExecutionException, InterruptedException {
     processor.start();
@@ -1745,19 +1778,19 @@ public class ProcessorImplTest extends ProcessorTestBase {
         processor
             .submit(ItemAndJob.of(consumerRecord, jobWithoutRetryQueueTopic))
             .toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns RETRY but retry queue topic is empty so it should have been resent to
     // GRPC.
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1765,7 +1798,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1773,13 +1806,13 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1787,7 +1820,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1801,7 +1834,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
             KafkaPipelineIssue.RETRY_WITHOUT_RETRY_QUEUE.getPipelineHealthIssue());
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testEmptyRetryQueueTopicFallbackToRetryNotRunning()
       throws ExecutionException, InterruptedException {
     Job.Builder builder = Job.newBuilder(job);
@@ -1820,19 +1854,19 @@ public class ProcessorImplTest extends ProcessorTestBase {
         processor
             .submit(ItemAndJob.of(consumerRecord, jobWithoutRetryQueueTopic))
             .toCompletableFuture();
-    Assert.assertEquals(-1, (long) offsetFuture.get());
+    Assertions.assertEquals(-1, (long) offsetFuture.get());
 
     // gRPC endpoint returns RETRY but retry queue topic is empty so it should have been resent to
     // GRPC. However, the processor is not running so no more actions.
     Mockito.verify(dispatcher, Mockito.times(1)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(1, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1840,7 +1874,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1854,7 +1888,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
   public void testProcessTracedConsumerRecord() throws InterruptedException {
     TracedConsumerRecord tracedConsumerRecord =
         TracedConsumerRecord.of(consumerRecord, infra.tracer(), "consumerGroup");
-    Assert.assertTrue(tracedConsumerRecord.span().isPresent());
+    Assertions.assertTrue(tracedConsumerRecord.span().isPresent());
     processor.start();
     Mockito.doReturn(
             CompletableFuture.completedFuture(
@@ -1867,7 +1901,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
     } catch (ExecutionException e) {
       exception = e;
     }
-    Assert.assertNull(exception);
+    Assertions.assertNull(exception);
   }
 
   @Test
@@ -1910,19 +1944,19 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     // gRPC endpoint returns BACKOFF twice so we should have retried to RPC endpoint twice.
     // finally retried to STASH when exceeds maxRpcTimeouts;
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1930,7 +1964,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -1939,10 +1973,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getGrpcMessage()
             .getDispatchAttempt());
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.DLQ_TOPIC,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
     DLQMetadata dlqMetadata1 =
@@ -1953,7 +1987,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(2, dlqMetadata1.getRetryCount());
+    Assertions.assertEquals(2, dlqMetadata1.getRetryCount());
   }
 
   @Test
@@ -1973,7 +2007,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
               processor.start();
             });
     String expectedMessage = "The inflight message limit is not valid";
-    Assert.assertTrue(exception.getMessage().contains(expectedMessage));
+    Assertions.assertTrue(exception.getMessage().contains(expectedMessage));
   }
 
   @Test
@@ -1993,7 +2027,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
               processor.start();
             });
     String expectedMessage = "The inflight message limit is not valid";
-    Assert.assertTrue(exception.getMessage().contains(expectedMessage));
+    Assertions.assertTrue(exception.getMessage().contains(expectedMessage));
   }
 
   @Test
@@ -2020,7 +2054,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
         1,
         TimeUnit.SECONDS);
     ProcessorImpl.cancelSafeStage(future).toCompletableFuture().cancel(false);
-    Assert.assertEquals(10, future.get().intValue());
+    Assertions.assertEquals(10, future.get().intValue());
   }
 
   private void testCancelProcessWithCode(
@@ -2064,14 +2098,14 @@ public class ProcessorImplTest extends ProcessorTestBase {
     processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture().get();
 
     Mockito.verify(dispatcher, Mockito.times(2)).submit(dispatcherMessageArgumentCaptor.capture());
-    Assert.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(2, dispatcherMessageArgumentCaptor.getAllValues().size());
+    Assertions.assertEquals(
         DispatcherMessage.Type.GRPC,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ProcessorTestBase.MUTTLEY_ROUTING_KEY,
         dispatcherMessageArgumentCaptor.getAllValues().get(0).getItem().getDestination());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0,
         dispatcherMessageArgumentCaptor
             .getAllValues()
@@ -2079,10 +2113,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getRetryCount());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DispatcherMessage.Type.KAFKA,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         kafkaDispatchTopic,
         dispatcherMessageArgumentCaptor.getAllValues().get(1).getItem().getDestination());
     DLQMetadata dlqMetadata =
@@ -2093,7 +2127,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getItem()
                 .getProducerRecord()
                 .key());
-    Assert.assertEquals(retryCount, dlqMetadata.getRetryCount());
+    Assertions.assertEquals(retryCount, dlqMetadata.getRetryCount());
   }
 
   @Test
@@ -2105,12 +2139,13 @@ public class ProcessorImplTest extends ProcessorTestBase {
   @Test
   public void testGetMetricsTags() {
     Map<String, String> tags = processor.getMetricsTags(job);
-    Assert.assertEquals("routing-key", tags.get("uri"));
-    Assert.assertEquals(ProcessorTestBase.TOPIC, tags.get("kafka_topic"));
-    Assert.assertEquals(ProcessorTestBase.GROUP, tags.get("kafka_group"));
-    Assert.assertEquals(ProcessorTestBase.CLUSTER, tags.get("kafka_cluster"));
-    Assert.assertEquals(Integer.toString(ProcessorTestBase.PARTITION), tags.get("kafka_partition"));
-    Assert.assertEquals(ProcessorTestBase.CONSUMER_SERVICE_NAME, tags.get("consumer_service"));
+    Assertions.assertEquals("routing-key", tags.get("uri"));
+    Assertions.assertEquals(ProcessorTestBase.TOPIC, tags.get("kafka_topic"));
+    Assertions.assertEquals(ProcessorTestBase.GROUP, tags.get("kafka_group"));
+    Assertions.assertEquals(ProcessorTestBase.CLUSTER, tags.get("kafka_cluster"));
+    Assertions.assertEquals(
+        Integer.toString(ProcessorTestBase.PARTITION), tags.get("kafka_partition"));
+    Assertions.assertEquals(ProcessorTestBase.CONSUMER_SERVICE_NAME, tags.get("consumer_service"));
   }
 
   @Test
@@ -2138,7 +2173,8 @@ public class ProcessorImplTest extends ProcessorTestBase {
     Mockito.verify(permit, Mockito.times(1)).complete();
   }
 
-  @Test(timeout = 5000)
+  @Test
+  @Timeout(value = 5000, unit = TimeUnit.MILLISECONDS)
   public void testSubmitRateLimited() throws Exception {
     Mockito.doReturn(1.0).when(rateLimiter).acquire();
     Mockito.doReturn(1.0).when(rateLimiter).acquire(Mockito.anyInt());
@@ -2149,7 +2185,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     Mockito.verify(pipelineStateManager, Mockito.times(1))
         .reportIssue(job, KafkaPipelineIssue.MESSAGE_RATE_LIMITED.getPipelineHealthIssue());
@@ -2169,7 +2205,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+    Assertions.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
 
     Mockito.verify(pipelineStateManager, Mockito.times(1))
         .reportIssue(job, KafkaPipelineIssue.INFLIGHT_MESSAGE_LIMITED.getPipelineHealthIssue());

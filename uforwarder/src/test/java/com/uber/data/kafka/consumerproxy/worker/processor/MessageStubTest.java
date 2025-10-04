@@ -2,7 +2,6 @@ package com.uber.data.kafka.consumerproxy.worker.processor;
 
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcResponse;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Scope;
 import io.grpc.Status;
@@ -12,11 +11,11 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.atomic.AtomicInteger;
 import net.logstash.logback.argument.StructuredArgument;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class MessageStubTest extends FievelTestBase {
+public class MessageStubTest {
 
   @Test
   public void testCancelStub() {
@@ -24,23 +23,22 @@ public class MessageStubTest extends FievelTestBase {
     MessageStub stub = new MessageStub();
     MessageStub.Attempt attempt = stub.newAttempt();
     attempt.onCancel(
-        () -> {
-          codeCount
-              .computeIfAbsent(stub.cancelCode().get(), c -> new AtomicInteger())
-              .incrementAndGet();
-        });
+        () ->
+            codeCount
+                .computeIfAbsent(stub.cancelCode().get(), c -> new AtomicInteger())
+                .incrementAndGet());
     boolean result = stub.cancel(DispatcherResponse.Code.DLQ);
-    Assert.assertTrue(result);
-    Assert.assertEquals(
+    Assertions.assertTrue(result);
+    Assertions.assertEquals(
         1,
         stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.ATTEMPT_CANCEL.toString()))
             .count());
-    Assert.assertEquals(1, codeCount.get(DispatcherResponse.Code.DLQ).get());
-    Assert.assertFalse(codeCount.containsKey(DispatcherResponse.Code.RETRY));
+    Assertions.assertEquals(1, codeCount.get(DispatcherResponse.Code.DLQ).get());
+    Assertions.assertFalse(codeCount.containsKey(DispatcherResponse.Code.RETRY));
     result = stub.cancel(DispatcherResponse.Code.DLQ);
-    Assert.assertFalse(result);
-    Assert.assertEquals(DispatcherResponse.Code.DLQ, stub.cancelCode().get());
+    Assertions.assertFalse(result);
+    Assertions.assertEquals(DispatcherResponse.Code.DLQ, stub.cancelCode().get());
   }
 
   @Test
@@ -49,25 +47,24 @@ public class MessageStubTest extends FievelTestBase {
     Map<DispatcherResponse.Code, AtomicInteger> codeCount = new HashMap<>();
     MessageStub.Attempt attempt = stub.newAttempt();
     boolean result = stub.cancel(DispatcherResponse.Code.RETRY);
-    Assert.assertTrue(result);
+    Assertions.assertTrue(result);
     attempt.onCancel(
-        () -> {
-          codeCount
-              .computeIfAbsent(stub.cancelCode().get(), c -> new AtomicInteger())
-              .incrementAndGet();
-        });
-    Assert.assertEquals(1, codeCount.get(DispatcherResponse.Code.RETRY).get());
-    Assert.assertFalse(codeCount.containsKey(DispatcherResponse.Code.DLQ));
+        () ->
+            codeCount
+                .computeIfAbsent(stub.cancelCode().get(), c -> new AtomicInteger())
+                .incrementAndGet());
+    Assertions.assertEquals(1, codeCount.get(DispatcherResponse.Code.RETRY).get());
+    Assertions.assertFalse(codeCount.containsKey(DispatcherResponse.Code.DLQ));
     result = stub.cancel(DispatcherResponse.Code.DLQ);
-    Assert.assertEquals(DispatcherResponse.Code.RETRY, stub.cancelCode().get());
-    Assert.assertFalse(result);
+    Assertions.assertEquals(DispatcherResponse.Code.RETRY, stub.cancelCode().get());
+    Assertions.assertFalse(result);
   }
 
   @Test
   public void testRetryAfterCancel() {
     MessageStub stub = new MessageStub();
     stub.cancel(DispatcherResponse.Code.RETRY);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.PASSIVE_CANCEL.toString()))
@@ -75,14 +72,14 @@ public class MessageStubTest extends FievelTestBase {
     CompletableFuture future = new CompletableFuture();
     // retry should not be canceled w/o any attempt
     stub.withRetryFuture(future);
-    Assert.assertFalse(future.isCancelled());
+    Assertions.assertFalse(future.isCancelled());
   }
 
   @Test
   public void testNewAttemptAfterCancel() throws ExecutionException, InterruptedException {
     MessageStub stub = new MessageStub();
     stub.cancel(DispatcherResponse.Code.RETRY);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.PASSIVE_CANCEL.toString()))
@@ -93,14 +90,14 @@ public class MessageStubTest extends FievelTestBase {
             .complete(CompletableFuture.completedFuture(GrpcResponse.of(Status.CANCELLED)))
             .toCompletableFuture()
             .get();
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.ATTEMPT_CANCELED.toString()))
             .count());
-    Assert.assertTrue(stub.getCurrentAttempt() == null);
-    Assert.assertEquals(DispatcherResponse.Code.RETRY, response.code().get());
-    Assert.assertEquals(Status.CANCELLED.getCode(), response.status().getCode());
+    Assertions.assertTrue(stub.getCurrentAttempt() == null);
+    Assertions.assertEquals(DispatcherResponse.Code.RETRY, response.code().get());
+    Assertions.assertEquals(Status.CANCELLED.getCode(), response.status().getCode());
   }
 
   @Test
@@ -111,20 +108,20 @@ public class MessageStubTest extends FievelTestBase {
     MessageStub.Attempt attempt = stub.newAttempt();
     attempt.onCancel(() -> future.complete(GrpcResponse.of(Status.CANCELLED)));
     stub.cancel(DispatcherResponse.Code.RETRY);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.ATTEMPT_CANCEL.toString()))
             .count());
     GrpcResponse response = attempt.complete(future).toCompletableFuture().get();
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.ATTEMPT_CANCELED.toString()))
             .count());
-    Assert.assertTrue(stub.getCurrentAttempt() == null);
-    Assert.assertEquals(DispatcherResponse.Code.RETRY, response.code().get());
-    Assert.assertEquals(Status.CANCELLED.getCode(), response.status().getCode());
+    Assertions.assertTrue(stub.getCurrentAttempt() == null);
+    Assertions.assertEquals(DispatcherResponse.Code.RETRY, response.code().get());
+    Assertions.assertEquals(Status.CANCELLED.getCode(), response.status().getCode());
   }
 
   @Test
@@ -136,11 +133,11 @@ public class MessageStubTest extends FievelTestBase {
             .complete(CompletableFuture.completedFuture(GrpcResponse.of(Status.OK)))
             .toCompletableFuture()
             .get();
-    Assert.assertFalse(stub.cancel(DispatcherResponse.Code.RETRY));
-    Assert.assertTrue(stub.getCurrentAttempt() == null);
-    Assert.assertFalse(response.code().isPresent());
-    Assert.assertEquals(Status.OK.getCode(), response.status().getCode());
-    Assert.assertEquals(
+    Assertions.assertFalse(stub.cancel(DispatcherResponse.Code.RETRY));
+    Assertions.assertTrue(stub.getCurrentAttempt() == null);
+    Assertions.assertFalse(response.code().isPresent());
+    Assertions.assertEquals(Status.OK.getCode(), response.status().getCode());
+    Assertions.assertEquals(
         1,
         stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.CLOSED.toString()))
@@ -152,30 +149,30 @@ public class MessageStubTest extends FievelTestBase {
     MessageStub stub = new MessageStub();
     CompletableFuture future = new CompletableFuture();
     CompletableFuture stubFuture = stub.withFuturePermit(future);
-    Assert.assertTrue(stub.cancel(DispatcherResponse.Code.RETRY));
-    Assert.assertEquals(
+    Assertions.assertTrue(stub.cancel(DispatcherResponse.Code.RETRY));
+    Assertions.assertEquals(
         1,
         stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.PERMIT_CANCEL.toString()))
             .count());
-    Assert.assertTrue(future.isCancelled());
-    Assert.assertTrue(stubFuture.isCompletedExceptionally());
+    Assertions.assertTrue(future.isCancelled());
+    Assertions.assertTrue(stubFuture.isCompletedExceptionally());
   }
 
   @Test
   public void acquireInfligtPermitAfterCancel() {
     MessageStub stub = new MessageStub();
-    Assert.assertTrue(stub.cancel(DispatcherResponse.Code.RETRY));
+    Assertions.assertTrue(stub.cancel(DispatcherResponse.Code.RETRY));
     CompletableFuture future = new CompletableFuture();
     CompletableFuture stubFuture = stub.withFuturePermit(future);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         stub.getDebugInfo().stream()
             .filter(
                 event -> event.contains(MessageStub.DebugStatus.PERMIT_PASSIVE_CANCELED.toString()))
             .count());
-    Assert.assertTrue(future.isCancelled());
-    Assert.assertTrue(stubFuture.isCompletedExceptionally());
+    Assertions.assertTrue(future.isCancelled());
+    Assertions.assertTrue(stubFuture.isCompletedExceptionally());
   }
 
   @Test
@@ -188,12 +185,12 @@ public class MessageStubTest extends FievelTestBase {
     // retry should not be canceled w/o any attempt
     stub.withRetryFuture(retryFuture);
     stub.cancel(DispatcherResponse.Code.RETRY);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1,
         stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.RETRY_CANCEL.toString()))
             .count());
-    Assert.assertTrue(retryFuture.isCancelled());
+    Assertions.assertTrue(retryFuture.isCancelled());
   }
 
   @Test
@@ -223,8 +220,8 @@ public class MessageStubTest extends FievelTestBase {
     for (int i = 0; i < 10; ++i) {
       stub.logDebugStatus(MessageStub.DebugStatus.CLOSED);
     }
-    Assert.assertEquals(10, stub.getDebugInfo().size());
-    Assert.assertEquals(
+    Assertions.assertEquals(10, stub.getDebugInfo().size());
+    Assertions.assertEquals(
         10,
         stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.CLOSED.toString()))

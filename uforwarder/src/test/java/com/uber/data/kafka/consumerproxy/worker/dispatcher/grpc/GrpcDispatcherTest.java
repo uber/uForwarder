@@ -14,7 +14,6 @@ import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
 import com.uber.data.kafka.datatransfer.common.context.ContextManager;
 import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
-import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.Channel;
 import io.grpc.ClientCall;
 import io.grpc.Context;
@@ -33,9 +32,9 @@ import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
@@ -44,7 +43,7 @@ import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class GrpcDispatcherTest extends FievelTestBase {
+public class GrpcDispatcherTest {
   private static final Logger LOGGER = LoggerFactory.getLogger(GrpcDispatcherTest.class);
   private static Headers HEADERS = new RecordHeaders();
   private CoreInfra infra;
@@ -62,7 +61,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
   private GrpcManagedChannelPool.Metrics channelPoolMetrics;
   private ExecutorService executorService;
 
-  @Before
+  @BeforeEach
   public void setup() {
     ContextManager contextManager = Mockito.mock(ContextManager.class);
     messageStub = new MessageStub();
@@ -128,16 +127,16 @@ public class GrpcDispatcherTest extends FievelTestBase {
 
   @Test
   public void testLifecycle() {
-    Assert.assertFalse(dispatcher.isRunning());
+    Assertions.assertFalse(dispatcher.isRunning());
     dispatcher.start();
-    Assert.assertTrue(dispatcher.isRunning());
+    Assertions.assertTrue(dispatcher.isRunning());
     dispatcher.stop();
-    Assert.assertFalse(dispatcher.isRunning());
+    Assertions.assertFalse(dispatcher.isRunning());
   }
 
   @Test
   public void testSubmitNullMessage() {
-    Assert.assertTrue(dispatcher.submit(null).toCompletableFuture().isCompletedExceptionally());
+    Assertions.assertTrue(dispatcher.submit(null).toCompletableFuture().isCompletedExceptionally());
   }
 
   @Test
@@ -174,7 +173,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
               HEADERS,
               "value".getBytes(),
               "key".getBytes());
-      Assert.assertFalse(
+      Assertions.assertFalse(
           dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture().isDone());
       Mockito.verify(infra.contextManager(), Mockito.times(1))
           .wrap(Mockito.any(CompletableFuture.class));
@@ -186,7 +185,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
       GrpcDispatcher.ResponseStreamObserver mockObserver = mock.constructed().get(0);
       CompletableFuture future = (CompletableFuture) constructorArgs.get(mockObserver).get(1);
       future.complete(GrpcResponse.of());
-      Assert.assertTrue(
+      Assertions.assertTrue(
           grpcRequest
               .getFuture()
               .thenApply(response -> response.status() == Status.OK ? true : false)
@@ -229,7 +228,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
               HEADERS,
               "value".getBytes(),
               "key".getBytes());
-      Assert.assertFalse(
+      Assertions.assertFalse(
           dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture().isDone());
       messageStub.cancel(DispatcherResponse.Code.RETRY);
       Mockito.verify(mockContext, Mockito.times(1)).cancel(null);
@@ -265,7 +264,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
             "key".getBytes());
     CompletableFuture<GrpcResponse> future =
         dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture();
-    Assert.assertTrue(future.isDone());
+    Assertions.assertTrue(future.isDone());
     Mockito.verify(infra.contextManager(), Mockito.times(1))
         .wrap(Mockito.any(CompletableFuture.class));
     Mockito.verify(grpcFilter, Mockito.times(1))
@@ -275,7 +274,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
             Mockito.any(Channel.class),
             Mockito.any(GrpcRequest.class),
             ArgumentMatchers.<String>any());
-    Assert.assertEquals(Status.UNAUTHENTICATED, future.get().status());
+    Assertions.assertEquals(Status.UNAUTHENTICATED, future.get().status());
   }
 
   @Test
@@ -301,7 +300,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
             0,
             0,
             HEADERS);
-    Assert.assertFalse(
+    Assertions.assertFalse(
         dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture().isDone());
     Mockito.verify(infra.contextManager(), Mockito.times(1))
         .wrap(Mockito.any(CompletableFuture.class));
@@ -316,7 +315,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
   public void testMethodDescriptor() {
     MethodDescriptor.Marshaller<ByteString> marshaller = methodDescriptor.getRequestMarshaller();
     String string = "string";
-    Assert.assertEquals(
+    Assertions.assertEquals(
         string,
         marshaller
             .parse(marshaller.stream(ByteString.copyFrom(string, Charsets.UTF_8)))
@@ -346,10 +345,10 @@ public class GrpcDispatcherTest extends FievelTestBase {
     GrpcDispatcher.ResponseStreamObserver responseStreamObserver =
         dispatcher.new ResponseStreamObserver(future, timeoutMs, grpcRequest);
     responseStreamObserver.onNext(Empty.getDefaultInstance());
-    Assert.assertFalse(future.isDone());
+    Assertions.assertFalse(future.isDone());
     responseStreamObserver.onCompleted();
-    Assert.assertEquals(Status.Code.OK, future.get().status().getCode());
-    Assert.assertTrue(
+    Assertions.assertEquals(Status.Code.OK, future.get().status().getCode());
+    Assertions.assertTrue(
         future
             .thenApply(response -> response.status() == Status.OK ? true : false)
             .toCompletableFuture()
@@ -363,8 +362,8 @@ public class GrpcDispatcherTest extends FievelTestBase {
         dispatcher.new ResponseStreamObserver(future, timeoutMs, grpcRequest);
     responseStreamObserver.onError(Status.FAILED_PRECONDITION.asRuntimeException());
     GrpcResponse response = future.get();
-    Assert.assertEquals(Status.Code.FAILED_PRECONDITION, response.status().getCode());
-    Assert.assertFalse(response.isOverDue());
+    Assertions.assertEquals(Status.Code.FAILED_PRECONDITION, response.status().getCode());
+    Assertions.assertFalse(response.isOverDue());
   }
 
   @Test
@@ -374,8 +373,8 @@ public class GrpcDispatcherTest extends FievelTestBase {
         dispatcher.new ResponseStreamObserver(future, -1, grpcRequest);
     responseStreamObserver.onError(Status.UNAVAILABLE.asRuntimeException());
     GrpcResponse response = future.get();
-    Assert.assertEquals(Status.Code.UNAVAILABLE, response.status().getCode());
-    Assert.assertTrue(response.isOverDue());
+    Assertions.assertEquals(Status.Code.UNAVAILABLE, response.status().getCode());
+    Assertions.assertTrue(response.isOverDue());
   }
 
   @Test
@@ -386,9 +385,9 @@ public class GrpcDispatcherTest extends FievelTestBase {
         dispatcher.new ResponseStreamObserver(future, 100000, grpcRequest);
     responseStreamObserver.onError(Status.UNKNOWN.asRuntimeException());
     GrpcResponse response = future.get();
-    Assert.assertEquals(Status.Code.UNKNOWN, response.status().getCode());
-    Assert.assertFalse(response.isOverDue());
-    Assert.assertEquals(DispatcherResponse.Code.DLQ, response.code().get());
+    Assertions.assertEquals(Status.Code.UNKNOWN, response.status().getCode());
+    Assertions.assertFalse(response.isOverDue());
+    Assertions.assertEquals(DispatcherResponse.Code.DLQ, response.code().get());
   }
 
   @Test
@@ -412,8 +411,8 @@ public class GrpcDispatcherTest extends FievelTestBase {
           Metadata.Key.of("kafka-action", Metadata.ASCII_STRING_MARSHALLER), entry.getKey());
       responseStreamObserver.onError(
           new StatusRuntimeException(Status.FAILED_PRECONDITION, metadata));
-      Assert.assertEquals(Status.Code.FAILED_PRECONDITION, future.get().status().getCode());
-      Assert.assertEquals(entry.getValue(), future.get().code().get());
+      Assertions.assertEquals(Status.Code.FAILED_PRECONDITION, future.get().status().getCode());
+      Assertions.assertEquals(entry.getValue(), future.get().code().get());
     }
   }
 
@@ -447,15 +446,15 @@ public class GrpcDispatcherTest extends FievelTestBase {
             "key".getBytes());
     CompletableFuture<GrpcResponse> future =
         dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture();
-    Assert.assertTrue(future.isDone());
-    Assert.assertEquals(Status.UNKNOWN.getCode(), future.get().status().getCode());
+    Assertions.assertTrue(future.isDone());
+    Assertions.assertEquals(Status.UNKNOWN.getCode(), future.get().status().getCode());
     // Make sure current attempt has been reset
-    Assert.assertTrue(messageStub.newAttempt() != null);
+    Assertions.assertTrue(messageStub.newAttempt() != null);
   }
 
   @Test
   public void testConstructor() {
-    Assert.assertNotNull(
+    Assertions.assertNotNull(
         new GrpcDispatcher(
             infra,
             Optional.of(executorService),

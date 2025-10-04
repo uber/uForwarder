@@ -2,23 +2,22 @@ package com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc;
 
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
 import com.uber.data.kafka.datatransfer.Job;
-import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.Channel;
 import io.grpc.Status;
 import java.util.Collections;
 import java.util.Optional;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class GrpcFilterChainTest extends FievelTestBase {
+public class GrpcFilterChainTest {
   private GrpcRequest request = Mockito.mock(GrpcRequest.class);
 
   @Test
   public void testBuildEmptyFilter() {
     GrpcFilterChain.Builder builder = GrpcFilterChain.newBuilder();
     GrpcFilter grpcFilter = builder.build();
-    Assert.assertEquals(grpcFilter, GrpcFilter.NOOP);
+    Assertions.assertEquals(grpcFilter, GrpcFilter.NOOP);
   }
 
   @Test
@@ -33,7 +32,7 @@ public class GrpcFilterChainTest extends FievelTestBase {
     Mockito.when(mockFilter2.interceptChannel(channel2, request)).thenReturn(channel3);
     GrpcFilter filter = GrpcFilterChain.newBuilder().add(mockFilter1).add(mockFilter2).build();
     Channel result = filter.interceptChannel(channel1, request);
-    Assert.assertEquals(channel3, result);
+    Assertions.assertEquals(channel3, result);
   }
 
   @Test
@@ -49,7 +48,7 @@ public class GrpcFilterChainTest extends FievelTestBase {
     Optional<DispatcherResponse.Code> code =
         filter.tryHandleError(t, request, Collections.EMPTY_MAP);
     Mockito.verify(mockFilter2, Mockito.times(1)).tryHandleError(t, request, Collections.EMPTY_MAP);
-    Assert.assertEquals(DispatcherResponse.Code.DLQ, code.get());
+    Assertions.assertEquals(DispatcherResponse.Code.DLQ, code.get());
   }
 
   @Test
@@ -64,7 +63,7 @@ public class GrpcFilterChainTest extends FievelTestBase {
     Optional<Status> status1 = filter.tryHandleRequest(request, job);
     Mockito.verify(mockFilter1, Mockito.times(1)).tryHandleRequest(request, job);
     Mockito.verify(mockFilter2, Mockito.times(1)).tryHandleRequest(request, job);
-    Assert.assertEquals(Status.PERMISSION_DENIED, status1.get());
+    Assertions.assertEquals(Status.PERMISSION_DENIED, status1.get());
 
     // both filters now return empty
     Mockito.clearInvocations(mockFilter1, mockFilter2);
@@ -72,6 +71,6 @@ public class GrpcFilterChainTest extends FievelTestBase {
     Optional<Status> status2 = filter.tryHandleRequest(request, job);
     Mockito.verify(mockFilter1, Mockito.times(1)).tryHandleRequest(request, job);
     Mockito.verify(mockFilter2, Mockito.times(1)).tryHandleRequest(request, job);
-    Assert.assertFalse(status2.isPresent());
+    Assertions.assertFalse(status2.isPresent());
   }
 }

@@ -1,15 +1,14 @@
 package com.uber.data.kafka.consumerproxy.worker.limiter;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class VegasAdaptiveInlightLimiterTest extends FievelTestBase {
+public class VegasAdaptiveInlightLimiterTest {
   @Test
   public void testBuild() {
     VegasAdaptiveInflightLimiter.Builder builder = VegasAdaptiveInflightLimiter.newBuilder();
     AdaptiveInflightLimiter limiter = builder.build();
-    Assert.assertTrue(limiter.getMetrics().getExtraMetrics().isEmpty());
-    Assert.assertEquals(100, limiter.getMetrics().getLimit());
+    Assertions.assertTrue(limiter.getMetrics().getExtraMetrics().isEmpty());
+    Assertions.assertEquals(100, limiter.getMetrics().getLimit());
   }
 }

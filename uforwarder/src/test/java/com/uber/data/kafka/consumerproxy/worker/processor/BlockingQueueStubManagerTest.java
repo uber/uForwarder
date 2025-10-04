@@ -1,5 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
@@ -12,9 +14,9 @@ import com.uber.m3.tally.Scope;
 import java.util.Optional;
 import java.util.function.BiConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
@@ -32,7 +34,7 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
   private ProcessorMessage pm1, pm2, pm3;
   private TopicPartition tp1, tp2, tp3;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     physicalKafkaMetadata1 = new TopicPartitionOffset(TOPIC, 2, 1);
     physicalKafkaMetadata2 = new TopicPartitionOffset(TOPIC, 2, 2);
@@ -128,7 +130,7 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
         .accept(
             Mockito.eq(BlockingQueue.BlockingReason.BLOCKING),
             Mockito.argThat(r -> r.responseCode == DispatcherResponse.Code.RETRY));
-    Assert.assertEquals(1, blockingQueueStubManager3.getTokens());
+    Assertions.assertEquals(1, blockingQueueStubManager3.getTokens());
     blockingQueueStubManager3.cancel(tp3);
   }
 
@@ -164,7 +166,7 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
         .accept(
             Mockito.eq(BlockingQueue.BlockingReason.BLOCKING),
             Mockito.argThat(r -> r.errorCode == CancelResult.ErrorCode.JOB_NOT_SUPPORTED));
-    Assert.assertEquals(51, blockingQueueStubManager.getTokens());
+    Assertions.assertEquals(51, blockingQueueStubManager.getTokens());
   }
 
   @Test
@@ -201,7 +203,7 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
         .accept(
             Mockito.eq(BlockingQueue.BlockingReason.BLOCKING),
             Mockito.argThat(r -> r.responseCode == DispatcherResponse.Code.RESQ));
-    Assert.assertEquals(49, blockingQueueStubManager.getTokens());
+    Assertions.assertEquals(49, blockingQueueStubManager.getTokens());
   }
 
   @Test
@@ -233,7 +235,7 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
         .accept(
             Mockito.eq(BlockingQueue.BlockingReason.BLOCKING),
             Mockito.argThat(r -> r.errorCode == CancelResult.ErrorCode.JOB_NOT_SUPPORTED));
-    Assert.assertEquals(51, blockingQueueStubManager.getTokens());
+    Assertions.assertEquals(51, blockingQueueStubManager.getTokens());
   }
 
   @Test
@@ -267,12 +269,12 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
         .accept(
             Mockito.eq(BlockingQueue.BlockingReason.BLOCKING),
             Mockito.argThat(r -> r.errorCode == CancelResult.ErrorCode.JOB_NOT_SUPPORTED));
-    Assert.assertEquals(51, blockingQueueStubManager.getTokens());
+    Assertions.assertEquals(51, blockingQueueStubManager.getTokens());
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testUnassignedPartition() {
-    blockingQueueStubManager1.receive(pm1);
+    assertThrows(IllegalStateException.class, () -> blockingQueueStubManager1.receive(pm1));
   }
 
   @Test
@@ -316,7 +318,7 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
             Mockito.eq(BlockingQueue.BlockingReason.BLOCKING),
             Mockito.argThat(r -> r.responseCode == DispatcherResponse.Code.RETRY));
     // cancel failed and token returned
-    Assert.assertEquals(51, blockingQueueStubManager3.getTokens());
+    Assertions.assertEquals(51, blockingQueueStubManager3.getTokens());
   }
 
   @Test

@@ -10,14 +10,13 @@ import com.uber.data.kafka.datatransfer.RetryConfig;
 import com.uber.data.kafka.datatransfer.RetryQueue;
 import com.uber.data.kafka.datatransfer.RpcDispatcherTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.nio.charset.StandardCharsets;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
-import org.junit.Before;
+import org.junit.jupiter.api.BeforeEach;
 
-public abstract class ProcessorTestBase extends FievelTestBase {
+public abstract class ProcessorTestBase {
   protected static String KEY = "key";
   protected static String VALUE = "value";
   protected static String CLUSTER = "cluster";
@@ -44,7 +43,7 @@ public abstract class ProcessorTestBase extends FievelTestBase {
   protected ProcessorMessage processorMessage;
   protected CoreInfra infra;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     infra = CoreInfra.NOOP;
     job = newJob(TOPIC, PARTITION);

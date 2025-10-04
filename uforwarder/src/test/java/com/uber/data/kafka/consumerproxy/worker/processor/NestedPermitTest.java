@@ -4,14 +4,13 @@ import static org.mockito.Mockito.mock;
 
 import com.google.common.collect.ImmutableList;
 import com.uber.data.kafka.consumerproxy.worker.limiter.InflightLimiter;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.List;
 import java.util.function.Consumer;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class NestedPermitTest extends FievelTestBase {
+public class NestedPermitTest {
   @Test
   public void testComplete() {
     // Given
@@ -31,8 +30,8 @@ public class NestedPermitTest extends FievelTestBase {
     boolean result2 = nestedPermit.complete(result);
 
     // Then
-    Assert.assertTrue(result1);
-    Assert.assertFalse(result2);
+    Assertions.assertTrue(result1);
+    Assertions.assertFalse(result2);
     Mockito.verify(permit1).complete(result);
     Mockito.verify(permit2).complete(result);
     Mockito.verify(permit3).complete(result);

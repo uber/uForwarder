@@ -17,7 +17,6 @@ import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.SeekStartOffsetOpt
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.ThroughputTracker;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadTracker;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Histogram;
@@ -31,13 +30,13 @@ import java.util.concurrent.ExecutionException;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class OriginalTopicKafkaFetcherTest extends FievelTestBase {
+public class OriginalTopicKafkaFetcherTest {
   private final String THREAD_NAME = "thread-name";
   private final String TOPIC = "topic";
   private final String GROUP = "group";
@@ -51,7 +50,7 @@ public class OriginalTopicKafkaFetcherTest extends FievelTestBase {
   private CoreInfra infra;
   private AbstractKafkaFetcherThread fetcherThread;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     Scope scope = Mockito.mock(Scope.class);
     Tracer tracer = Mockito.mock(Tracer.class);
@@ -115,7 +114,7 @@ public class OriginalTopicKafkaFetcherTest extends FievelTestBase {
 
   @Test
   public void testHandleEndOffsetAndDelay() throws ExecutionException, InterruptedException {
-    Assert.assertTrue(
+    Assertions.assertTrue(
         fetcherThread.handleEndOffsetAndDelay(
             Mockito.mock(ConsumerRecord.class),
             Mockito.mock(Job.class),
@@ -132,61 +131,61 @@ public class OriginalTopicKafkaFetcherTest extends FievelTestBase {
                     .build())
             .build();
     pipelineStateManager.run(job).toCompletableFuture().get();
-    Assert.assertFalse(
+    Assertions.assertFalse(
         fetcherThread.handleEndOffsetAndDelay(
             Mockito.mock(ConsumerRecord.class), job, checkpointManager, pipelineStateManager));
   }
 
   @Test
   public void testGetStartOffsetToSeek() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_SPECIFIED_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             1, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_INVALID));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_SPECIFIED_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             7, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_INVALID));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_SPECIFIED_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             12, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_INVALID));
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_EARLIEST_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             1, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_SPECIFIED_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             7, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_EARLIEST_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             12, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST));
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_LATEST_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             1, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_SPECIFIED_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             7, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_LATEST_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             12, 5L, 10L, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST));
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_SPECIFIED_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             1, null, null, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_INVALID));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_SPECIFIED_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             1, null, null, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_EARLIEST));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         SeekStartOffsetOption.SEEK_TO_SPECIFIED_OFFSET,
         fetcherThread.getSeekStartOffsetOption(
             1, null, null, AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST));
