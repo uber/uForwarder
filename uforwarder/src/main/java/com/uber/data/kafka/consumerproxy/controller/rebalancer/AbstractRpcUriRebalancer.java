@@ -54,11 +54,11 @@ import org.slf4j.LoggerFactory;
 abstract class AbstractRpcUriRebalancer implements Rebalancer {
 
   private static final Logger logger = LoggerFactory.getLogger(AbstractRpcUriRebalancer.class);
-  private static final double CAPACITY_PER_WORKER = 1.0;
   protected RebalancerConfiguration config;
   private final Scalar scalar;
   private final Scope scope;
   private final HibernatingJobRebalancer hibernatingJobRebalancer;
+  private final double capacity_per_worker;
 
   AbstractRpcUriRebalancer(
       Scope scope,
@@ -69,6 +69,7 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
     this.config = config;
     this.scalar = scalar;
     this.hibernatingJobRebalancer = hibernatingJobRebalancer;
+    this.capacity_per_worker = config.getPlacementWorkerScaleHardLimit();
   }
 
   /**
@@ -186,6 +187,36 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
   }
 
   /**
+   * Feedback system load metrics to scalar after assignment system load can be represented as
+   * demand divided by capacity load > 1.0 indicates some worker get overloaded demand can be
+   * represented by sum of all running jobs capacity can be represented by sum of worker capacity
+   *
+   * @param jobGroups that are registered to this data-transfer cluster.
+   * @param workers is the set of live workers
+   */
+  @Override
+  public void postProcess(
+      final Map<String, RebalancingJobGroup> jobGroups, final Map<Long, StoredWorker> workers) {
+    // demand
+    double demand =
+        jobGroups.values().stream()
+            .mapToDouble(
+                jobGroup ->
+                    jobGroup.getJobs().values().stream()
+                        .filter(job -> job.getState() == JobState.JOB_STATE_RUNNING)
+                        .mapToDouble(job -> Math.min(job.getScale(), capacity_per_worker))
+                        .sum())
+            .sum();
+    double capacity = workers.size() * capacity_per_worker;
+    if (capacity > capacity_per_worker) {
+      // if there is no worker, skip feedback loop, as it's not a typical capacity problem
+      double systemLoad = demand / capacity;
+      scalar.onLoad(systemLoad);
+      scope.gauge(MetricNames.REBALANCER_SYSTEM_LOAD).update(systemLoad);
+    }
+  }
+
+  /**
    * Minimizes the number of workers that are used by merging workers together.
    *
    * <p>This implementation adheres to the numWorkerPerUri config as a minimum value so it will not
@@ -239,7 +270,7 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
               Double otherLoad = loadPerWorker.get(otherWorkerId);
               Preconditions.checkNotNull(
                   otherLoad, "load should exist for worker_id since we built iterator from keyset");
-              if (otherLoad + thisLoad < CAPACITY_PER_WORKER) {
+              if (otherLoad + thisLoad < capacity_per_worker) {
                 jobsPerWorkerId
                     .getOrDefault(thisWorkerId, new HashMap<>())
                     .values()
@@ -404,7 +435,7 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
             reservedAssignment.getOrDefault(uri, new TreeSet<>());
         Optional<RebalancingWorker> worker = Optional.empty();
         if (workersForUri.size() > 0
-            && (workersForUri.first().getLoad() + load < CAPACITY_PER_WORKER
+            && (workersForUri.first().getLoad() + load < capacity_per_worker
                 || workersForUri.first().getLoad() == 0.0)) {
           // workersForUri is sorted by space used so if it doesn't fit onto the first worker, it
           // will not fit onto any other worker.
@@ -486,7 +517,7 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
           "rebalancingJob should not be null because Guava table guarantees >=1 column (worker_id) per row");
       if (workerToLoad.containsKey(workerId)) {
         double load = workerToLoad.get(workerId) + job.getLoad();
-        if (load < CAPACITY_PER_WORKER) {
+        if (load < capacity_per_worker) {
           workerToLoad.put(workerId, load);
         } else {
           result.put(jobId, workerId);
@@ -650,6 +681,7 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
     private static final String JOB_STATE_INVALID = "rebalancer.job.state.invalid";
     private static final String JOB_STATE_UNIMPLEMENTED = "rebalancer.job.state.unimplemented";
     private static final String JOB_STATE_UNSUPPORTED = "rebalancer.job.state.unsupported";
+    private static final String REBALANCER_SYSTEM_LOAD = "rebalancer.system.load";
 
     private MetricNames() {}
   }
