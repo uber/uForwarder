@@ -1,8 +1,8 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc;
 
 import static com.uber.data.kafka.datatransfer.common.MetadataUtils.metadataInterceptor;
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.AdditionalAnswers.delegatesTo;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -10,7 +10,6 @@ import static org.mockito.Mockito.verify;
 import com.uber.data.kafka.datatransfer.HeartbeatRequest;
 import com.uber.data.kafka.datatransfer.HeartbeatResponse;
 import com.uber.data.kafka.datatransfer.MasterWorkerServiceGrpc;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import com.uber.m3.tally.Scope;
 import io.grpc.Channel;
@@ -27,19 +26,22 @@ import io.grpc.inprocess.InProcessChannelBuilder;
 import io.grpc.inprocess.InProcessServerBuilder;
 import io.grpc.testing.GrpcCleanupRule;
 import java.io.IOException;
-import org.junit.Before;
 import org.junit.Rule;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.migrationsupport.rules.ExternalResourceSupport;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class DedupHeaderInterceptorTest extends FievelTestBase {
+@ExtendWith(ExternalResourceSupport.class)
+public class DedupHeaderInterceptorTest {
   @Rule public final GrpcCleanupRule grpcCleanup = new GrpcCleanupRule();
   private GrpcRequest request;
   private Scope scope;
 
-  @Before
+  @BeforeEach
   public void setup() {
     request = Mockito.mock(GrpcRequest.class);
     scope = new NoopScope();

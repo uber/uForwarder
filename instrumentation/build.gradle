@@ -16,5 +16,6 @@ dependencies {
     testImplementation project(':fievel-common')
     testImplementation 'junit:junit'
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.junit.jupiter:junit-jupiter-migrationsupport'
     testRuntimeOnly "org.junit.vintage:junit-vintage-engine"
 }
