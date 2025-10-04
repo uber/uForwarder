@@ -26,6 +26,8 @@ public class AutoScalarConfiguration {
   private static final double DEFAULT_REACTIVE_DOWN_SCALE_WINDOW_MIN_RATIO = 1.0;
   private static final double DEFAULT_REACTIVE_DOWN_SCALE_THRESHOLD = 0.9;
   private static final double DEFAULT_MAX_SCALE_WINDOW_DURATION_JITTER = 0.0;
+  private static final Duration DEFAULT_CALIBRATE_SCALE_WINDOW_DURATION = Duration.ofMinutes(5);
+  private static final Duration DEFAULT_CALIBRATE_DURATION = Duration.ofMinutes(30);
 
   // scale window duration for up scale
   private Duration upScaleWindowDuration = DEFAULT_UP_SCALE_WINDOW_DURATION;
@@ -98,6 +100,10 @@ public class AutoScalarConfiguration {
   private double reactiveDownScaleWindowThreshold = DEFAULT_REACTIVE_DOWN_SCALE_THRESHOLD;
 
   private double maxScaleWindowDurationJitter = DEFAULT_MAX_SCALE_WINDOW_DURATION_JITTER;
+
+  private Duration calibrateScaleWindowDuration = DEFAULT_CALIBRATE_SCALE_WINDOW_DURATION;
+
+  private Duration calibrateDuration = DEFAULT_CALIBRATE_DURATION;
 
   /**
    * Gets up scale window duration.
@@ -496,12 +502,48 @@ public class AutoScalarConfiguration {
     this.shadowScaleConverterMode = Optional.of(shadowScaleConverterMode);
   }
 
+  /**
+   * Gets duration of reactive scale window size The window size controls speed to adjust up/down
+   * scale
+   *
+   * @return
+   */
   public Duration getReactiveScaleWindowDuration() {
     return reactiveScaleWindowDuration;
   }
 
   public void setReactiveScaleWindowDuration(Duration reactiveScaleWindowDuration) {
     this.reactiveScaleWindowDuration = reactiveScaleWindowDuration;
+  }
+
+  /**
+   * Gets scale window size during calibration of job scale
+   *
+   * <p>calibration start after job scale initialization or reset with quota
+   *
+   * @return
+   */
+  public Duration getCalibrateScaleWindowDuration() {
+    return calibrateScaleWindowDuration;
+  }
+
+  public void setCalibrateScaleWindowDuration(Duration calibrateScaleWindowDuration) {
+    this.calibrateScaleWindowDuration = calibrateScaleWindowDuration;
+  }
+
+  /**
+   * Gets duration of job scale calibration
+   *
+   * <p>calibration start after job scale initialization or reset with quota
+   *
+   * @return
+   */
+  public Duration getCalibrateDuration() {
+    return calibrateDuration;
+  }
+
+  public void setCalibrateDuration(Duration calibrateDuration) {
+    this.calibrateDuration = calibrateDuration;
   }
 
   /**

@@ -158,22 +158,23 @@ public class AutoScalar implements Scalar {
 
     JobGroupKey jobGroupKey = JobGroupKey.of(jobGroup);
     final SignatureAndScale quota = new SignatureAndScale(jobGroup.getFlowControl());
+    final SignatureAndScale signatureAndScale;
     final Optional<Double> scale = rebalancingJobGroup.getScale();
-    if (!scale.isPresent()) {
+    if (scale.isEmpty()) {
+      signatureAndScale = quota;
       logger.info(
           String.format("Initialize job group scale state with quota"),
           StructuredLogging.kafkaTopic(jobGroupKey.getTopic()),
           StructuredLogging.kafkaCluster(jobGroupKey.getCluster()),
           StructuredLogging.kafkaGroup(jobGroupKey.getGroup()));
+    } else {
+      signatureAndScale = new SignatureAndScale(scale.get(), jobGroup.getFlowControl());
     }
     double newScale =
         statusStore
             .asMap()
             .computeIfAbsent(
-                jobGroupKey,
-                key ->
-                    new JobGroupScaleStatus(
-                        jobGroupKey, scale.isPresent() ? quota.build(scale.get()) : quota))
+                jobGroupKey, key -> new JobGroupScaleStatus(jobGroupKey, signatureAndScale))
             .getScale(quota, jobGroup.getMiscConfig().getScaleResetEnabled());
 
     scope
@@ -281,7 +282,7 @@ public class AutoScalar implements Scalar {
 
     private void reset(SignatureAndScale scale) {
       signature = scale.signature;
-      state = stateBuilder.build(scale.scale);
+      state = stateBuilder.build(scale.scale, scale.scaleFromQuota);
     }
 
     /**
@@ -341,24 +342,20 @@ public class AutoScalar implements Scalar {
   private class SignatureAndScale {
     private final double scale;
     private final long signature;
+    private final boolean scaleFromQuota;
 
     private SignatureAndScale(FlowControl flowControl) {
-      this(quotaToScale(flowControl), quotaToHash(flowControl));
+      this(quotaToScale(flowControl), quotaToHash(flowControl), true);
     }
 
-    private SignatureAndScale(double scale, long signature) {
+    private SignatureAndScale(double scale, FlowControl flowControl) {
+      this(scale, quotaToHash(flowControl), false);
+    }
+
+    private SignatureAndScale(double scale, long signature, boolean scaleFromQuota) {
       this.scale = scale;
       this.signature = signature;
-    }
-
-    /**
-     * build new instance with new scale value
-     *
-     * @param newScale
-     * @return
-     */
-    private SignatureAndScale build(double newScale) {
-      return new SignatureAndScale(newScale, signature);
+      this.scaleFromQuota = scaleFromQuota;
     }
   }
 

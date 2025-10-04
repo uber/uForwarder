@@ -32,6 +32,7 @@ message ScaleStateSnapshot {
   // scale computers for up/down/hibernate/bootstrap
   repeated ScaleComputerSnapshot scale_computer_snapshots = 1;
   double scale = 2;
+  string name = 3;
 }
 
 message ScaleComputerSnapshot {

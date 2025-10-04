@@ -30,7 +30,7 @@ public class ScaleStateTest {
 
   @Test
   public void testScaleUp() {
-    ScaleState state = builder.build(2.0);
+    ScaleState state = builder.build(2.0, false);
     Assertions.assertEquals(2, state.getScale(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -41,7 +41,7 @@ public class ScaleStateTest {
 
   @Test
   public void testScaleUpBelowMinFactor() {
-    ScaleState state = builder.build(2.0);
+    ScaleState state = builder.build(2.0, false);
     Assertions.assertEquals(2, state.getScale(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -52,7 +52,7 @@ public class ScaleStateTest {
 
   @Test
   public void testResetAndScaleUp() {
-    ScaleState state = builder.build(2.0);
+    ScaleState state = builder.build(2.0, false);
     Assertions.assertEquals(2, state.getScale(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -68,7 +68,7 @@ public class ScaleStateTest {
 
   @Test
   public void testScaleUp20Percent() {
-    ScaleState state = builder.build(2.0);
+    ScaleState state = builder.build(2.0, false);
     Assertions.assertEquals(2, state.getScale(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -79,7 +79,7 @@ public class ScaleStateTest {
 
   @Test
   public void testScaleDownBelowMin() {
-    ScaleState state = builder.build(2.0);
+    ScaleState state = builder.build(2.0, false);
     Assertions.assertEquals(2, state.getScale(), 0.001);
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -91,7 +91,7 @@ public class ScaleStateTest {
 
   @Test
   public void testScaleDownAboveMax() {
-    ScaleState state = builder.build(2.0);
+    ScaleState state = builder.build(2.0, false);
     Assertions.assertEquals(2, state.getScale(), 0.001);
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -103,7 +103,7 @@ public class ScaleStateTest {
 
   @Test
   public void testScaleDown15Percent() {
-    ScaleState state = builder.build(2.0);
+    ScaleState state = builder.build(2.0, false);
     Assertions.assertEquals(2, state.getScale(), 0.001);
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -115,7 +115,7 @@ public class ScaleStateTest {
 
   @Test
   public void testHibernatingAndBootstrap() {
-    ScaleState state = builder.build(2.0);
+    ScaleState state = builder.build(2.0, false);
     Assertions.assertEquals(2, state.getScale(), 0.001);
     int samples = 3 * 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -132,7 +132,7 @@ public class ScaleStateTest {
 
   @Test
   public void testHibernating() {
-    ScaleState state = builder.build(2.0);
+    ScaleState state = builder.build(2.0, false);
     Assertions.assertEquals(2, state.getScale(), 0.001);
     int samples = 3 * 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -144,7 +144,7 @@ public class ScaleStateTest {
 
   @Test
   public void testBootstrap() {
-    ScaleState state = builder.build(0.0);
+    ScaleState state = builder.build(0.0, false);
     Assertions.assertEquals(0.0, state.getScale(), 0.01);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -156,7 +156,7 @@ public class ScaleStateTest {
   @Test
   public void testResetAndBootstrap() {
     // stay in hibernating state for a while then bootstrap
-    ScaleState state = builder.build(0.0);
+    ScaleState state = builder.build(0.0, false);
     Assertions.assertEquals(0.0, state.getScale(), 0.01);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -172,7 +172,7 @@ public class ScaleStateTest {
 
   @Test
   public void testSnapshotRunningState() {
-    ScaleState state = builder.build(2.0);
+    ScaleState state = builder.build(2.0, false);
     ScaleStateSnapshot scaleStateSnapshot = state.snapshot();
     Assertions.assertEquals(3, scaleStateSnapshot.getScaleComputerSnapshotsList().size());
     Assertions.assertEquals(
@@ -188,7 +188,7 @@ public class ScaleStateTest {
 
   @Test
   public void testSnapshotHibernateState() {
-    ScaleState state = builder.build(0.0);
+    ScaleState state = builder.build(0.0, false);
     ScaleStateSnapshot scaleStateSnapshot = state.snapshot();
     Assertions.assertEquals(1, scaleStateSnapshot.getScaleComputerSnapshotsList().size());
     Assertions.assertEquals(
@@ -214,7 +214,7 @@ public class ScaleStateTest {
     AutoScalarConfiguration config = new AutoScalarConfiguration();
     config.setMaxScaleWindowDurationJitter(0.5);
     builder = ScaleState.newBuilder().withConfig(config).withTicker(testTicker);
-    ScaleState state = builder.build(2.0);
+    ScaleState state = builder.build(2.0, false);
     Assertions.assertEquals(2.0, state.getScale(), 0.01);
   }
 }
