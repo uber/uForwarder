@@ -160,11 +160,10 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
           continue;
         }
 
-        double flowControlRatio = maybeFlowControlRatio.orElse(1.0);
         double scalePerJobInPod =
             rebalancingJobGroup.getScale().orElse(Scalar.ZERO)
-                * flowControlRatio
-                / allJobsInPod.size();
+                / rebalancingJobGroup.getJobs().size();
+        double flowControlRatio = maybeFlowControlRatio.orElse(1.0);
         double messagePerSecondPerJobInPod =
             rebalancingJobGroup.getJobGroup().getFlowControl().getMessagesPerSec()
                 * flowControlRatio
