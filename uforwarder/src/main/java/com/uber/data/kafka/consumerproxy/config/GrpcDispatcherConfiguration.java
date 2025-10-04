@@ -8,6 +8,7 @@ public class GrpcDispatcherConfiguration {
   private long maxRpcTimeoutMs = 1800000;
   private int grpcChannelPoolSize = 1;
   private int maxConcurrentStreams = 250;
+  private int threadPoolSize = 0;
 
   public long getMinRpcTimeoutMs() {
     return minRpcTimeoutMs;
@@ -49,5 +50,23 @@ public class GrpcDispatcherConfiguration {
    */
   public void setMaxConcurrentStreams(int maxConcurrentStreams) {
     this.maxConcurrentStreams = maxConcurrentStreams;
+  }
+
+  /**
+   * Gets thread pool size, 0 to use grpc default thread pool
+   *
+   * @return the thread pool size
+   */
+  public int getThreadPoolSize() {
+    return threadPoolSize;
+  }
+
+  /**
+   * Sets thread pool size, set to 0 to use grpc default thread pool
+   *
+   * @param threadPoolSize
+   */
+  public void setThreadPoolSize(int threadPoolSize) {
+    this.threadPoolSize = threadPoolSize;
   }
 }

@@ -75,6 +75,8 @@ worker:
       # instead of a per-user tunable parameter.
       # Note: gRPC channel pool is specific to a pipeline.
       grpcChannelPoolSize: 5 # 400 * 5 = 2000 concurrent connections per pipeline
+      # This is the number of gRPC worker threads
+      threadPoolSize: 4
     # These are configurations for kafka retryQ/DLQ dispatchers.
     kafka:
       enabled: true

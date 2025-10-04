@@ -153,6 +153,8 @@ worker:
       maxRpcTimeoutMs: 1800001 # 30 mins + 1ms
       # This is the number of gRPC channels in the gRPC channel pool.
       grpcChannelPoolSize: 2
+      # This is the number of gRPC worker threads
+      threadPoolSize: 4
     # These are configurations for kafka retryQ/DLQ dispatchers.
     kafka:
       enabled: true

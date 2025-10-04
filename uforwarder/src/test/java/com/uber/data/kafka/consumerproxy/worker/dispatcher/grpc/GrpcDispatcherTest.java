@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.junit.Assert;
@@ -58,6 +60,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
   private MessageStub messageStub;
   private MessageStub mockStub;
   private GrpcManagedChannelPool.Metrics channelPoolMetrics;
+  private ExecutorService executorService;
 
   @Before
   public void setup() {
@@ -72,6 +75,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
     this.grpcRequest = Mockito.mock(GrpcRequest.class);
     this.dynamicConfiguration = Mockito.mock(DynamicConfiguration.class);
     this.infra = CoreInfra.builder().withContextManager(contextManager).build();
+    this.executorService = Executors.newSingleThreadExecutor();
     Mockito.when(channel.getMetrics()).thenReturn(channelPoolMetrics);
     Mockito.when(contextManager.wrap(Mockito.any(CompletableFuture.class)))
         .thenAnswer(
@@ -110,7 +114,15 @@ public class GrpcDispatcherTest extends FievelTestBase {
                 });
     Mockito.when(dynamicConfiguration.isHeaderAllowed(Mockito.anyMap())).thenReturn(true);
     this.dispatcher =
-        new GrpcDispatcher(infra, config, channel, methodDescriptor, callee, grpcFilter, "caller");
+        new GrpcDispatcher(
+            infra,
+            Optional.of(executorService),
+            config,
+            channel,
+            methodDescriptor,
+            callee,
+            grpcFilter,
+            "caller");
     this.timeoutMs = 10000;
   }
 
@@ -444,6 +456,13 @@ public class GrpcDispatcherTest extends FievelTestBase {
   @Test
   public void testConstructor() {
     Assert.assertNotNull(
-        new GrpcDispatcher(infra, config, "caller", "dns:///127.0.0.1", "procedure", grpcFilter));
+        new GrpcDispatcher(
+            infra,
+            Optional.of(executorService),
+            config,
+            "caller",
+            "dns:///127.0.0.1",
+            "procedure",
+            grpcFilter));
   }
 }

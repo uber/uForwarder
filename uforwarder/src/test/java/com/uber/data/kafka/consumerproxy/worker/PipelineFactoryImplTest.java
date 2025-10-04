@@ -69,7 +69,7 @@ public class PipelineFactoryImplTest extends FievelTestBase {
         Mockito.mockConstruction(KafkaPipelineStateManager.class);
     Mockito.doReturn(grpcDispatcher)
         .when(grpcDispatcherFactory)
-        .create(Mockito.anyString(), Mockito.anyString(), Mockito.anyString());
+        .create(Mockito.anyString(), Mockito.anyString(), Mockito.anyString(), Mockito.anyString());
     processorFactory = Mockito.mock(ProcessorFactory.class);
     Mockito.doReturn(processor)
         .when(processorFactory)

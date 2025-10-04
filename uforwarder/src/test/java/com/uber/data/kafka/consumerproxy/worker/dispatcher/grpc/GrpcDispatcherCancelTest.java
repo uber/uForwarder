@@ -21,6 +21,7 @@ import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.ServerCalls;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutionException;
@@ -88,7 +89,14 @@ public class GrpcDispatcherCancelTest extends FievelTestBase {
     this.stub = new MessageStub();
     this.dispatcher =
         new GrpcDispatcher(
-            infra, config, channel, methodDescriptor, callee, GrpcFilter.NOOP, "caller");
+            infra,
+            Optional.of(Executors.newSingleThreadExecutor()),
+            config,
+            channel,
+            methodDescriptor,
+            callee,
+            GrpcFilter.NOOP,
+            "caller");
     dispatcher.start();
   }
 

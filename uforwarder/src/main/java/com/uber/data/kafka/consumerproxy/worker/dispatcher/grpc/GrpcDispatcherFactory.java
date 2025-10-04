@@ -1,7 +1,10 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc;
 
+import com.google.common.util.concurrent.ThreadFactoryBuilder;
 import com.uber.data.kafka.consumerproxy.config.GrpcDispatcherConfiguration;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
+import java.util.Optional;
+import java.util.concurrent.Executors;
 
 /** The type Grpc dispatcher factory. */
 public class GrpcDispatcherFactory {
@@ -17,13 +20,32 @@ public class GrpcDispatcherFactory {
    * Creates grpc dispatcher.
    *
    * @param caller the caller
+   * @param dispatcherId the dispatcherId
    * @param uri the uri
    * @param procedure the procedure
    * @return the grpc dispatcher
    * @throws Exception the exception
    */
-  public GrpcDispatcher create(String caller, String uri, String procedure) throws Exception {
-    return new GrpcDispatcher(coreInfra, config, caller, uri, procedure, GrpcFilter.NOOP);
+  public GrpcDispatcher create(String caller, String dispatcherId, String uri, String procedure)
+      throws Exception {
+    return new GrpcDispatcher(
+        coreInfra,
+        config.getThreadPoolSize() > 0
+            ? Optional.of(
+                coreInfra
+                    .contextManager()
+                    .wrap(
+                        Executors.newScheduledThreadPool(
+                            config.getThreadPoolSize(),
+                            new ThreadFactoryBuilder()
+                                .setNameFormat(dispatcherId + "-%d")
+                                .build())))
+            : Optional.empty(),
+        config,
+        caller,
+        uri,
+        procedure,
+        GrpcFilter.NOOP);
   }
 
   /**

@@ -34,6 +34,7 @@ public class PipelineFactoryImpl implements PipelineFactory {
   private static final String CONSUMER = "consumer";
   private static final String PRODUCER = "producer";
   private static final String PROCESSOR = "processor";
+  private static final String DISPATCHER = "dispatcher";
   // TODO(T4902455): allow retry and dlq topics from any cluster
   private static final String DLQ = "dlq";
   private final String serviceName;
@@ -73,10 +74,12 @@ public class PipelineFactoryImpl implements PipelineFactory {
               kafkaFetcherFactory.create(job, getThreadName(job, CONSUMER, serviceName), infra));
       String processorId = getThreadName(job, PROCESSOR, serviceName);
       processor = Optional.of(processorFactory.create(job, processorId));
+      final String dispatcherId = getThreadName(job, DISPATCHER, serviceName);
       grpcDispatcher =
           Optional.of(
               grpcDispatcherFactory.create(
                   serviceName,
+                  dispatcherId,
                   job.getRpcDispatcherTask().getUri(),
                   job.getRpcDispatcherTask().getProcedure()));
       final String clientId = getThreadName(job, PRODUCER, serviceName);
