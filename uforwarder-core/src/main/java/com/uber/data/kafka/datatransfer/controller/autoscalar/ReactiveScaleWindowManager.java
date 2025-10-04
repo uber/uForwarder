@@ -79,6 +79,7 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
   private final ScaleWindow.Builder windowBuilder;
   private final ReactiveScaleWindowCalculator reactiveScaleWindowCalculator;
   private final ScaleStatusStore scaleStatusStore;
+  private final AutoScalarConfiguration config;
   private volatile State state;
 
   /**
@@ -98,6 +99,7 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
       Ticker ticker,
       ReactiveScaleWindowCalculator reactiveScaleWindowCalculator) {
     super(autoScalingConfig);
+    this.config = autoScalingConfig;
     this.scaleStatusStore = scaleStatusStore;
     this.ticker = ticker;
     this.reactiveScaleWindowCalculator = reactiveScaleWindowCalculator;
@@ -134,7 +136,11 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
 
   @Override
   public Duration getDownScaleWindowDuration() {
-    return state.downScaleWindowDuration;
+    if (config.isReactiveScaleWindowEnabled()) {
+      return state.downScaleWindowDuration;
+    } else {
+      return config.getDownScaleWindowDuration();
+    }
   }
 
   /**

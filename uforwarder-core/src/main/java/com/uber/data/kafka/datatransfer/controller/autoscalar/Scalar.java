@@ -25,6 +25,20 @@ public interface Scalar {
   }
 
   /**
+   * This method accepts a load measurement The load value represents the ratio between supply and
+   * demand of capacity:
+   *
+   * <ul>
+   *   <li>load &lt; 1.0 indicates demand is smaller than supply (underutilization)
+   *   <li>load = 1.0 indicates demand matches supply (balanced)
+   *   <li>load &gt; 1.0 indicates demand is more than supply (overutilization)
+   * </ul>
+   *
+   * @param load
+   */
+  default void onLoad(double load) {}
+
+  /**
    * Takes a dump of internal state of scalar for data analysis
    *
    * @return a snapshot of scalar

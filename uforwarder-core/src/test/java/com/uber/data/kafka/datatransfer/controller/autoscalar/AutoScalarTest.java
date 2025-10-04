@@ -36,7 +36,7 @@ public class AutoScalarTest extends FievelTestBase {
   private String GROUP = "group";
   private String CLUSTER = "cluster";
   private RebalancingJobGroup rebalancingJobGroup;
-  private ScaleWindowManager scaleWindowManager;
+  private ReactiveScaleWindowManager scaleWindowManager;
 
   @Before
   public void setup() {
@@ -58,7 +58,13 @@ public class AutoScalarTest extends FievelTestBase {
     jobWorkloadMonitor = new JobWorkloadMonitor(config, testTicker, new NoopScope());
     leaderSelector = Mockito.mock(LeaderSelector.class);
     Mockito.when(leaderSelector.isLeader()).thenReturn(true);
-    scaleWindowManager = new ScaleWindowManager(config);
+    scaleWindowManager = Mockito.mock(ReactiveScaleWindowManager.class);
+    Mockito.when(scaleWindowManager.getDownScaleWindowDuration())
+        .thenReturn(config.getDownScaleWindowDuration());
+    Mockito.when(scaleWindowManager.getUpScaleWindowDuration())
+        .thenReturn(config.getUpScaleWindowDuration());
+    Mockito.when(scaleWindowManager.getHibernateWindowDuration())
+        .thenReturn(config.getHibernateWindowDuration());
     autoScalar =
         new AutoScalar(
             config,
@@ -618,5 +624,11 @@ public class AutoScalarTest extends FievelTestBase {
         JobGroupKey.of(job).getGroup(),
         snapshot.getJobGroupSnapshotList().get(0).getConsumerGroup());
     Assert.assertEquals(testTicker.read(), snapshot.getTimestampNanos());
+  }
+
+  @Test
+  public void testReceivedLoad() {
+    autoScalar.onLoad(1.0);
+    Mockito.verify(scaleWindowManager, Mockito.times(1)).onSample(1.0);
   }
 }

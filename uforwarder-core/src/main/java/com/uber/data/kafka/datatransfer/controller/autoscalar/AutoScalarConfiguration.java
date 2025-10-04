@@ -74,6 +74,9 @@ public class AutoScalarConfiguration {
   // enable hibernating by scaling work load down to zero
   private boolean hibernatingEnabled = false;
 
+  // enable reactive scale window
+  private boolean reactiveScaleWindowEnabled = false;
+
   // work load to scale configuration
   private ScaleConverterMode scaleConverterMode = ScaleConverterMode.THROUGHPUT;
 
@@ -396,6 +399,25 @@ public class AutoScalarConfiguration {
    */
   public void setHibernatingEnabled(boolean hibernatingEnabled) {
     this.hibernatingEnabled = hibernatingEnabled;
+  }
+
+  /**
+   * Is reactive scale window feature enabled the feature adjust scale window according to load
+   * level
+   *
+   * @return reactiveScaleWindowEnabled
+   */
+  public boolean isReactiveScaleWindowEnabled() {
+    return reactiveScaleWindowEnabled;
+  }
+
+  /**
+   * Sets reactive scale window feature flag
+   *
+   * @param reactiveScaleWindowEnabled
+   */
+  public void setReactiveScaleWindowEnabled(boolean reactiveScaleWindowEnabled) {
+    this.reactiveScaleWindowEnabled = reactiveScaleWindowEnabled;
   }
 
   /**

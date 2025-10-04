@@ -25,6 +25,7 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
 
     reactiveScaleWindowCalculator = Mockito.mock(ReactiveScaleWindowCalculator.class);
     autoScalingConfig = new AutoScalarConfiguration();
+    autoScalingConfig.setReactiveScaleWindowEnabled(true);
     ticker = new TestUtils.TestTicker();
     scaleStatusStore = new ScaleStatusStore(autoScalingConfig, ticker);
     reactiveScaleWindowManager =
@@ -89,5 +90,11 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
             Mockito.anyDouble(),
             Mockito.anyLong(),
             Mockito.any(Duration.class));
+
+    // verify feature flag works
+    autoScalingConfig.setReactiveScaleWindowEnabled(false);
+    assertEquals(
+        autoScalingConfig.getDownScaleWindowDuration(),
+        reactiveScaleWindowManager.getDownScaleWindowDuration());
   }
 }

@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
 import com.uber.data.kafka.datatransfer.ScaleStoreSnapshot;
 import java.time.Duration;
@@ -45,7 +46,12 @@ import javax.annotation.concurrent.ThreadSafe;
 public class ReactiveScaleWindowCalculator {
   private Ticker ticker;
 
-  public ReactiveScaleWindowCalculator(Ticker ticker) {
+  public ReactiveScaleWindowCalculator() {
+    this(Ticker.systemTicker());
+  }
+
+  @VisibleForTesting
+  protected ReactiveScaleWindowCalculator(Ticker ticker) {
     this.ticker = ticker;
   }
 
