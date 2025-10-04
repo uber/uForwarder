@@ -8,7 +8,8 @@ import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.StructuredTags;
-import com.uber.data.kafka.datatransfer.controller.rpc.JobThroughputSink;
+import com.uber.data.kafka.datatransfer.controller.rpc.JobWorkloadSink;
+import com.uber.data.kafka.datatransfer.controller.rpc.Workload;
 import com.uber.m3.tally.Scope;
 import java.util.Map;
 import java.util.Optional;
@@ -19,8 +20,8 @@ import java.util.concurrent.TimeUnit;
  * heartbeat request of works, then consumed by AutoScalar Internal status cleanup automatically
  * after ttl since last access
  */
-public class JobThroughputMonitor implements JobThroughputSink {
-  private final LoadingCache<JobGroupKey, JobGroupThroughput> jobGroupThroughputStore;
+public class JobWorkloadMonitor implements JobWorkloadSink {
+  private final LoadingCache<JobGroupKey, JobGroupWorkload> jobGroupWorkloadStore;
   private final AutoScalarConfiguration config;
   private final Ticker ticker;
   private final Scope scope;
@@ -32,17 +33,17 @@ public class JobThroughputMonitor implements JobThroughputSink {
    * @param ticker the ticker
    * @param scope the scope
    */
-  public JobThroughputMonitor(AutoScalarConfiguration config, Ticker ticker, Scope scope) {
+  public JobWorkloadMonitor(AutoScalarConfiguration config, Ticker ticker, Scope scope) {
     this.config = config;
-    this.jobGroupThroughputStore =
+    this.jobGroupWorkloadStore =
         CacheBuilder.newBuilder()
             .expireAfterAccess(config.getJobStatusTTL().toMillis(), TimeUnit.MILLISECONDS)
             .ticker(ticker)
             .build(
                 new CacheLoader<>() {
                   @Override
-                  public JobGroupThroughput load(JobGroupKey key) {
-                    return new JobGroupThroughput();
+                  public JobGroupWorkload load(JobGroupKey key) {
+                    return new JobGroupWorkload();
                   }
                 });
     this.ticker = ticker;
@@ -53,11 +54,10 @@ public class JobThroughputMonitor implements JobThroughputSink {
    * updates throughput if JobGroupThroughput presents
    *
    * @param job the job
-   * @param messagesPerSecond the messages per second
-   * @param bytesPerSecond the bytes per second
+   * @param workload the workload
    */
   @Override
-  public void consume(Job job, double messagesPerSecond, double bytesPerSecond) {
+  public void consume(Job job, Workload workload) {
     JobGroupKey jobGroupKey = JobGroupKey.of(job);
     int partition = job.getKafkaConsumerTask().getPartition();
     Scope taggedScope =
@@ -67,45 +67,45 @@ public class JobThroughputMonitor implements JobThroughputSink {
                 .setKafkaTopic(jobGroupKey.getTopic())
                 .setKafkaPartition(partition)
                 .build());
-    taggedScope.gauge(MetricNames.JOB_THROUGHPUT_MESSAGES_PER_SECOND).update(messagesPerSecond);
-    taggedScope.gauge(MetricNames.JOB_THROUGHPUT_BYTES_PER_SECOND).update(bytesPerSecond);
+    taggedScope
+        .gauge(MetricNames.JOB_THROUGHPUT_MESSAGES_PER_SECOND)
+        .update(workload.getMessagesPerSecond());
+    taggedScope
+        .gauge(MetricNames.JOB_THROUGHPUT_BYTES_PER_SECOND)
+        .update(workload.getBytesPerSecond());
 
-    jobGroupThroughputStore
-        .getUnchecked(jobGroupKey)
-        .put(
-            job.getKafkaConsumerTask().getPartition(),
-            Throughput.of(messagesPerSecond, bytesPerSecond));
+    jobGroupWorkloadStore.getUnchecked(jobGroupKey).put(partition, workload);
   }
 
   /**
-   * Gets throughput of a job group if present
+   * Gets workload metrics of a job group if present
    *
    * @param jobGroupKey the job group key
-   * @return the throughput
+   * @return the workload
    */
-  public Optional<Throughput> get(JobGroupKey jobGroupKey) {
-    return jobGroupThroughputStore.getUnchecked(jobGroupKey).getSum();
+  public Optional<Workload> get(JobGroupKey jobGroupKey) {
+    return jobGroupWorkloadStore.getUnchecked(jobGroupKey).getSum();
   }
 
   @VisibleForTesting
-  protected Map<JobGroupKey, JobGroupThroughput> getJobGroupThroughputMap() {
-    return jobGroupThroughputStore.asMap();
+  protected Map<JobGroupKey, JobGroupWorkload> getJobGroupWorkloadMap() {
+    return jobGroupWorkloadStore.asMap();
   }
 
   @VisibleForTesting
   protected void cleanUp() {
     // clean up job group throughput store
-    jobGroupThroughputStore.cleanUp();
+    jobGroupWorkloadStore.cleanUp();
     // for what ever left, clean up partition throughput store
-    jobGroupThroughputStore.asMap().forEach((key, value) -> value.cleanUp());
+    jobGroupWorkloadStore.asMap().forEach((key, value) -> value.cleanUp());
   }
 
   /** Stores throughput of each job of the job group */
-  protected class JobGroupThroughput {
-    private Cache<Integer, Throughput> partitionThroughputStore;
+  protected class JobGroupWorkload {
+    private Cache<Integer, Workload> partitionWorkloadStore;
 
-    JobGroupThroughput() {
-      partitionThroughputStore =
+    JobGroupWorkload() {
+      partitionWorkloadStore =
           CacheBuilder.newBuilder()
               .expireAfterWrite(config.getThroughputTTL().toNanos(), TimeUnit.NANOSECONDS)
               .ticker(ticker)
@@ -113,13 +113,13 @@ public class JobThroughputMonitor implements JobThroughputSink {
     }
 
     /**
-     * Updates throughput
+     * Updates workload
      *
      * @param partition the partition
-     * @param throughput the throughput
+     * @param workload the workload
      */
-    void put(int partition, Throughput throughput) {
-      partitionThroughputStore.put(partition, throughput);
+    void put(int partition, Workload workload) {
+      partitionWorkloadStore.put(partition, workload);
     }
 
     /**
@@ -127,25 +127,27 @@ public class JobThroughputMonitor implements JobThroughputSink {
      *
      * @return the throughput
      */
-    synchronized Optional<Throughput> getSum() {
+    synchronized Optional<Workload> getSum() {
       double messagesPerSecond = 0.0;
       double bytesPerSecond = 0.0;
+      double cpuUsage = 0.0;
       boolean present = false;
-      for (Map.Entry<Integer, Throughput> entry : partitionThroughputStore.asMap().entrySet()) {
-        Throughput throughput = entry.getValue();
-        messagesPerSecond += throughput.getMessagesPerSecond();
-        bytesPerSecond += throughput.getBytesPerSecond();
+      for (Map.Entry<Integer, Workload> entry : partitionWorkloadStore.asMap().entrySet()) {
+        Workload workload = entry.getValue();
+        messagesPerSecond += workload.getMessagesPerSecond();
+        bytesPerSecond += workload.getBytesPerSecond();
+        cpuUsage += workload.getCpuUsage();
         present = true;
       }
       if (present) {
-        return Optional.of(Throughput.of(messagesPerSecond, bytesPerSecond));
+        return Optional.of(Workload.of(messagesPerSecond, bytesPerSecond, cpuUsage));
       } else {
         return Optional.empty();
       }
     }
 
     private void cleanUp() {
-      partitionThroughputStore.cleanUp();
+      partitionWorkloadStore.cleanUp();
     }
   }
 

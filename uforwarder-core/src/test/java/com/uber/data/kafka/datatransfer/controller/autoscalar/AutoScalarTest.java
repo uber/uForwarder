@@ -14,6 +14,7 @@ import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
+import com.uber.data.kafka.datatransfer.controller.rpc.Workload;
 import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import java.time.Duration;
@@ -26,7 +27,7 @@ import org.mockito.Mockito;
 public class AutoScalarTest extends FievelTestBase {
   private AutoScalar autoScalar;
   private AutoScalarConfiguration config;
-  private JobThroughputMonitor jobThroughputMonitor;
+  private JobWorkloadMonitor jobWorkloadMonitor;
   private LeaderSelector leaderSelector;
   private TestUtils.TestTicker testTicker;
   private Job job;
@@ -49,11 +50,11 @@ public class AutoScalarTest extends FievelTestBase {
     config.setUpScaleMinFactor(1.1);
     config.setDownScaleMaxFactor(0.9);
     config.setDownScaleMinFactor(0.8);
-    jobThroughputMonitor = new JobThroughputMonitor(config, testTicker, new NoopScope());
+    jobWorkloadMonitor = new JobWorkloadMonitor(config, testTicker, new NoopScope());
     leaderSelector = Mockito.mock(LeaderSelector.class);
     Mockito.when(leaderSelector.isLeader()).thenReturn(true);
     autoScalar =
-        new AutoScalar(config, jobThroughputMonitor, testTicker, new NoopScope(), leaderSelector);
+        new AutoScalar(config, jobWorkloadMonitor, testTicker, new NoopScope(), leaderSelector);
     job =
         Job.newBuilder()
             .setKafkaConsumerTask(
@@ -97,7 +98,7 @@ public class AutoScalarTest extends FievelTestBase {
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
-      jobThroughputMonitor.consume(job, i < 28 ? 4000 : 8000, 10000);
+      jobWorkloadMonitor.consume(job, Workload.of(i < 28 ? 4000 : 8000, 10000, 0.0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -118,7 +119,7 @@ public class AutoScalarTest extends FievelTestBase {
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
-      jobThroughputMonitor.consume(job, 4100, 10000);
+      jobWorkloadMonitor.consume(job, Workload.of(4100, 10000, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -139,7 +140,7 @@ public class AutoScalarTest extends FievelTestBase {
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
-      jobThroughputMonitor.consume(job, i < 28 ? 4000 : 4800, 10000);
+      jobWorkloadMonitor.consume(job, Workload.of(i < 28 ? 4000 : 4800, 10000, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -161,7 +162,7 @@ public class AutoScalarTest extends FievelTestBase {
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
       testTicker.add(Duration.ofSeconds(60));
-      jobThroughputMonitor.consume(job, i < samples - 10 ? 1000 : 4000, 800);
+      jobWorkloadMonitor.consume(job, Workload.of(i < samples - 10 ? 1000 : 4000, 800, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -184,7 +185,7 @@ public class AutoScalarTest extends FievelTestBase {
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
       testTicker.add(Duration.ofSeconds(60));
-      jobThroughputMonitor.consume(job, 1e-9, 1e-9);
+      jobWorkloadMonitor.consume(job, Workload.of(1e-9, 1e-9, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -206,7 +207,7 @@ public class AutoScalarTest extends FievelTestBase {
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
       testTicker.add(Duration.ofSeconds(60));
-      jobThroughputMonitor.consume(job, 3800, 800);
+      jobWorkloadMonitor.consume(job, Workload.of(3800, 800, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -224,7 +225,7 @@ public class AutoScalarTest extends FievelTestBase {
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
       testTicker.add(Duration.ofSeconds(60));
-      jobThroughputMonitor.consume(job, 3400, 800);
+      jobWorkloadMonitor.consume(job, Workload.of(3400, 800, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -246,7 +247,7 @@ public class AutoScalarTest extends FievelTestBase {
     int samples = 3 * 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
       testTicker.add(Duration.ofMinutes(1));
-      jobThroughputMonitor.consume(job, 0, 0);
+      jobWorkloadMonitor.consume(job, Workload.of(0, 0, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -255,7 +256,7 @@ public class AutoScalarTest extends FievelTestBase {
     Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
-      jobThroughputMonitor.consume(job, 1000, 10000);
+      jobWorkloadMonitor.consume(job, Workload.of(1000, 10000, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -277,7 +278,7 @@ public class AutoScalarTest extends FievelTestBase {
     int samples = 3 * 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
       testTicker.add(Duration.ofMinutes(1));
-      jobThroughputMonitor.consume(job, 0, 0);
+      jobWorkloadMonitor.consume(job, Workload.of(0, 0, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -298,7 +299,7 @@ public class AutoScalarTest extends FievelTestBase {
     int samples = 3 * 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
       testTicker.add(Duration.ofMinutes(1));
-      jobThroughputMonitor.consume(job, 0, 0);
+      jobWorkloadMonitor.consume(job, Workload.of(0, 0, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -316,7 +317,7 @@ public class AutoScalarTest extends FievelTestBase {
     Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
-      jobThroughputMonitor.consume(job, 1000, 10000);
+      jobWorkloadMonitor.consume(job, Workload.of(1000, 10000, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
@@ -336,7 +337,7 @@ public class AutoScalarTest extends FievelTestBase {
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
     Assert.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
-    jobThroughputMonitor.consume(job, 3400, 800);
+    jobWorkloadMonitor.consume(job, Workload.of(3400, 800, 0));
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
       testTicker.add(Duration.ofSeconds(60));
@@ -361,7 +362,7 @@ public class AutoScalarTest extends FievelTestBase {
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
 
     testTicker.add(Duration.ofSeconds(60));
-    jobThroughputMonitor.consume(job, 3400, 800);
+    jobWorkloadMonitor.consume(job, Workload.of(3400, 800, 0));
     autoScalar.runSample();
 
     // scale reset is disabled
@@ -411,7 +412,7 @@ public class AutoScalarTest extends FievelTestBase {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     autoScalar.runSample();
     Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertFalse(jobThroughputMonitor.getJobGroupThroughputMap().isEmpty());
+    Assert.assertFalse(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
     Assert.assertFalse(autoScalar.getStatusStore().isEmpty());
     // not expired
     testTicker.add(Duration.ofHours(47));
@@ -426,12 +427,12 @@ public class AutoScalarTest extends FievelTestBase {
     Assert.assertTrue(autoScalar.getStatusStore().isEmpty());
 
     // once scale status expired, throughput info will be expired in 48 hours
-    jobThroughputMonitor.cleanUp();
-    Assert.assertFalse(jobThroughputMonitor.getJobGroupThroughputMap().isEmpty());
+    jobWorkloadMonitor.cleanUp();
+    Assert.assertFalse(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
     testTicker.add(Duration.ofHours(49));
     autoScalar.runSample();
-    jobThroughputMonitor.cleanUp();
-    Assert.assertTrue(jobThroughputMonitor.getJobGroupThroughputMap().isEmpty());
+    jobWorkloadMonitor.cleanUp();
+    Assert.assertTrue(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
   }
 
   @Test
@@ -440,7 +441,7 @@ public class AutoScalarTest extends FievelTestBase {
     Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
-      jobThroughputMonitor.consume(job, 8000, 10000);
+      jobWorkloadMonitor.consume(job, Workload.of(8000, 10000, 0));
       autoScalar.runSample();
     }
     autoScalar.apply(rebalancingJobGroup, 0.0d);
@@ -462,7 +463,7 @@ public class AutoScalarTest extends FievelTestBase {
   public void testSnapshot() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     testTicker.add(Duration.ofSeconds(5));
-    jobThroughputMonitor.consume(job, 4000, 10000);
+    jobWorkloadMonitor.consume(job, Workload.of(4000, 10000, 0));
     MessageOrBuilder snapshot = autoScalar.snapshot();
     Assert.assertNotNull(snapshot);
     Assert.assertTrue(snapshot instanceof AutoScalarSnapshot);

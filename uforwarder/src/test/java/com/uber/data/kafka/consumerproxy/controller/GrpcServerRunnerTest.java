@@ -7,7 +7,7 @@ import com.uber.data.kafka.datatransfer.controller.autoscalar.AutoScalarConfigur
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.rpc.ControllerAdminService;
 import com.uber.data.kafka.datatransfer.controller.rpc.ControllerWorkerService;
-import com.uber.data.kafka.datatransfer.controller.rpc.JobThroughputSink;
+import com.uber.data.kafka.datatransfer.controller.rpc.JobWorkloadSink;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
 import com.uber.fievel.testing.base.FievelTestBase;
 import org.junit.Assert;
@@ -35,7 +35,7 @@ public class GrpcServerRunnerTest extends FievelTestBase {
                 Mockito.mock(ReadStore.class),
                 Mockito.mock(Store.class),
                 Mockito.mock(LeaderSelector.class),
-                Mockito.mock(JobThroughputSink.class)));
+                Mockito.mock(JobWorkloadSink.class)));
     Assert.assertFalse(grpcServerRunner.isRunning());
     grpcServerRunner.start();
 

@@ -14,6 +14,7 @@ import com.uber.data.kafka.datatransfer.common.StructuredLogging;
 import com.uber.data.kafka.datatransfer.common.StructuredTags;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
+import com.uber.data.kafka.datatransfer.controller.rpc.Workload;
 import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Stopwatch;
 import java.util.Map;
@@ -37,7 +38,7 @@ public class AutoScalar implements Scalar {
   // in-memory auto-scalar status store
   private final Cache<JobGroupKey, JobGroupScaleStatus> autoScalarStatusStore;
   private final AutoScalarConfiguration config;
-  private final JobThroughputMonitor jobThroughputMonitor;
+  private final JobWorkloadMonitor JobWorkloadMonitor;
   private final ScaleState.Builder stateBuilder;
   private final Scope scope;
   private final LeaderSelector leaderSelector;
@@ -46,14 +47,14 @@ public class AutoScalar implements Scalar {
    * Instantiates a new Auto scalar.
    *
    * @param config the config
-   * @param jobThroughputMonitor the job throughput monitor
+   * @param JobWorkloadMonitor the job activity monitor
    * @param ticker the ticker
    * @param scope the scope
    * @param leaderSelector the leader selector
    */
   public AutoScalar(
       AutoScalarConfiguration config,
-      JobThroughputMonitor jobThroughputMonitor,
+      JobWorkloadMonitor JobWorkloadMonitor,
       Ticker ticker,
       Scope scope,
       LeaderSelector leaderSelector) {
@@ -62,7 +63,7 @@ public class AutoScalar implements Scalar {
             .expireAfterAccess(config.getJobStatusTTL().toMillis(), TimeUnit.MILLISECONDS)
             .ticker(ticker)
             .build();
-    this.jobThroughputMonitor = jobThroughputMonitor;
+    this.JobWorkloadMonitor = JobWorkloadMonitor;
     this.config = config;
     this.scope = scope;
     this.leaderSelector = leaderSelector;
@@ -85,11 +86,10 @@ public class AutoScalar implements Scalar {
     // evict by the cache
     for (Map.Entry<JobGroupKey, JobGroupScaleStatus> entry :
         autoScalarStatusStore.asMap().entrySet()) {
-      jobThroughputMonitor
-          .get(entry.getKey())
+      JobWorkloadMonitor.get(entry.getKey())
           .ifPresent(
               t -> {
-                double sampleScale = throughputToScale(t);
+                double sampleScale = workloadToScale(t);
                 entry.getValue().sampleScale(sampleScale);
                 scope
                     .tagged(
@@ -198,15 +198,15 @@ public class AutoScalar implements Scalar {
   }
 
   /**
-   * Coverts observed throughput to scale
+   * Coverts observed workload to scale
    *
-   * @param throughput
+   * @param workload
    * @return
    */
-  private double throughputToScale(Throughput throughput) {
+  private double workloadToScale(Workload workload) {
     return Math.max(
-        throughput.getMessagesPerSecond() / config.getMessagesPerSecPerWorker(),
-        throughput.getBytesPerSecond() / config.getBytesPerSecPerWorker());
+        workload.getMessagesPerSecond() / config.getMessagesPerSecPerWorker(),
+        workload.getBytesPerSecond() / config.getBytesPerSecPerWorker());
   }
 
   /**

@@ -5,6 +5,7 @@ import com.uber.data.kafka.datatransfer.JobGroup;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTaskGroup;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
+import com.uber.data.kafka.datatransfer.controller.rpc.Workload;
 import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import java.time.Duration;
@@ -13,8 +14,8 @@ import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
 
-public class JobThroughputMonitorTest extends FievelTestBase {
-  private JobThroughputMonitor jobThroughputMonitor;
+public class JobWorkloadMonitorTest extends FievelTestBase {
+  private JobWorkloadMonitor jobWorkloadMonitor;
   private TestUtils.TestTicker testTicker;
   private Job job1;
   private Job job2;
@@ -29,7 +30,7 @@ public class JobThroughputMonitorTest extends FievelTestBase {
     AutoScalarConfiguration configuration = new AutoScalarConfiguration();
     configuration.setThroughputTTL(Duration.ofNanos(1000));
     configuration.setJobStatusTTL(Duration.ofMinutes(5));
-    jobThroughputMonitor = new JobThroughputMonitor(configuration, testTicker, new NoopScope());
+    jobWorkloadMonitor = new JobWorkloadMonitor(configuration, testTicker, new NoopScope());
     job1 =
         Job.newBuilder()
             .setKafkaConsumerTask(
@@ -65,42 +66,42 @@ public class JobThroughputMonitorTest extends FievelTestBase {
 
   @Test
   public void testUpdateAndGet() {
-    jobThroughputMonitor.get(JobGroupKey.of(jobGroup));
-    jobThroughputMonitor.consume(job1, 1, 5);
-    Optional<Throughput> result = jobThroughputMonitor.get(JobGroupKey.of(jobGroup));
+    jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
+    jobWorkloadMonitor.consume(job1, Workload.of(1, 5, 0));
+    Optional<Workload> result = jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
     Assert.assertEquals(1, result.get().getMessagesPerSecond(), 0.0001);
     Assert.assertEquals(5, result.get().getBytesPerSecond(), 0.0001);
   }
 
   @Test
   public void testUpdateAndGetMultiJob() {
-    jobThroughputMonitor.get(JobGroupKey.of(jobGroup));
-    jobThroughputMonitor.consume(job1, 1, 5);
-    jobThroughputMonitor.consume(job2, 3, 25);
-    Optional<Throughput> result = jobThroughputMonitor.get(JobGroupKey.of(jobGroup));
+    jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
+    jobWorkloadMonitor.consume(job1, Workload.of(1, 5, 0));
+    jobWorkloadMonitor.consume(job2, Workload.of(3, 25, 0));
+    Optional<Workload> result = jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
     Assert.assertEquals(4, result.get().getMessagesPerSecond(), 0.0001);
     Assert.assertEquals(30, result.get().getBytesPerSecond(), 0.0001);
   }
 
   @Test
   public void testUpdateAndGetExpired() {
-    jobThroughputMonitor.get(JobGroupKey.of(jobGroup));
-    jobThroughputMonitor.consume(job1, 1, 5);
+    jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
+    jobWorkloadMonitor.consume(job1, Workload.of(1, 5, 0));
     testTicker.add(Duration.ofSeconds(2));
-    jobThroughputMonitor.cleanUp();
-    Optional<Throughput> result = jobThroughputMonitor.get(JobGroupKey.of(jobGroup));
+    jobWorkloadMonitor.cleanUp();
+    Optional<Workload> result = jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
     Assert.assertFalse(result.isPresent());
   }
 
   @Test
   public void testCleanup() {
-    jobThroughputMonitor.get(JobGroupKey.of(jobGroup));
-    jobThroughputMonitor.consume(job1, 1, 5);
-    Optional<Throughput> result = jobThroughputMonitor.get(JobGroupKey.of(jobGroup));
+    jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
+    jobWorkloadMonitor.consume(job1, Workload.of(1, 5, 0));
+    Optional<Workload> result = jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
     Assert.assertEquals(1, result.get().getMessagesPerSecond(), 0.0001);
     Assert.assertEquals(5, result.get().getBytesPerSecond(), 0.0001);
     testTicker.add(Duration.ofMinutes(6));
-    jobThroughputMonitor.cleanUp();
-    Assert.assertTrue(jobThroughputMonitor.getJobGroupThroughputMap().isEmpty());
+    jobWorkloadMonitor.cleanUp();
+    Assert.assertTrue(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
   }
 }

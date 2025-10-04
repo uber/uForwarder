@@ -48,10 +48,10 @@ public class RpcAutoConfiguration {
       ReadStore<Long, StoredJob> jobStore,
       Store<Long, StoredJobStatus> jobStatusStore,
       LeaderSelector leaderSelector,
-      JobThroughputSink jobThroughputSink)
+      JobWorkloadSink jobWorkloadSink)
       throws Exception {
     return new ControllerWorkerService(
-        coreInfra, node, workerStore, jobStore, jobStatusStore, leaderSelector, jobThroughputSink);
+        coreInfra, node, workerStore, jobStore, jobStatusStore, leaderSelector, jobWorkloadSink);
   }
 
   @Bean
