@@ -4,6 +4,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.Mockito.when;
 
+import com.uber.data.kafka.datatransfer.ScaleStoreSnapshot;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
 import com.uber.fievel.testing.base.FievelTestBase;
 import java.time.Duration;
@@ -17,14 +18,18 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
   private ReactiveScaleWindowCalculator reactiveScaleWindowCalculator;
   private AutoScalarConfiguration autoScalingConfig;
   private TestUtils.TestTicker ticker;
+  private ScaleStatusStore scaleStatusStore;
 
   @Before
   public void setUp() {
+
     reactiveScaleWindowCalculator = Mockito.mock(ReactiveScaleWindowCalculator.class);
     autoScalingConfig = new AutoScalarConfiguration();
     ticker = new TestUtils.TestTicker();
+    scaleStatusStore = new ScaleStatusStore(autoScalingConfig, ticker);
     reactiveScaleWindowManager =
-        new ReactiveScaleWindowManager(autoScalingConfig, ticker, reactiveScaleWindowCalculator);
+        new ReactiveScaleWindowManager(
+            scaleStatusStore, autoScalingConfig, ticker, reactiveScaleWindowCalculator);
   }
 
   @Test
@@ -63,7 +68,10 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
 
     // Mock the calculator to return a specific duration
     when(reactiveScaleWindowCalculator.calculateDownScaleWindowDuration(
-            Mockito.anyDouble(), Mockito.anyLong(), Mockito.any(Duration.class)))
+            Mockito.any(ScaleStoreSnapshot.class),
+            Mockito.anyDouble(),
+            Mockito.anyLong(),
+            Mockito.any(Duration.class)))
         .thenReturn(expectedNewDuration);
 
     // Process multiple samples to potentially trigger reactive calculation
@@ -77,6 +85,9 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
     assertEquals(expectedNewDuration, downScaleWindow);
     Mockito.verify(reactiveScaleWindowCalculator, Mockito.times(1))
         .calculateDownScaleWindowDuration(
-            Mockito.anyDouble(), Mockito.anyLong(), Mockito.any(Duration.class));
+            Mockito.any(ScaleStoreSnapshot.class),
+            Mockito.anyDouble(),
+            Mockito.anyLong(),
+            Mockito.any(Duration.class));
   }
 }

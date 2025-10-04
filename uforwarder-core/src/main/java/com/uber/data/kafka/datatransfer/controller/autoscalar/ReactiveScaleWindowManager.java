@@ -78,6 +78,7 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
   private final Ticker ticker;
   private final ScaleWindow.Builder windowBuilder;
   private final ReactiveScaleWindowCalculator reactiveScaleWindowCalculator;
+  private final ScaleStatusStore scaleStatusStore;
   private volatile State state;
 
   /**
@@ -92,10 +93,12 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
    * @param reactiveScaleWindowCalculator the calculator for reactive window adjustments
    */
   ReactiveScaleWindowManager(
+      ScaleStatusStore scaleStatusStore,
       AutoScalarConfiguration autoScalingConfig,
       Ticker ticker,
       ReactiveScaleWindowCalculator reactiveScaleWindowCalculator) {
     super(autoScalingConfig);
+    this.scaleStatusStore = scaleStatusStore;
     this.ticker = ticker;
     this.reactiveScaleWindowCalculator = reactiveScaleWindowCalculator;
     this.windowBuilder =
@@ -145,7 +148,7 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
    */
   private class State {
     private final Duration downScaleWindowDuration;
-    private final long startTimeNano;
+    private final long stateTimeNano;
     private final ScaleWindow scaleWindow;
     private final AtomicReference<Boolean> closed = new AtomicReference<>(false);
 
@@ -158,7 +161,7 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
      * @param downScaleWindowDuration the initial down-scale window duration
      */
     private State(Duration downScaleWindowDuration) {
-      this.startTimeNano = ticker.read();
+      this.stateTimeNano = ticker.read();
       this.scaleWindow = windowBuilder.build(MIN_LOAD, MAX_LOAD);
       this.downScaleWindowDuration = downScaleWindowDuration;
     }
@@ -180,10 +183,10 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
       scaleWindow.add(load);
       if (scaleWindow.isMature()) {
         if (closed.compareAndSet(false, true)) {
-          double result = scaleWindow.getByPercentile(WINDOW_PERCENTILE);
+          double systemLoad = scaleWindow.getByPercentile(WINDOW_PERCENTILE);
           Duration nextDownScaleWindowDuration =
               reactiveScaleWindowCalculator.calculateDownScaleWindowDuration(
-                  result, startTimeNano, downScaleWindowDuration);
+                  scaleStatusStore.snapshot(), systemLoad, stateTimeNano, downScaleWindowDuration);
           return Optional.of(new State(nextDownScaleWindowDuration));
         }
       }

@@ -182,8 +182,9 @@ public class ScaleStateTest extends FievelTestBase {
             .getScaleComputerSnapshotsList()
             .get(0)
             .getWindowedComputerSnapshot()
-            .getCurrentScale(),
+            .getBaseScale(),
         0.000001);
+    Assert.assertEquals(2.0, scaleStateSnapshot.getScale(), 0.0001);
   }
 
   @Test
@@ -197,8 +198,9 @@ public class ScaleStateTest extends FievelTestBase {
             .getScaleComputerSnapshotsList()
             .get(0)
             .getWindowedComputerSnapshot()
-            .getCurrentScale(),
+            .getBaseScale(),
         0.000001);
+    Assert.assertEquals(0.0, scaleStateSnapshot.getScale(), 0.0001);
   }
 
   @Test

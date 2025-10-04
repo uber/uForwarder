@@ -3,8 +3,10 @@ package com.uber.data.kafka.datatransfer.controller.autoscalar;
 import com.google.common.base.Ticker;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.uber.data.kafka.datatransfer.ScaleStoreSnapshot;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import javax.annotation.concurrent.ThreadSafe;
 
 /**
@@ -62,6 +64,8 @@ public class ScaleStatusStore {
    */
   private final Cache<JobGroupKey, AutoScalar.JobGroupScaleStatus> store;
 
+  private final Ticker ticker;
+
   /**
    * Constructs a new ScaleStatusStore with the specified configuration and ticker.
    *
@@ -78,6 +82,7 @@ public class ScaleStatusStore {
             .expireAfterAccess(config.getJobStatusTTL().toMillis(), TimeUnit.MILLISECONDS)
             .ticker(ticker)
             .build();
+    this.ticker = ticker;
   }
 
   /**
@@ -120,5 +125,15 @@ public class ScaleStatusStore {
    */
   public void cleanUp() {
     store.cleanUp();
+  }
+
+  public ScaleStoreSnapshot snapshot() {
+    return ScaleStoreSnapshot.newBuilder()
+        .addAllJobGroupSnapshot(
+            asMap().values().stream()
+                .map(AutoScalar.JobGroupScaleStatus::snapshot)
+                .collect(Collectors.toList()))
+        .setTimestampNanos(ticker.read())
+        .build();
   }
 }

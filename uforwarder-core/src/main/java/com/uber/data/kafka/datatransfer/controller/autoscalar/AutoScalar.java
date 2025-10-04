@@ -3,10 +3,9 @@ package com.uber.data.kafka.datatransfer.controller.autoscalar;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
 import com.google.protobuf.MessageOrBuilder;
-import com.uber.data.kafka.datatransfer.AutoScalarSnapshot;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.JobGroup;
-import com.uber.data.kafka.datatransfer.JobGroupScalarSnapshot;
+import com.uber.data.kafka.datatransfer.JobGroupScaleStatusSnapshot;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.common.StructuredLogging;
 import com.uber.data.kafka.datatransfer.common.StructuredTags;
@@ -18,7 +17,6 @@ import com.uber.m3.tally.Stopwatch;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -42,6 +40,7 @@ public class AutoScalar implements Scalar {
   private final ScaleConverter primaryScaleConverter;
   private final Optional<ScaleConverter> shadowScaleConverter;
   private final ScaleWindowManager scaleWindowManager;
+  private final Ticker ticker;
 
   /**
    * Instantiates a new Auto scalar.
@@ -76,6 +75,7 @@ public class AutoScalar implements Scalar {
     this.primaryScaleConverter = createScaleConverter(config.getScaleConverterMode());
     this.shadowScaleConverter =
         config.getShadowScaleConverterMode().map(this::createScaleConverter);
+    this.ticker = ticker;
   }
 
   /** Update sample of throughput to window */
@@ -207,12 +207,7 @@ public class AutoScalar implements Scalar {
    */
   @Override
   public MessageOrBuilder snapshot() {
-    return AutoScalarSnapshot.newBuilder()
-        .addAllJobGroupScalar(
-            statusStore.asMap().values().stream()
-                .map(JobGroupScaleStatus::snapshot)
-                .collect(Collectors.toList()))
-        .build();
+    return statusStore.snapshot();
   }
 
   private ScaleConverter createScaleConverter(ScaleConverterMode mode) {
@@ -309,8 +304,8 @@ public class AutoScalar implements Scalar {
      *
      * @return a dump of internal state
      */
-    public JobGroupScalarSnapshot snapshot() {
-      return JobGroupScalarSnapshot.newBuilder()
+    public JobGroupScaleStatusSnapshot snapshot() {
+      return JobGroupScaleStatusSnapshot.newBuilder()
           .setConsumerGroup(jobGroupKey.getGroup())
           .setTopic(jobGroupKey.getTopic())
           .setCluster(jobGroupKey.getCluster())
