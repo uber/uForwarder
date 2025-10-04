@@ -8,7 +8,6 @@ import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.CheckpointManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.DelayProcessManager;
-import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.InflightMessageTracker;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaCheckpointManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfiguration;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.SeekStartOffsetOption;
@@ -46,7 +45,6 @@ public final class DlqTopicKafkaFetcher extends AbstractKafkaFetcherThread<byte[
         checkpointManager,
         throughputTracker,
         DelayProcessManager.NOOP,
-        new InflightMessageTracker(),
         kafkaConsumer,
         infra,
         false,

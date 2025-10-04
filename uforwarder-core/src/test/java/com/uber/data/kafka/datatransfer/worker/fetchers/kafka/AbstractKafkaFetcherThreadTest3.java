@@ -49,7 +49,6 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
   private CheckpointManager checkpointManager;
   private ThroughputTracker throughputTracker;
   private DelayProcessManager delayProcessManager;
-  private InflightMessageTracker inflightMessageTracker;
   private KafkaConsumer mockConsumer;
   private Sink processor;
   private CoreInfra coreInfra;
@@ -62,11 +61,8 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
   public void setup() {
     checkpointManager = new KafkaCheckpointManager(Mockito.mock(Scope.class));
     throughputTracker = Mockito.mock(ThroughputTracker.class);
-    inflightMessageTracker = Mockito.mock(InflightMessageTracker.class);
     Mockito.when(throughputTracker.getThroughput(any()))
         .thenReturn(new ThroughputTracker.Throughput(1, 2));
-    Mockito.when(inflightMessageTracker.getInflightMessageStats(any()))
-        .thenReturn(new InflightMessageTracker.InflightMessageStats(1, 100));
     kafkaFetcherConfiguration = new KafkaFetcherConfiguration();
     kafkaFetcherConfiguration.setPollTimeoutMs(10);
     Scope scope = Mockito.mock(Scope.class);
@@ -109,7 +105,6 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
             checkpointManager,
             throughputTracker,
             delayProcessManager,
-            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true,
@@ -146,7 +141,6 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
             checkpointManager,
             throughputTracker,
             null,
-            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true,

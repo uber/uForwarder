@@ -1,8 +1,6 @@
 package com.uber.data.kafka.datatransfer.worker.fetchers.kafka;
 
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyInt;
-import static org.mockito.ArgumentMatchers.eq;
 
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
@@ -58,7 +56,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
   private PipelineStateManager pipelineStateManager;
   private CheckpointManager checkpointManager;
   private ThroughputTracker throughputTracker;
-  private InflightMessageTracker inflightMessageTracker;
   private CheckpointInfo checkpointInfo;
   private KafkaConsumer mockConsumer;
   private Sink processor;
@@ -73,7 +70,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     checkpointInfo = Mockito.mock(CheckpointInfo.class);
     checkpointManager = Mockito.mock(CheckpointManager.class);
     throughputTracker = Mockito.mock(ThroughputTracker.class);
-    inflightMessageTracker = Mockito.mock(InflightMessageTracker.class);
     pipelineLoadTracker = Mockito.mock(PipelineLoadTracker.class);
     Mockito.when(checkpointManager.addCheckpointInfo(any())).thenReturn(checkpointInfo);
     Mockito.when(checkpointManager.getCheckpointInfo(any())).thenReturn(checkpointInfo);
@@ -81,8 +77,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     Mockito.when(checkpointInfo.getStartingOffset()).thenReturn(1L);
     Mockito.when(throughputTracker.getThroughput(any()))
         .thenReturn(new ThroughputTracker.Throughput(1, 2));
-    Mockito.when(inflightMessageTracker.getInflightMessageStats(any()))
-        .thenReturn(new InflightMessageTracker.InflightMessageStats(1, 100));
     Mockito.when(pipelineLoadTracker.getLoad())
         .thenReturn(
             new PipelineLoadTracker.PipelineLoad() {
@@ -133,7 +127,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
-            inflightMessageTracker,
             mockConsumer,
             coreInfra);
     fetcherThread.setPipelineStateManager(pipelineStateManager);
@@ -170,7 +163,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             null,
             throughputTracker,
-            inflightMessageTracker,
             mockConsumer,
             coreInfra);
     fetcherThread.start();
@@ -184,7 +176,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             null,
-            inflightMessageTracker,
             mockConsumer,
             coreInfra);
     fetcherThread.start();
@@ -234,7 +225,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
-            inflightMessageTracker,
             mockConsumer,
             coreInfra);
 
@@ -282,7 +272,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             kafkaFetcherConfiguration,
             checkpointManager,
             throughputTracker,
-            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             false);
@@ -327,7 +316,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             checkpointManager,
             throughputTracker,
             DelayProcessManager.NOOP,
-            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true,
@@ -446,7 +434,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             checkpointManager,
             throughputTracker,
             DelayProcessManager.NOOP,
-            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true,
@@ -510,7 +497,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             checkpointManager,
             throughputTracker,
             DelayProcessManager.NOOP,
-            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true,
@@ -570,7 +556,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     // when the consumer records are empty
     fetcherThread.processFetchedData(consumerRecords, taskMap);
     Mockito.verify(mockConsumer, Mockito.times(1)).pause(Collections.singleton(tp2));
-    Mockito.verify(inflightMessageTracker, Mockito.never()).addMessage(any(), anyInt());
 
     // prepare consumer records
     ConsumerRecord consumerRecord = Mockito.mock(ConsumerRecord.class);
@@ -584,7 +569,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     fetcherThread.processFetchedData(consumerRecords, ImmutableMap.of(tp2, job));
     Mockito.verify(mockConsumer, Mockito.times(1)).pause(Collections.singleton(tp1));
     Mockito.verify(mockConsumer, Mockito.times(1)).seek(tp1, 101L);
-    Mockito.verify(inflightMessageTracker, Mockito.never()).addMessage(eq(tp1), anyInt());
 
     // case 1: tp2 is not tracked, so it's paused
     CompletableFuture completableFuture = CompletableFuture.completedFuture(101L);
@@ -592,9 +576,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     fetcherThread.processFetchedData(consumerRecords, taskMap);
     // tp2 pause is accumulated
     Mockito.verify(mockConsumer, Mockito.times(2)).pause(Collections.singleton(tp2));
-    Mockito.verify(inflightMessageTracker, Mockito.times(1)).addMessage(eq(tp1), eq(1));
-    Mockito.verify(inflightMessageTracker, Mockito.times(1)).removeMessage(eq(tp1), eq(1));
-    Mockito.reset(inflightMessageTracker);
 
     // case 2: offset 101 is bounded for tp1 but we don't care
     Mockito.when(checkpointInfo.bounded(101L)).thenReturn(true);
@@ -604,8 +585,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     // tp1 is paused
     Mockito.verify(mockConsumer, Mockito.times(1)).pause(Collections.singleton(tp1));
     Mockito.verify(checkpointManager, Mockito.never()).setFetchOffset(job, 101);
-    Mockito.verify(inflightMessageTracker, Mockito.times(1)).addMessage(eq(tp1), eq(1));
-    Mockito.verify(inflightMessageTracker, Mockito.times(1)).removeMessage(eq(tp1), eq(1));
 
     // message processing exception is handled
     completableFuture = new CompletableFuture();
@@ -632,7 +611,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
             checkpointManager,
             throughputTracker,
             DelayProcessManager.NOOP,
-            inflightMessageTracker,
             mockConsumer,
             coreInfra,
             true,
@@ -684,8 +662,6 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     fetcherThread.processFetchedData(consumerRecords, taskMap);
     // only commit once since there is offsetCommitIntervalMs
     Mockito.verify(mockConsumer, Mockito.times(1)).commitAsync(any(), any());
-    Mockito.verify(inflightMessageTracker, Mockito.times(2)).addMessage(eq(tp1), eq(1));
-    Mockito.verify(inflightMessageTracker, Mockito.times(2)).removeMessage(eq(tp1), eq(1));
   }
 
   @Test

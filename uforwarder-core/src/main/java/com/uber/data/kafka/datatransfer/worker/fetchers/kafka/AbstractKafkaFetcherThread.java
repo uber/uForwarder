@@ -109,8 +109,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
   private final ThroughputTracker throughputTracker;
   private final DelayProcessManager delayProcessManager;
 
-  private final InflightMessageTracker inflightMessageTracker;
-
   private final Scope scope;
   private final CoreInfra infra;
 
@@ -127,7 +125,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
       KafkaFetcherConfiguration config,
       CheckpointManager checkpointManager,
       ThroughputTracker throughputTracker,
-      InflightMessageTracker inflightMessageTracker,
       Consumer<K, V> kafkaConsumer,
       CoreInfra infra,
       boolean asyncCommitOffset) {
@@ -137,7 +134,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         checkpointManager,
         throughputTracker,
         DelayProcessManager.NOOP,
-        inflightMessageTracker,
         kafkaConsumer,
         infra,
         asyncCommitOffset,
@@ -150,7 +146,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
       CheckpointManager checkpointManager,
       ThroughputTracker throughputTracker,
       DelayProcessManager<K, V> delayProcessManager,
-      InflightMessageTracker inflightMessageTracker,
       Consumer<K, V> kafkaConsumer,
       CoreInfra infra,
       boolean asyncCommitOffset,
@@ -161,7 +156,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     this.checkpointManager = checkpointManager;
     this.throughputTracker = throughputTracker;
     this.delayProcessManager = delayProcessManager;
-    this.inflightMessageTracker = inflightMessageTracker;
     this.config = config;
     this.offsetMonitorMs = config.getOffsetMonitorIntervalMs();
     this.pollTimeoutMs = config.getPollTimeoutMs();
@@ -275,7 +269,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     Map<TopicPartition, Long> topicPartitionOffsetMap =
         addToCheckPointManager(addedTopicPartitionJobMap, brokerCommittedOffset);
 
-    // step 2.1 track throughput and inflightMessage of newly added topic partitions and the removed
+    // step 2.1 track throughput of newly added topic partitions and the removed
     // topic partitions
     adjustTracker(addedTopicPartitionJobMap, removedTopicPartitionJobMap);
 
@@ -723,12 +717,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
       Map<TopicPartition, Job> addedTopicPartitionJobMap,
       Map<TopicPartition, Job> removedTopicPartitionJobMap) {
     for (Map.Entry<TopicPartition, Job> entry : addedTopicPartitionJobMap.entrySet()) {
-      inflightMessageTracker.init(entry.getKey());
       throughputTracker.init(entry.getValue());
-    }
-
-    for (TopicPartition tp : removedTopicPartitionJobMap.keySet()) {
-      inflightMessageTracker.revokeInflightStatsForJob(tp);
     }
   }
 
@@ -1011,19 +1000,12 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
           jobStatusBuilder.setState(JobState.JOB_STATE_RUNNING);
           CheckpointInfo checkpointInfo = checkpointManager.getCheckpointInfo(job);
           ThroughputTracker.Throughput throughput = throughputTracker.getThroughput(job);
-          InflightMessageTracker.InflightMessageStats inflightMessageStats =
-              inflightMessageTracker.getInflightMessageStats(
-                  new TopicPartition(
-                      job.getKafkaConsumerTask().getTopic(),
-                      job.getKafkaConsumerTask().getPartition()));
           KafkaConsumerTaskStatus kafkaConsumerTaskStatus =
               KafkaConsumerTaskStatus.newBuilder()
                   .setReadOffset(checkpointInfo.getFetchOffset())
                   .setCommitOffset(checkpointInfo.getCommittedOffset())
                   .setMessagesPerSec(throughput.messagePerSec)
                   .setBytesPerSec(throughput.bytesPerSec)
-                  .setTotalMessagesInflight(inflightMessageStats.numberOfMessages.get())
-                  .setTotalBytesInflight(inflightMessageStats.totalBytes.get())
                   .setCpuUsage(cpuUsagePerJob)
                   .build();
           jobStatusBuilder.setKafkaConsumerTaskStatus(kafkaConsumerTaskStatus);
@@ -1095,7 +1077,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
               .gauge(MetricNames.TOPIC_PARTITION_DELAY_TIME)
               .update(System.currentTimeMillis() - record.timestamp());
 
-          inflightMessageTracker.addMessage(tp, record.serializedValueSize());
           // process the message
           final Scope scopeWithGroupTopicPartition =
               scope.tagged(
@@ -1137,7 +1118,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
                       // update throughput
                       throughputTracker.record(job, 1, record.serializedValueSize());
                     }
-                    inflightMessageTracker.removeMessage(tp, record.serializedValueSize());
                     tracedRecord.complete(aLong, throwable);
                   });
         }
@@ -1315,7 +1295,6 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
       checkpointManager.close();
       delayProcessManager.close();
       throughputTracker.clear();
-      inflightMessageTracker.clear();
       if (!scheduledExecutorService.isShutdown()) {
         scheduledExecutorService.shutdown();
       }
