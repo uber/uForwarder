@@ -75,6 +75,7 @@ message JobGroup {
   // ReplicationTaskGroup is populated for job groups that involve Kafka replication/ingestion
   // Its job type should be JOB_TYPE_KAFKA_REPLICATION when populated
   ReplicationTaskGroup replication_task_group = 13;
+
   // The extensible field, used for 3rdParty application
   google.protobuf.Any extension = 14;
 }
@@ -174,15 +175,18 @@ message StoredJobGroup {
   // The specific (partitioned) job for this job group.
   // Implementations should guarantee uniqueness of jobs.
   repeated StoredJob jobs = 4;
-
   // scale status of job group for autoScaler
   ScaleStatus scale_status = 5;
 }
 
-// scale status of job group for autoScaler
+// scale status of job group
 message ScaleStatus {
   // scale of the job group which indicates number of works needed
   double scale = 1;
+  // the combined messages per second of all the jobs in the job group
+  double total_messages_per_sec = 2;
+  // the combined bytes per second of all the jobs in the job group
+  double total_bytes_per_sec = 3;
 }
 
 // AuditTaskGroup is a specification for audit tasks in Uatu

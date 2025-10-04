@@ -38,6 +38,7 @@ service MasterAdminService {
 message AddJobGroupRequest {
   uber.data.kafka.datatransfer.JobGroup job_group = 1;
   uber.data.kafka.datatransfer.JobState job_group_state = 2;
+  ScaleStatus scale_status = 3;
 }
 
 // The JobGroup that is registered to the system.
@@ -95,4 +96,5 @@ message GetAllJobGroupsRequest {
 message GetAllJobGroupsResponse {
   JobGroup job_group = 1;
   JobState job_group_state = 2;
+  ScaleStatus scale_status = 3;
 }
