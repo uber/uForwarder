@@ -18,6 +18,7 @@ import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.common.AdminClient;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
+import com.uber.data.kafka.datatransfer.common.JobPodAssigner;
 import com.uber.data.kafka.datatransfer.common.KafkaPartitionExpansionWatcher;
 import com.uber.data.kafka.datatransfer.common.MetricsConfiguration;
 import com.uber.data.kafka.datatransfer.common.NodeAutoConfiguration;
@@ -141,7 +142,13 @@ public class UForwarderControllerFactory {
       AdminClient.Builder adminBuilder,
       LeaderSelector leaderSelector) {
     return new KafkaPartitionExpansionWatcher(
-        coreInfra, jobGroupStore, jobIdProvider, jobCreator, adminBuilder, leaderSelector);
+        coreInfra,
+        jobGroupStore,
+        jobIdProvider,
+        jobCreator,
+        adminBuilder,
+        leaderSelector,
+        JobPodAssigner.NoopJobPodAssigner);
   }
 
   @Bean(name = "grpcPort")

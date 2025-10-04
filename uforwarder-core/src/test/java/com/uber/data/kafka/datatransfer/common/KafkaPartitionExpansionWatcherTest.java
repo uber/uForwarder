@@ -59,6 +59,7 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
   private IdProvider<Long, StoredJob> jobIdProvider;
   private JobCreator jobCreator;
   private LeaderSelector leaderSelector;
+  private JobPodAssigner jobPodAssigner;
 
   @Before
   public void setup() throws Exception {
@@ -85,9 +86,17 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
     Mockito.when(scope.histogram(ArgumentMatchers.anyString(), ArgumentMatchers.any()))
         .thenReturn(histogram);
     Mockito.when(timer.start()).thenReturn(stopwatch);
+    jobPodAssigner = Mockito.mock(JobPodAssigner.class);
+    when(jobPodAssigner.assignJobPod(Mockito.any(TopicPartitionInfo.class))).thenReturn("");
     kafkaPartitionExpansionWatcher =
         new KafkaPartitionExpansionWatcher(
-            infra, jobGroupStore, jobIdProvider, jobCreator, adminBuilder, leaderSelector);
+            infra,
+            jobGroupStore,
+            jobIdProvider,
+            jobCreator,
+            adminBuilder,
+            leaderSelector,
+            jobPodAssigner);
 
     // mock describeTopics call returning a topic with 2 partitions
     TopicDescription topicDescription =
@@ -221,8 +230,12 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
     }
 
     // new partitioninfo with leader
-    Node node1 = new Node(0, "node-0", 9092, "rack1", "canary-broker");
-    Node node2 = new Node(1, "node-1", 9092, "rack2", "default");
+    Node node1 = new Node(0, "node-0", 9092, "rack1");
+    Node node2 = new Node(1, "node-1", 9092, "rack2");
+
+    when(jobPodAssigner.assignJobPod(Mockito.any(TopicPartitionInfo.class)))
+        .thenReturn("canary-broker")
+        .thenReturn("default");
 
     TopicDescription topicDescription =
         new TopicDescription(

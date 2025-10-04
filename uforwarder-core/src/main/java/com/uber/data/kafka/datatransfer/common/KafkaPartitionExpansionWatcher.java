@@ -47,6 +47,7 @@ public final class KafkaPartitionExpansionWatcher {
   private final JobCreator jobCreator;
   private final AdminClient.Builder adminBuilder;
   private final LeaderSelector leaderSelector;
+  private final JobPodAssigner jobPodAssigner;
 
   public KafkaPartitionExpansionWatcher(
       CoreInfra infra,
@@ -54,13 +55,15 @@ public final class KafkaPartitionExpansionWatcher {
       IdProvider<Long, StoredJob> jobIdProvider,
       JobCreator jobCreator,
       AdminClient.Builder adminBuilder,
-      LeaderSelector leaderSelector) {
+      LeaderSelector leaderSelector,
+      JobPodAssigner jobPodAssigner) {
     this.infra = infra;
     this.jobGroupStore = jobGroupStore;
     this.jobIdProvider = jobIdProvider;
     this.jobCreator = jobCreator;
     this.adminBuilder = adminBuilder;
     this.leaderSelector = leaderSelector;
+    this.jobPodAssigner = jobPodAssigner;
   }
 
   @Scheduled(fixedDelayString = "${master.kafka.partition.expansion.watcher.interval}")
@@ -176,7 +179,7 @@ public final class KafkaPartitionExpansionWatcher {
 
           Map<Integer, StoredJob> newJobs = new HashMap<>();
           for (int i = 0; i < partitionInfos.size(); i++) {
-            String jobPod = getJobPod(partitionInfos.get(i));
+            String jobPod = jobPodAssigner.assignJobPod(partitionInfos.get(i));
             if (currentJobs.containsKey(i)) {
               StoredJob oldJob = currentJobs.get(i);
               Preconditions.checkNotNull(
@@ -276,15 +279,6 @@ public final class KafkaPartitionExpansionWatcher {
           .update((double) expectedPartitionCount);
       expandOrShrink(jobGroup, partitionInfos);
     }
-  }
-
-  private String getJobPod(TopicPartitionInfo topicPartitionInfo) {
-    String brokerPod = "";
-    if (topicPartitionInfo.leader() != null && topicPartitionInfo.leader().pod() != null) {
-      brokerPod = topicPartitionInfo.leader().pod();
-    }
-
-    return brokerPod;
   }
 
   private static class AllPartitionInfo {
