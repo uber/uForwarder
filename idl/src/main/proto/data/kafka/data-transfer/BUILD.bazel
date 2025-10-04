@@ -97,6 +97,8 @@ uber_proto_java_library(
         "com.uber.data.kafka.datatransfer.MasterAdminServiceProto",
         "com.uber.data.kafka.datatransfer.MasterWorkerServiceProto",
         "com.uber.data.kafka.datatransfer.WorkerProto",
+        "com.uber.data.kafka.datatransfer.PartitionOffsetRange",
+        "com.uber.data.kafka.datatransfer.PartitionOffsetRanges",
     ],
     strip_import_prefix = "/idl/code.uber.internal/",
     visibility = [

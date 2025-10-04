@@ -8,6 +8,8 @@ import com.uber.data.kafka.datatransfer.JobGroup;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.JobType;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTaskGroup;
+import com.uber.data.kafka.datatransfer.PartitionOffsetRange;
+import com.uber.data.kafka.datatransfer.PartitionOffsetRanges;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.common.AdminClient;
@@ -299,5 +301,53 @@ public class BatchJobCreatorTest extends FievelTestBase {
           throw new IllegalArgumentException(
               String.format("failed to resolve offsetForTimes for %s", topicPartition));
         });
+  }
+
+  @Test
+  public void testNewJobWithPartitionOffsetRanges() {
+    TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
+    KafkaFutureImpl highWatermarkFuture = new KafkaFutureImpl();
+    highWatermarkFuture.complete(
+        new ListOffsetsResult.ListOffsetsResultInfo(
+            TEST_END_OFFSET, Timestamps.toMillis(TEST_END_TIME), Optional.empty()));
+    Mockito.doReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, highWatermarkFuture)))
+        .when(adminClient)
+        .endOffsets(ImmutableList.of(topicPartition));
+
+    // Create a PartitionOffsetRange for the test partition
+    PartitionOffsetRange partitionOffsetRange =
+        PartitionOffsetRange.newBuilder()
+            .setPartition(TEST_PARTITION)
+            .setStartOffset(100)
+            .setEndOffset(200)
+            .build();
+    PartitionOffsetRanges partitionOffsetRanges =
+        PartitionOffsetRanges.newBuilder().addPartitionOffsetRange(partitionOffsetRange).build();
+
+    // Set up a job group with PartitionOffsetRanges
+    StoredJobGroup jobGroupWithOffsets =
+        StoredJobGroup.newBuilder()
+            .setJobGroup(
+                JobGroup.newBuilder()
+                    .setType(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER)
+                    .setKafkaConsumerTaskGroup(
+                        KafkaConsumerTaskGroup.newBuilder()
+                            .setCluster(TEST_CLUSTER)
+                            .setConsumerGroup(TEST_GROUP)
+                            .setTopic(TEST_TOPIC)
+                            .setStartTimestamp(TEST_START_TIME)
+                            .setEndTimestamp(TEST_END_TIME)
+                            .setPartitionOffsetRanges(partitionOffsetRanges)
+                            .build()))
+            .setState(JobState.JOB_STATE_RUNNING)
+            .build();
+
+    // The adminClient should not be called for offsets in this case, but we can still mock it
+    StoredJob storedJob = jobCreator.newJob(jobGroupWithOffsets, 1, TEST_PARTITION);
+    Assert.assertTrue(JobUtils.isDerived(jobGroupWithOffsets.getJobGroup(), storedJob.getJob()));
+    Assert.assertEquals(100, storedJob.getJob().getKafkaConsumerTask().getStartOffset());
+    Assert.assertEquals(200, storedJob.getJob().getKafkaConsumerTask().getEndOffset());
+    // If start == end, state should be CANCELED, otherwise RUNNING
+    Assert.assertEquals(JobState.JOB_STATE_RUNNING, storedJob.getState());
   }
 }

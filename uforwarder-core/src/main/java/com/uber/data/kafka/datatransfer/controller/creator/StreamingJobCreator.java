@@ -33,7 +33,6 @@ public class StreamingJobCreator extends JobCreatorWithOffsets {
         JOB_TYPE,
         jobId,
         partition,
-        KafkaUtils.MAX_INVALID_START_OFFSET,
-        KafkaUtils.MAX_INVALID_END_OFFSET);
+        new OffsetRange(KafkaUtils.MAX_INVALID_START_OFFSET, KafkaUtils.MAX_INVALID_END_OFFSET));
   }
 }

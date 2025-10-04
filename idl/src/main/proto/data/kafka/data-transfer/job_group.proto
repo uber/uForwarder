@@ -108,6 +108,11 @@ message KafkaConsumerTaskGroup {
   IsolationLevel isolation_level = 8;
   // Auditing related metadata. It will be set if the job type is `JOB_TYPE_KAFKA_AUDIT`
   AuditMetaData audit_metadata = 9;
+  // start/end offset for each partition. The partition_offset_ranges, if available, will
+  // make the controller ignore the start_timestamp and end_timestamp. That means only the
+  // partitions in the partition_offset_ranges will be consumed. New partitions after
+  // expansion will not be consumed either.
+  PartitionOffsetRanges partition_offset_ranges = 10;
 }
 
 message RpcDispatcherTaskGroup {
@@ -210,4 +215,20 @@ message AvailabilityTaskGroup {
 message ReplicationTaskGroup {
   // whether the source end_offset should be ignored and keep running continuously
   bool is_continuous = 1;
+}
+
+// PartitionOffsetRanges is a specification for a set of partition offset ranges.
+message PartitionOffsetRanges {
+  // start/end offset for each partition
+  repeated PartitionOffsetRange partition_offset_range = 1;
+}
+
+// PartitionOffsetRange is a specification for a single partition offset range.
+message PartitionOffsetRange {
+  // the partition index
+  uint32 partition = 1;
+  // the start offset of the partition
+  uint64 start_offset = 2;
+  // the end offset of the partition
+  uint64 end_offset = 3;
 }
