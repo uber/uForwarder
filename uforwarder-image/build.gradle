@@ -17,7 +17,7 @@ tasks.register('prepareDockerFile', Copy) {
 
 tasks.register('createDockerFile', Dockerfile) {
     dependsOn('prepareDockerFile')
-    from('eclipse-temurin:11.0.17_8-jdk')
+    from('eclipse-temurin:21.0.6_7-jdk-noble')
     copyFile('entrypoint.sh','/opt/uforwarder/')
     copyFile("uforwarder-boot-${mavenVersion}.jar",'/opt/uforwarder/bin_main.jar')
     runCommand('chmod +x /opt/uforwarder/entrypoint.sh')

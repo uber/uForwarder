@@ -1,4 +1,4 @@
-FROM eclipse-temurin:11.0.17_8-jdk
+FROM eclipse-temurin:21.0.6_7-jdk-noble
 
 COPY bin_main.jar /opt/uforwarder/
 COPY entrypoint.sh /opt/uforwarder/
