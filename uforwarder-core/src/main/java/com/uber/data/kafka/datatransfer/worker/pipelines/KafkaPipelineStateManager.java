@@ -66,7 +66,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
     this.jobTemplate = job;
     this.scope = scope;
     this.flowControl = MINIMUM_VALID_FLOW;
-    this.healthManager = PipelineHealthManager.newBuilder().build(job);
+    this.healthManager = PipelineHealthManager.newBuilder().setScope(scope).build(job);
   }
 
   @Override
@@ -408,6 +408,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
             .update(job.getFlowControl().getMaxInflightMessages());
       }
     }
+    healthManager.publishMetrics();
   }
 
   private static class MetricNames {
