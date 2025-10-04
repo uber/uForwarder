@@ -1,0 +1,55 @@
+syntax = "proto3";
+
+// These protos are in alpha stage and there is no guarantee of protocol compatibility at this time.
+
+import "google/protobuf/any.proto";
+import "google/protobuf/timestamp.proto";
+
+package uber.data.kafka.datatransfer;
+
+option go_package = "datatransferpb";
+option java_multiple_files = true;
+option java_outer_classname = "AutoScalarProto";
+option java_package = "com.uber.data.kafka.datatransfer";
+
+message AutoScalarSnapshot {
+  repeated JobGroupScalarSnapshot job_group_scalar = 1;
+}
+
+message JobGroupScalarSnapshot {
+  // cluster to read from.
+  string cluster = 1;
+  // topic to read from.
+  string topic = 2;
+  // consumer_group to read on behalf of and/or checkpoint for.
+  string consumer_group = 3;
+  // scale state snapshots
+  ScaleStateSnapshot scale_state_snapshot = 4;
+}
+
+message ScaleStateSnapshot {
+  // scale computers for up/down/hibernate/bootstrap
+  repeated ScaleComputerSnapshot scale_computer_snapshots = 1;
+}
+
+message ScaleComputerSnapshot {
+  oneof impl {
+    WindowedComputerSnapshot windowed_computer_snapshot = 1;
+  }
+}
+
+message WindowedComputerSnapshot {
+  double lower_boundary = 1;
+  double upper_boundary = 2;
+  double percentile = 3;
+  double percentile_scale = 4;
+  double current_scale = 5;
+  WindowSnapshot window_snapshot = 6;
+}
+
+message WindowSnapshot {
+  int64 size_in_seconds = 1;
+  int64 min_size_in_seconds = 2;
+  int32 size_in_samples = 3;
+  int32 min_size_in_samples = 4;
+}

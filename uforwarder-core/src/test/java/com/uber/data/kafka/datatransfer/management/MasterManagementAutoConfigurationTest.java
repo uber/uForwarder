@@ -7,6 +7,7 @@ import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.common.NodeAutoConfiguration;
 import com.uber.data.kafka.datatransfer.common.ReadStore;
+import com.uber.data.kafka.datatransfer.controller.autoscalar.AutoScalarAutoConfiguration;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
 import com.uber.data.kafka.datatransfer.controller.storage.StoreAutoConfiguration;
@@ -27,6 +28,7 @@ import org.springframework.test.context.TestPropertySource;
 @SpringBootTest(
     classes = {
       MasterManagementAutoConfiguration.class,
+      AutoScalarAutoConfiguration.class,
       StoreAutoConfiguration.class,
       NodeAutoConfiguration.class,
     })
@@ -48,6 +50,7 @@ public class MasterManagementAutoConfigurationTest extends FievelTestBase {
   @Autowired JobsHtml jobsHtml;
   @Autowired MasterJobsJson jobsJson;
   @Autowired NavJson navJson;
+  @Autowired ScalarSnapshotJson scalarSnapshotJson;
 
   @Test
   public void test() {
@@ -58,5 +61,6 @@ public class MasterManagementAutoConfigurationTest extends FievelTestBase {
     Assert.assertNotNull(jobsHtml);
     Assert.assertNotNull(jobsJson);
     Assert.assertNotNull(navJson);
+    Assert.assertNotNull(scalarSnapshotJson);
   }
 }

@@ -1,8 +1,10 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
+import com.uber.data.kafka.datatransfer.ScaleStateSnapshot;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
 import com.uber.fievel.testing.base.FievelTestBase;
 import java.time.Duration;
+import java.util.Optional;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -167,5 +169,42 @@ public class ScaleStateTest extends FievelTestBase {
       state = state.onSample(0.5);
     }
     Assert.assertEquals(0.5, state.getScale(), 0.0001);
+  }
+
+  @Test
+  public void testSnapshotRunningState() {
+    ScaleState state = builder.build(2.0);
+    ScaleStateSnapshot scaleStateSnapshot = state.snapshot();
+    Assert.assertEquals(3, scaleStateSnapshot.getScaleComputerSnapshotsList().size());
+    Assert.assertEquals(
+        2.0d,
+        scaleStateSnapshot
+            .getScaleComputerSnapshotsList()
+            .get(0)
+            .getWindowedComputerSnapshot()
+            .getCurrentScale(),
+        0.000001);
+  }
+
+  @Test
+  public void testSnapshotHibernateState() {
+    ScaleState state = builder.build(0.0);
+    ScaleStateSnapshot scaleStateSnapshot = state.snapshot();
+    Assert.assertEquals(1, scaleStateSnapshot.getScaleComputerSnapshotsList().size());
+    Assert.assertEquals(
+        1.0d,
+        scaleStateSnapshot
+            .getScaleComputerSnapshotsList()
+            .get(0)
+            .getWindowedComputerSnapshot()
+            .getCurrentScale(),
+        0.000001);
+  }
+
+  @Test
+  public void testNoopScaleComputer() {
+    ScaleComputer scaleComputer = ScaleComputer.NOOP;
+    Assert.assertEquals(Optional.empty(), scaleComputer.onSample(0.0));
+    Assert.assertNotNull(scaleComputer.snapshot());
   }
 }

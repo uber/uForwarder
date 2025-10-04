@@ -4,8 +4,11 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
+import com.google.protobuf.MessageOrBuilder;
+import com.uber.data.kafka.datatransfer.AutoScalarSnapshot;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.JobGroup;
+import com.uber.data.kafka.datatransfer.JobGroupScalarSnapshot;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.common.StructuredLogging;
 import com.uber.data.kafka.datatransfer.common.StructuredTags;
@@ -17,6 +20,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,6 +32,7 @@ import org.springframework.scheduling.annotation.Scheduled;
  * after ttl since last access
  */
 public class AutoScalar implements Scalar {
+
   private static final Logger logger = LoggerFactory.getLogger(AutoScalar.class);
   // in-memory auto-scalar status store
   private final Cache<JobGroupKey, JobGroupScaleStatus> autoScalarStatusStore;
@@ -134,7 +139,8 @@ public class AutoScalar implements Scalar {
             .computeIfAbsent(
                 jobGroupKey,
                 key ->
-                    new JobGroupScaleStatus(scale.isPresent() ? quota.build(scale.get()) : quota))
+                    new JobGroupScaleStatus(
+                        jobGroupKey, scale.isPresent() ? quota.build(scale.get()) : quota))
             .getScale(quota, jobGroup.getMiscConfig().getScaleResetEnabled());
 
     scope
@@ -173,6 +179,22 @@ public class AutoScalar implements Scalar {
           StructuredLogging.kafkaCluster(jobGroup.getKafkaConsumerTaskGroup().getCluster()),
           StructuredLogging.kafkaGroup(jobGroup.getKafkaConsumerTaskGroup().getConsumerGroup()));
     }
+  }
+
+  /**
+   * Takes a dump of internal state of AutoScalar, including scale, vertical scale limit, time
+   * window etc. this dump can be used for data analysis
+   *
+   * @return a snapshot of state
+   */
+  @Override
+  public MessageOrBuilder snapshot() {
+    return AutoScalarSnapshot.newBuilder()
+        .addAllJobGroupScalar(
+            autoScalarStatusStore.asMap().values().stream()
+                .map(JobGroupScaleStatus::snapshot)
+                .collect(Collectors.toList()))
+        .build();
   }
 
   /**
@@ -234,10 +256,12 @@ public class AutoScalar implements Scalar {
 
   @VisibleForTesting
   protected class JobGroupScaleStatus {
+    private final JobGroupKey jobGroupKey;
     private ScaleState state;
     private long signature;
 
-    JobGroupScaleStatus(SignatureAndScale scale) {
+    JobGroupScaleStatus(JobGroupKey jobGroupKey, SignatureAndScale scale) {
+      this.jobGroupKey = jobGroupKey;
       reset(scale);
     }
 
@@ -273,6 +297,21 @@ public class AutoScalar implements Scalar {
      */
     synchronized void sampleScale(double sampleScale) {
       state = state.onSample(sampleScale);
+    }
+
+    /**
+     * Takes a dump of internal state, including job group key, vertical scale state, etc for data
+     * analysis
+     *
+     * @return a dump of internal state
+     */
+    public JobGroupScalarSnapshot snapshot() {
+      return JobGroupScalarSnapshot.newBuilder()
+          .setConsumerGroup(jobGroupKey.getGroup())
+          .setTopic(jobGroupKey.getTopic())
+          .setCluster(jobGroupKey.getCluster())
+          .setScaleStateSnapshot(state.snapshot())
+          .build();
     }
   }
 

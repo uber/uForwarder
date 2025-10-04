@@ -4,6 +4,7 @@ import com.google.protobuf.util.JsonFormat;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
+import com.uber.data.kafka.datatransfer.controller.autoscalar.Scalar;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
 import org.springframework.beans.factory.annotation.Value;
@@ -62,5 +63,11 @@ public class MasterManagementAutoConfiguration {
   @Bean
   public NavJson navJson(Node node, @Value("${service.name}") String serviceName) {
     return new NavJson(serviceName, node.getHost(), "master");
+  }
+
+  @Bean
+  public ScalarSnapshotJson scalarSnapshotJson(
+      Scalar scalar, JsonFormat.TypeRegistry typeRegistry) {
+    return new ScalarSnapshotJson(scalar, typeRegistry);
   }
 }

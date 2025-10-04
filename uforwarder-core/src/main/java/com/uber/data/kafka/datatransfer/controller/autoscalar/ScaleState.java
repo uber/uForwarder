@@ -2,8 +2,12 @@ package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
+import com.uber.data.kafka.datatransfer.ScaleComputerSnapshot;
+import com.uber.data.kafka.datatransfer.ScaleStateSnapshot;
+import com.uber.data.kafka.datatransfer.WindowedComputerSnapshot;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Collectors;
 import javax.annotation.concurrent.ThreadSafe;
 
 /** ScalarState indicates in-memory autoscalar state of workload */
@@ -32,6 +36,13 @@ abstract class ScaleState {
   public double getScale() {
     return this.scale;
   }
+
+  /**
+   * Takes a dump of internal computer state
+   *
+   * @return the dump of internal state
+   */
+  public abstract ScaleStateSnapshot snapshot();
 
   /**
    * Takes sample scale of work load
@@ -144,6 +155,17 @@ abstract class ScaleState {
       upDownScaleComputers = listBuilder.build();
     }
 
+    @Override
+    public ScaleStateSnapshot snapshot() {
+      return ScaleStateSnapshot.newBuilder()
+          .addAllScaleComputerSnapshots(
+              upDownScaleComputers.stream()
+                  .map(ScaleComputer::snapshot)
+                  .collect(Collectors.toList()))
+          .addScaleComputerSnapshots(hibernatingComputer.snapshot())
+          .build();
+    }
+
     private static ScaleComputer buildHibernatingComputer(Builder builder, double scale) {
       return builder.config.isHibernatingEnabled()
           ? new WindowedScaleComputer(
@@ -196,6 +218,13 @@ abstract class ScaleState {
               EPSILON,
               ONE,
               builder.config.getUpScalePercentile());
+    }
+
+    @Override
+    public ScaleStateSnapshot snapshot() {
+      return ScaleStateSnapshot.newBuilder()
+          .addScaleComputerSnapshots(bootstrapComputer.snapshot())
+          .build();
     }
 
     @Override
@@ -272,6 +301,21 @@ abstract class ScaleState {
         }
       }
       return Optional.empty();
+    }
+
+    @Override
+    public ScaleComputerSnapshot snapshot() {
+      return ScaleComputerSnapshot.newBuilder()
+          .setWindowedComputerSnapshot(
+              WindowedComputerSnapshot.newBuilder()
+                  .setWindowSnapshot(scaleWindow.snapshot())
+                  .setCurrentScale(scale)
+                  .setPercentile(windowPercentile)
+                  .setPercentileScale(scaleWindow.getByPercentile(windowPercentile))
+                  .setLowerBoundary(scale * minOutputFactor)
+                  .setUpperBoundary(scale * maxOutputFactor)
+                  .build())
+          .build();
     }
   }
 }
