@@ -47,6 +47,7 @@ dependencies {
     implementation project(':idl')
     testImplementation project(':fievel-common')
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.junit.jupiter:junit-jupiter-migrationsupport'
     testImplementation 'junit:junit'
     testImplementation 'io.grpc:grpc-testing'
     testImplementation 'org.apache.curator:curator-test'

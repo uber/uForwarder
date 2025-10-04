@@ -53,6 +53,7 @@ dependencies {
     testImplementation project(':fievel-common')
     testImplementation 'junit:junit'
     testImplementation 'org.junit.jupiter:junit-jupiter'
+    testImplementation 'org.junit.jupiter:junit-jupiter-migrationsupport'
     testImplementation 'org.apache.curator:curator-test'
     testImplementation 'org.awaitility:awaitility'
     testImplementation 'org.mockito:mockito-inline'
