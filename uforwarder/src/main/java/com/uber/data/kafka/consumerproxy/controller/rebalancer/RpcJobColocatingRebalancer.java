@@ -414,7 +414,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
         usedWorkers += 1;
       }
     }
-    scope.gauge(MetricNames.USED_WORKER_COUNT).update(usedWorkers);
+    scope.tagged(scopeTagsWithPod).gauge(MetricNames.USED_WORKER_COUNT).update(usedWorkers);
 
     int totalNumberOfWorkersStillNeeded = 0;
     for (long partitionIdx : rebalancingWorkerTable.getAllPartitions()) {
