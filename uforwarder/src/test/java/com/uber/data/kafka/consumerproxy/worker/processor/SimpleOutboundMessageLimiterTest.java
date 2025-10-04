@@ -35,7 +35,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
   private SimpleOutboundMessageLimiter outboundMessageLimiter;
   private Gauge inflight;
   private Gauge oneMinuteMaxInflight;
-  private Gauge oneMinuteMinInflight;
+  private Gauge oneMinuteAvgInflight;
   private Gauge limit;
   private Gauge adaptiveLimit;
   private Gauge shadowAdaptiveLimit;
@@ -78,7 +78,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
                 invocation -> invocation.getArgument(0, CompletableFuture.class));
     infra = CoreInfra.builder().withScope(scope).withContextManager(contextManager).build();
     oneMinuteMaxInflight = Mockito.mock(Gauge.class);
-    oneMinuteMinInflight = Mockito.mock(Gauge.class);
+    oneMinuteAvgInflight = Mockito.mock(Gauge.class);
     queueSize = Mockito.mock(Gauge.class);
     Mockito.when(contextManager.wrap(Mockito.any(ExecutorService.class)))
         .thenAnswer(
@@ -95,8 +95,8 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
     Mockito.when(scope.gauge("processor.outbound-cache.size")).thenReturn(inflight);
     Mockito.when(scope.gauge("processor.outbound-cache.size.one-minute-max"))
         .thenReturn(oneMinuteMaxInflight);
-    Mockito.when(scope.gauge("processor.outbound-cache.size.one-minute-min"))
-        .thenReturn(oneMinuteMinInflight);
+    Mockito.when(scope.gauge("processor.outbound-cache.size.one-minute-avg"))
+        .thenReturn(oneMinuteAvgInflight);
     Mockito.when(scope.gauge("processor.outbound-cache.limit")).thenReturn(limit);
     Mockito.when(scope.gauge("processor.outbound-cache.adaptive-limit")).thenReturn(adaptiveLimit);
     Mockito.when(scope.gauge("processor.outbound-cache.shadow-adaptive-limit"))
@@ -191,7 +191,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
         outboundMessageLimiter.acquirePermitAsync(pm1);
     outboundMessageLimiter.publishMetrics();
     Mockito.verify(limit).update(2.0);
-    Mockito.verify(oneMinuteMinInflight).update(0.0);
+    Mockito.verify(oneMinuteAvgInflight).update(1.0);
     Mockito.verify(oneMinuteMaxInflight).update(1.0);
     Mockito.verify(inflight).update(1.0);
     Mockito.verify(adaptiveLimit).update(100.0);
@@ -205,12 +205,12 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
         adaptiveLimit,
         shadowAdaptiveLimit,
         oneMinuteMaxInflight,
-        oneMinuteMinInflight,
+        oneMinuteAvgInflight,
         queueSize);
 
     outboundMessageLimiter.publishMetrics();
     Mockito.verify(limit).update(2.0);
-    Mockito.verify(oneMinuteMinInflight).update(0.0);
+    Mockito.verify(oneMinuteAvgInflight).update(1.0);
     Mockito.verify(oneMinuteMaxInflight).update(1.0);
     Mockito.verify(inflight).update(0.0);
     Mockito.verify(adaptiveLimit).update(100.0);
@@ -223,7 +223,7 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
         adaptiveLimit,
         shadowAdaptiveLimit,
         oneMinuteMaxInflight,
-        oneMinuteMinInflight);
+        oneMinuteAvgInflight);
 
     outboundMessageLimiter.publishMetrics();
     Mockito.verify(limit, Mockito.never()).update(Mockito.anyDouble());

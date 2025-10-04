@@ -131,8 +131,8 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
               .update(inflightTracker.oneMinuteMax() / (double) nPartitions);
           scopeAndInflight
               .scope
-              .gauge(MetricNames.OUTBOUND_CACHE_SIZE_ONE_MINUTE_MIN)
-              .update(inflightTracker.oneMinuteMin() / (double) nPartitions);
+              .gauge(MetricNames.OUTBOUND_CACHE_SIZE_ONE_MINUTE_AVG)
+              .update(inflightTracker.oneMinuteAverage() / (double) nPartitions);
           scopeAndInflight
               .scope
               .gauge(MetricNames.OUTBOUND_CACHE_LIMIT)
@@ -461,8 +461,8 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     static final String OUTBOUND_CACHE_SIZE = "processor.outbound-cache.size";
     static final String OUTBOUND_CACHE_SIZE_ONE_MINUTE_MAX =
         "processor.outbound-cache.size.one-minute-max";
-    static final String OUTBOUND_CACHE_SIZE_ONE_MINUTE_MIN =
-        "processor.outbound-cache.size.one-minute-min";
+    static final String OUTBOUND_CACHE_SIZE_ONE_MINUTE_AVG =
+        "processor.outbound-cache.size.one-minute-avg";
     static final String OUTBOUND_CACHE_THREAD_INTERRUPTED =
         "processor.outbound-cache.thread.interrupted";
     static final String OUTBOUND_CACHE_CLOSE_SUCCESS = "processor.outbound-cache.close.success";
