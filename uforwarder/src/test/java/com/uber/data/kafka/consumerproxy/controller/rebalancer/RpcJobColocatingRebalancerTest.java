@@ -23,6 +23,7 @@ import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.WorkerState;
+import com.uber.data.kafka.datatransfer.controller.autoscalar.Throughput;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.JobPodPlacementProvider;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
 import com.uber.m3.tally.Counter;
@@ -334,7 +335,10 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     double newTotalWorkload = 0.0;
     for (Map.Entry<String, RebalancingJobGroup> jobGroupEntry : jobs.entrySet()) {
-      jobGroupEntry.getValue().updateScale(jobGroupEntry.getValue().getScale().get() / 10.0);
+      jobGroupEntry
+          .getValue()
+          .updateScale(
+              jobGroupEntry.getValue().getScale().get() / 10.0, new Throughput(100d, 100d));
       for (Map.Entry<Long, StoredJob> entry : jobGroupEntry.getValue().getJobs().entrySet()) {
         newTotalWorkload += (entry.getValue().getScale() / 10.0);
         jobGroupEntry

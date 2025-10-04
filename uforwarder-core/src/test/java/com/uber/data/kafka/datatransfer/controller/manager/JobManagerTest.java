@@ -12,6 +12,7 @@ import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.common.VersionedProto;
+import com.uber.data.kafka.datatransfer.controller.autoscalar.Throughput;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.Rebalancer;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
@@ -359,11 +360,12 @@ public class JobManagerTest extends FievelTestBase {
   @Test
   public void testRebalanceJobGroupsWithScaleChange() throws Exception {
     double expectedScale = 3.0;
+    Throughput expectedThroughput = new Throughput(3.0d, 3.0d);
     Mockito.doAnswer(
             invocation -> {
               Map<String, RebalancingJobGroup> jobGroupMap = invocation.getArgument(0);
               RebalancingJobGroup rebalancingJobGroup = jobGroupMap.get(jobGroupKey);
-              rebalancingJobGroup.updateScale(expectedScale);
+              rebalancingJobGroup.updateScale(expectedScale, expectedThroughput);
               return jobGroupMap;
             })
         .when(rebalancer)
@@ -382,7 +384,11 @@ public class JobManagerTest extends FievelTestBase {
     expectedJobGroupBuilder.addJobs(buildJob(2, 0, JobState.JOB_STATE_RUNNING, 0));
     expectedJobGroupBuilder.addJobs(buildJob(3, 0, JobState.JOB_STATE_RUNNING, 0));
     expectedJobGroupBuilder.setScaleStatus(
-        ScaleStatus.newBuilder().setScale(expectedScale).build());
+        ScaleStatus.newBuilder()
+            .setScale(expectedScale)
+            .setTotalMessagesPerSec(3.0d)
+            .setTotalBytesPerSec(3.0d)
+            .build());
     assertEqualsWithoutTimestamp(expectedJobGroupBuilder.build(), itemCaptor.getValue().model());
   }
 

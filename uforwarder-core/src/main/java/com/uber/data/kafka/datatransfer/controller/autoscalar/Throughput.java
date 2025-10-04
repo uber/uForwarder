@@ -15,7 +15,7 @@ public class Throughput {
    * @param messagesPerSecond the messages per second
    * @param bytesPerSecond the bytes per second
    */
-  protected Throughput(double messagesPerSecond, double bytesPerSecond) {
+  public Throughput(double messagesPerSecond, double bytesPerSecond) {
     this.messagesPerSecond = messagesPerSecond;
     this.bytesPerSecond = bytesPerSecond;
   }

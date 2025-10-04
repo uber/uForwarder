@@ -8,6 +8,7 @@ import com.uber.data.kafka.datatransfer.ScaleStatus;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
+import com.uber.data.kafka.datatransfer.controller.autoscalar.Throughput;
 import com.uber.fievel.testing.base.FievelTestBase;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
 import org.junit.Assert;
@@ -111,10 +112,10 @@ public class RebalancingJobGroupTest extends FievelTestBase {
 
   @Test
   public void testUpdateScale() {
-    boolean updated = rebalancingJobGroup.updateScale(1.5);
+    boolean updated = rebalancingJobGroup.updateScale(1.5, new Throughput(1.5d, 1.5d));
     Assert.assertFalse(updated);
     Assert.assertFalse(rebalancingJobGroup.isChanged());
-    updated = rebalancingJobGroup.updateScale(3.0);
+    updated = rebalancingJobGroup.updateScale(3.0, new Throughput(3.0d, 3.0d));
     Assert.assertTrue(updated);
     Assert.assertTrue(rebalancingJobGroup.isChanged());
     Assert.assertEquals(

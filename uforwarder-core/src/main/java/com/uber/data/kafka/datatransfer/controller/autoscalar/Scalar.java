@@ -19,6 +19,6 @@ public interface Scalar {
    * @param defaultScale the default scale if not able to compute scale
    */
   default void apply(RebalancingJobGroup rebalancingJobGroup, double defaultScale) {
-    rebalancingJobGroup.updateScale(defaultScale);
+    rebalancingJobGroup.updateScale(defaultScale, Throughput.ZERO);
   }
 }
