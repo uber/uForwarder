@@ -2,8 +2,6 @@ package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
-import com.google.common.cache.Cache;
-import com.google.common.cache.CacheBuilder;
 import com.google.protobuf.MessageOrBuilder;
 import com.uber.data.kafka.datatransfer.AutoScalarSnapshot;
 import com.uber.data.kafka.datatransfer.FlowControl;
@@ -20,7 +18,6 @@ import com.uber.m3.tally.Stopwatch;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -36,8 +33,7 @@ public class AutoScalar implements Scalar {
 
   private static final Logger logger = LoggerFactory.getLogger(AutoScalar.class);
   private static final double ZERO = 0.0;
-  // in-memory auto-scalar status store
-  private final Cache<JobGroupKey, JobGroupScaleStatus> autoScalarStatusStore;
+  private final ScaleStatusStore statusStore;
   private final AutoScalarConfiguration config;
   private final JobWorkloadMonitor JobWorkloadMonitor;
   private final ScaleState.Builder stateBuilder;
@@ -51,6 +47,7 @@ public class AutoScalar implements Scalar {
    * Instantiates a new Auto scalar.
    *
    * @param config the config
+   * @param statusStore the status storage
    * @param JobWorkloadMonitor the job activity monitor
    * @param ScaleWindowManager the scale window manager
    * @param ticker the ticker
@@ -59,16 +56,13 @@ public class AutoScalar implements Scalar {
    */
   public AutoScalar(
       AutoScalarConfiguration config,
+      ScaleStatusStore statusStore,
       JobWorkloadMonitor JobWorkloadMonitor,
       ScaleWindowManager scaleWindowManager,
       Ticker ticker,
       Scope scope,
       LeaderSelector leaderSelector) {
-    this.autoScalarStatusStore =
-        CacheBuilder.newBuilder()
-            .expireAfterAccess(config.getJobStatusTTL().toMillis(), TimeUnit.MILLISECONDS)
-            .ticker(ticker)
-            .build();
+    this.statusStore = statusStore;
     this.JobWorkloadMonitor = JobWorkloadMonitor;
     this.config = config;
     this.scope = scope;
@@ -98,8 +92,7 @@ public class AutoScalar implements Scalar {
     // https://guava.dev/releases/19.0/api/docs/com/google/common/cache/CacheBuilder.html#expireAfterAccess(long,%20java.util.concurrent.TimeUnit)
     // enumeration over entries doesn't reset access time, so expired entries can still be
     // evict by the cache
-    for (Map.Entry<JobGroupKey, JobGroupScaleStatus> entry :
-        autoScalarStatusStore.asMap().entrySet()) {
+    for (Map.Entry<JobGroupKey, JobGroupScaleStatus> entry : statusStore.asMap().entrySet()) {
       JobWorkloadMonitor.get(entry.getKey())
           .ifPresent(
               t -> {
@@ -159,7 +152,7 @@ public class AutoScalar implements Scalar {
     final SignatureAndScale quota = new SignatureAndScale(jobGroup.getFlowControl());
     final Optional<Double> scale = rebalancingJobGroup.getScale();
     double newScale =
-        autoScalarStatusStore
+        statusStore
             .asMap()
             .computeIfAbsent(
                 jobGroupKey,
@@ -216,7 +209,7 @@ public class AutoScalar implements Scalar {
   public MessageOrBuilder snapshot() {
     return AutoScalarSnapshot.newBuilder()
         .addAllJobGroupScalar(
-            autoScalarStatusStore.asMap().values().stream()
+            statusStore.asMap().values().stream()
                 .map(JobGroupScaleStatus::snapshot)
                 .collect(Collectors.toList()))
         .build();
@@ -241,16 +234,6 @@ public class AutoScalar implements Scalar {
   private Throughput scaleToThroughput(double scale) {
     return new Throughput(
         scale * config.getMessagesPerSecPerWorker(), scale * config.getBytesPerSecPerWorker());
-  }
-
-  @VisibleForTesting
-  protected Map<JobGroupKey, JobGroupScaleStatus> getStatusStore() {
-    return autoScalarStatusStore.asMap();
-  }
-
-  @VisibleForTesting
-  protected void cleanUp() {
-    autoScalarStatusStore.cleanUp();
   }
 
   /**

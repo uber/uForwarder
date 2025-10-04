@@ -20,6 +20,11 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class AutoScalarAutoConfiguration {
 
   @Bean
+  public ScaleStatusStore scaleStatusStore(AutoScalarConfiguration autoScalarConfiguration) {
+    return new ScaleStatusStore(autoScalarConfiguration);
+  }
+
+  @Bean
   public JobWorkloadSink jobWorkloadSink(
       AutoScalarConfiguration autoScalarConfiguration, Scope scope) {
     if (autoScalarConfiguration.isEnabled()) {
@@ -37,6 +42,7 @@ public class AutoScalarAutoConfiguration {
   @Bean
   public Scalar scalar(
       AutoScalarConfiguration autoScalarConfiguration,
+      ScaleStatusStore scaleStatusStore,
       JobWorkloadSink jobWorkloadSink,
       ScaleWindowManager scaleWindowManager,
       Scope scope,
@@ -44,6 +50,7 @@ public class AutoScalarAutoConfiguration {
     if (jobWorkloadSink instanceof JobWorkloadMonitor) {
       return new AutoScalar(
           autoScalarConfiguration,
+          scaleStatusStore,
           (JobWorkloadMonitor) jobWorkloadSink,
           scaleWindowManager,
           Ticker.systemTicker(),

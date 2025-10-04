@@ -27,6 +27,7 @@ import org.mockito.Mockito;
 public class AutoScalarTest extends FievelTestBase {
   private AutoScalar autoScalar;
   private AutoScalarConfiguration config;
+  private ScaleStatusStore scaleStatusStore;
   private JobWorkloadMonitor jobWorkloadMonitor;
   private LeaderSelector leaderSelector;
   private TestUtils.TestTicker testTicker;
@@ -54,6 +55,7 @@ public class AutoScalarTest extends FievelTestBase {
     config.setCpuUsagePerWorker(2.0);
     config.setScaleConverterMode(ScaleConverterMode.THROUGHPUT);
     config.setShadowScaleConverterMode(ScaleConverterMode.CPU);
+    scaleStatusStore = new ScaleStatusStore(config, testTicker);
     jobWorkloadMonitor = new JobWorkloadMonitor(config, testTicker, new NoopScope());
     leaderSelector = Mockito.mock(LeaderSelector.class);
     Mockito.when(leaderSelector.isLeader()).thenReturn(true);
@@ -61,6 +63,7 @@ public class AutoScalarTest extends FievelTestBase {
     autoScalar =
         new AutoScalar(
             config,
+            scaleStatusStore,
             jobWorkloadMonitor,
             scaleWindowManager,
             testTicker,
@@ -126,6 +129,7 @@ public class AutoScalarTest extends FievelTestBase {
     autoScalar =
         new AutoScalar(
             config,
+            scaleStatusStore,
             jobWorkloadMonitor,
             scaleWindowManager,
             testTicker,
@@ -177,6 +181,7 @@ public class AutoScalarTest extends FievelTestBase {
     autoScalar =
         new AutoScalar(
             config,
+            scaleStatusStore,
             jobWorkloadMonitor,
             scaleWindowManager,
             testTicker,
@@ -228,6 +233,7 @@ public class AutoScalarTest extends FievelTestBase {
     autoScalar =
         new AutoScalar(
             config,
+            scaleStatusStore,
             jobWorkloadMonitor,
             scaleWindowManager,
             testTicker,
@@ -374,6 +380,7 @@ public class AutoScalarTest extends FievelTestBase {
     autoScalar =
         new AutoScalar(
             config,
+            scaleStatusStore,
             jobWorkloadMonitor,
             scaleWindowManager,
             testTicker,
@@ -554,18 +561,18 @@ public class AutoScalarTest extends FievelTestBase {
     autoScalar.runSample();
     Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     Assert.assertFalse(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
-    Assert.assertFalse(autoScalar.getStatusStore().isEmpty());
+    Assert.assertFalse(scaleStatusStore.asMap().isEmpty());
     // not expired
     testTicker.add(Duration.ofHours(47));
     autoScalar.runSample();
-    autoScalar.cleanUp();
-    Assert.assertFalse(autoScalar.getStatusStore().isEmpty());
+    scaleStatusStore.cleanUp();
+    Assert.assertFalse(scaleStatusStore.asMap().isEmpty());
 
     // expired
     testTicker.add(Duration.ofHours(2));
     autoScalar.runSample(); // refresh last access time of  jobThroughputMonitor
-    autoScalar.cleanUp();
-    Assert.assertTrue(autoScalar.getStatusStore().isEmpty());
+    scaleStatusStore.cleanUp();
+    Assert.assertTrue(scaleStatusStore.asMap().isEmpty());
 
     // once scale status expired, throughput info will be expired in 48 hours
     jobWorkloadMonitor.cleanUp();
