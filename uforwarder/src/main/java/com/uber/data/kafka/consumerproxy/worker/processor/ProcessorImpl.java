@@ -201,8 +201,6 @@ public class ProcessorImpl
 
   private final Filter messageFilter;
 
-  private final boolean hasResqProducer;
-
   public ProcessorImpl(
       Job job,
       ScheduledExecutorService executor,
@@ -218,7 +216,7 @@ public class ProcessorImpl
         new AckManager(
             ackStatusManagerBuilder.build(job),
             unprocessedManagerBuilder.build(job),
-            infra.scope()),
+            new BlockingQueueStubManager(job, infra.scope())),
         executor, // this executor is for non-blocking operations
         outboundMessageLimiterBuilder.build(job),
         job.getRpcDispatcherTask().getUri(),
@@ -227,7 +225,6 @@ public class ProcessorImpl
         // TODO(haitao.zhang): make those two values configurable
         Integer.MAX_VALUE,
         Integer.MAX_VALUE,
-        RetryUtils.hasResqTopic(job), // producer will be setup if job has resq topic
         infra);
   }
 
@@ -241,7 +238,6 @@ public class ProcessorImpl
       Filter messageFilter,
       int maxGrpcRetry,
       int maxKafkaRetry,
-      boolean hasResqProducer,
       CoreInfra infra) {
     this.ackManager = ackManager;
     this.executor = executor;
@@ -256,7 +252,6 @@ public class ProcessorImpl
     this.byteRateLimiter = RateLimiter.create(MINIMUM_VALID_RATE);
     this.dlqDispatchManager = new DlqDispatchManager(infra.scope());
     this.outboundMessageLimiter.updateLimit(outboundMessageLimit);
-    this.hasResqProducer = hasResqProducer;
   }
 
   public Map<Job, Map<Long, MessageStub>> getStubs() {
@@ -684,7 +679,7 @@ public class ProcessorImpl
                       true, retryerScope, dispatcher, rpcUri, group, topic, partition);
                 case RESQ:
                   // if resilience queue topic is configured, should not be retried to gRPC
-                  if (hasResqProducer && RetryUtils.hasResqTopic(job)) {
+                  if (RetryUtils.hasResqTopic(job)) {
                     return false;
                   }
                   // fallthrough to true
@@ -812,7 +807,7 @@ public class ProcessorImpl
                   // up.
                   return CompletableFuture.completedFuture(executionAttemptedEvent.getLastResult());
                 case RESQ:
-                  if (hasResqProducer && RetryUtils.hasResqTopic(job)) {
+                  if (RetryUtils.hasResqTopic(job)) {
                     topicToProduce = job.getResqConfig().getResqTopic();
                   }
 

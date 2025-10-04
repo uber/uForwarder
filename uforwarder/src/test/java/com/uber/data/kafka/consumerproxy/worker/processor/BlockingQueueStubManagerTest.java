@@ -19,7 +19,9 @@ import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 public class BlockingQueueStubManagerTest extends ProcessorTestBase {
-  private BlockingQueueStubManager blockingQueueStubManager;
+  private BlockingQueueStubManager blockingQueueStubManager1,
+      blockingQueueStubManager2,
+      blockingQueueStubManager3;
   private Job job1, job2, job3;
   private Scope scope;
   private BlockingQueue mockBlockingQueue;
@@ -54,8 +56,6 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
     Mockito.when(scope.counter(ArgumentMatchers.anyString())).thenReturn(counter);
     Mockito.when(scope.gauge(ArgumentMatchers.anyString())).thenReturn(gauge);
     mockListener = Mockito.mock(BiConsumer.class);
-    blockingQueueStubManager = new BlockingQueueStubManager(scope);
-    blockingQueueStubManager.setCancelListener(mockListener);
     Job.Builder builder = Job.newBuilder();
     job1 =
         builder
@@ -79,7 +79,15 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
     job3 = builder.build();
 
     mockBlockingQueue = Mockito.mock(BlockingQueue.class);
-    blockingQueueStubManager.addBlockingQueue(mockBlockingQueue);
+    blockingQueueStubManager1 = new BlockingQueueStubManager(job1, scope);
+    blockingQueueStubManager1.setCancelListener(mockListener);
+    blockingQueueStubManager1.addBlockingQueue(mockBlockingQueue);
+    blockingQueueStubManager2 = new BlockingQueueStubManager(job2, scope);
+    blockingQueueStubManager2.setCancelListener(mockListener);
+    blockingQueueStubManager2.addBlockingQueue(mockBlockingQueue);
+    blockingQueueStubManager3 = new BlockingQueueStubManager(job3, scope);
+    blockingQueueStubManager3.setCancelListener(mockListener);
+    blockingQueueStubManager3.addBlockingQueue(mockBlockingQueue);
   }
 
   @Test
@@ -90,16 +98,16 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
                 new BlockingQueue.BlockingMessage(
                     new TopicPartitionOffset(tp1.topic(), tp1.partition(), 1),
                     BlockingQueue.BlockingReason.BLOCKING)));
-    blockingQueueStubManager.init(job1);
-    blockingQueueStubManager.receive(pm1);
-    blockingQueueStubManager.ack(pm1);
+    blockingQueueStubManager1.init(job1);
+    blockingQueueStubManager1.receive(pm1);
+    blockingQueueStubManager1.ack(pm1);
     Mockito.verify(mockBlockingQueue, Mockito.times(1)).detectBlockingMessage(tp1);
     Mockito.verify(mockBlockingQueue, Mockito.never()).markCanceled(physicalKafkaMetadata1);
     Mockito.verify(mockListener, Mockito.times(1))
         .accept(
             Mockito.eq(BlockingQueue.BlockingReason.BLOCKING),
             Mockito.argThat(r -> r.errorCode == CancelResult.ErrorCode.JOB_NOT_SUPPORTED));
-    blockingQueueStubManager.cancel(tp1);
+    blockingQueueStubManager1.cancel(tp1);
   }
 
   @Test
@@ -110,18 +118,18 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
                 new BlockingQueue.BlockingMessage(
                     new TopicPartitionOffset(tp1.topic(), tp1.partition(), 3),
                     BlockingQueue.BlockingReason.BLOCKING)));
-    blockingQueueStubManager.addTokens(50);
-    blockingQueueStubManager.init(job3);
-    blockingQueueStubManager.receive(pm3);
-    blockingQueueStubManager.ack(pm3);
+    blockingQueueStubManager3.addTokens(50);
+    blockingQueueStubManager3.init(job3);
+    blockingQueueStubManager3.receive(pm3);
+    blockingQueueStubManager3.ack(pm3);
     Mockito.verify(mockBlockingQueue, Mockito.times(1)).detectBlockingMessage(tp3);
     Mockito.verify(mockBlockingQueue, Mockito.times(1)).markCanceled(physicalKafkaMetadata3);
     Mockito.verify(mockListener, Mockito.times(1))
         .accept(
             Mockito.eq(BlockingQueue.BlockingReason.BLOCKING),
             Mockito.argThat(r -> r.responseCode == DispatcherResponse.Code.RETRY));
-    Assert.assertEquals(1, blockingQueueStubManager.getTokens());
-    blockingQueueStubManager.cancel(tp3);
+    Assert.assertEquals(1, blockingQueueStubManager3.getTokens());
+    blockingQueueStubManager3.cancel(tp3);
   }
 
   @Test
@@ -140,6 +148,10 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
         .setRetryEnabled(true)
         .addRetryQueues(retryQueue);
     job3 = builder.build();
+
+    BlockingQueueStubManager blockingQueueStubManager = new BlockingQueueStubManager(job3, scope);
+    blockingQueueStubManager.setCancelListener(mockListener);
+    blockingQueueStubManager.addBlockingQueue(mockBlockingQueue);
 
     blockingQueueStubManager.addTokens(50);
     blockingQueueStubManager.init(job3);
@@ -174,6 +186,10 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
         .addRetryQueues(retryQueue);
     job3 = builder.build();
 
+    BlockingQueueStubManager blockingQueueStubManager = new BlockingQueueStubManager(job3, scope);
+    blockingQueueStubManager.setCancelListener(mockListener);
+    blockingQueueStubManager.addBlockingQueue(mockBlockingQueue);
+
     blockingQueueStubManager.addTokens(50);
     blockingQueueStubManager.init(job3);
     blockingQueueStubManager.receive(pm3);
@@ -201,6 +217,10 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
         .setKafkaConsumerTask(KafkaConsumerTask.newBuilder().setTopic(TOPIC).setPartition(2))
         .setResqConfig(ResqConfig.newBuilder().setResqEnabled(true).setResqTopic(TOPIC).build());
     job3 = builder.build();
+
+    BlockingQueueStubManager blockingQueueStubManager = new BlockingQueueStubManager(job3, scope);
+    blockingQueueStubManager.setCancelListener(mockListener);
+    blockingQueueStubManager.addBlockingQueue(mockBlockingQueue);
 
     blockingQueueStubManager.addTokens(50);
     blockingQueueStubManager.init(job3);
@@ -232,6 +252,10 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
             ResqConfig.newBuilder().setResqEnabled(true).setResqTopic("topic__resq").build());
     job3 = builder.build();
 
+    BlockingQueueStubManager blockingQueueStubManager = new BlockingQueueStubManager(job3, scope);
+    blockingQueueStubManager.setCancelListener(mockListener);
+    blockingQueueStubManager.addBlockingQueue(mockBlockingQueue);
+
     blockingQueueStubManager.addTokens(50);
     blockingQueueStubManager.init(job3);
     blockingQueueStubManager.receive(pm3);
@@ -248,7 +272,7 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
 
   @Test(expected = IllegalStateException.class)
   public void testUnassignedPartition() {
-    blockingQueueStubManager.receive(pm1);
+    blockingQueueStubManager1.receive(pm1);
   }
 
   @Test
@@ -261,17 +285,17 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
                     new TopicPartitionOffset(tp1.topic(), tp1.partition(), -1),
                     BlockingQueue.BlockingReason.BLOCKING)));
     // blockingQueueStubManager.addTokens(50);
-    blockingQueueStubManager.init(job3);
-    blockingQueueStubManager.receive(pm3);
-    blockingQueueStubManager.ack(pm3);
+    blockingQueueStubManager3.init(job3);
+    blockingQueueStubManager3.receive(pm3);
+    blockingQueueStubManager3.ack(pm3);
     Mockito.verify(mockBlockingQueue, Mockito.times(1)).detectBlockingMessage(tp3);
     Mockito.verify(mockBlockingQueue, Mockito.never()).markCanceled(invalidMetadata);
   }
 
   @Test
   public void testReturnTokenWhenCancelFail() {
-    blockingQueueStubManager.init(job3);
-    blockingQueueStubManager.receive(pm2);
+    blockingQueueStubManager3.init(job3);
+    blockingQueueStubManager3.receive(pm2);
     pm2.getStub().cancel(DispatcherResponse.Code.RETRY);
     Mockito.when(mockBlockingQueue.detectBlockingMessage(tp3))
         .thenReturn(
@@ -279,26 +303,26 @@ public class BlockingQueueStubManagerTest extends ProcessorTestBase {
                 new BlockingQueue.BlockingMessage(
                     new TopicPartitionOffset(tp1.topic(), tp1.partition(), 2),
                     BlockingQueue.BlockingReason.BLOCKING)));
-    blockingQueueStubManager.addTokens(50);
-    blockingQueueStubManager.receive(pm3);
-    blockingQueueStubManager.ack(pm3);
+    blockingQueueStubManager3.addTokens(50);
+    blockingQueueStubManager3.receive(pm3);
+    blockingQueueStubManager3.ack(pm3);
     Mockito.verify(mockBlockingQueue, Mockito.times(1)).detectBlockingMessage(tp3);
     Mockito.verify(mockBlockingQueue, Mockito.times(1)).markCanceled(physicalKafkaMetadata2);
     CancelResult expectedResult =
-        blockingQueueStubManager.new TokenCancelResult(DispatcherResponse.Code.RETRY, 50);
+        blockingQueueStubManager3.new TokenCancelResult(DispatcherResponse.Code.RETRY, 50);
     expectedResult.close(true);
     Mockito.verify(mockListener, Mockito.times(1))
         .accept(
             Mockito.eq(BlockingQueue.BlockingReason.BLOCKING),
             Mockito.argThat(r -> r.responseCode == DispatcherResponse.Code.RETRY));
     // cancel failed and token returned
-    Assert.assertEquals(51, blockingQueueStubManager.getTokens());
+    Assert.assertEquals(51, blockingQueueStubManager3.getTokens());
   }
 
   @Test
   public void testNack() {
-    blockingQueueStubManager.init(job3);
-    blockingQueueStubManager.nack(physicalKafkaMetadata3);
+    blockingQueueStubManager3.init(job3);
+    blockingQueueStubManager3.nack(physicalKafkaMetadata3);
     Mockito.verify(mockBlockingQueue, Mockito.times(1)).detectBlockingMessage(tp3);
   }
 }
