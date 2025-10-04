@@ -70,7 +70,7 @@ public class PipelineFactoryImpl implements PipelineFactory {
     ThreadRegister threadRegister = new ThreadRegister(infra.getThreadMXBean());
     try {
       kafkaPipelineStateManager =
-          Optional.of(new KafkaPipelineStateManager(job, threadRegister, infra.scope()));
+          Optional.of(new KafkaPipelineStateManager(job, threadRegister::getUsage, infra.scope()));
       boolean isSecure = job.hasSecurityConfig() && job.getSecurityConfig().getIsSecure();
       fetcher =
           Optional.of(

@@ -8,7 +8,6 @@ import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
-import com.uber.data.kafka.datatransfer.worker.common.CpuUsageMeter;
 import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
@@ -98,7 +97,7 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
                         .setTopic(TOPIC_NAME)
                         .build())
                 .build(),
-            Mockito.mock(CpuUsageMeter.class),
+            () -> 0.0,
             scope);
     delayProcessManager =
         new KafkaDelayProcessManager(scope, CONSUMER_GROUP, PROCESSING_DELAY_MS, mockConsumer);

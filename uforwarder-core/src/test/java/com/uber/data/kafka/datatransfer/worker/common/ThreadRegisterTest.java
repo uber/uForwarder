@@ -16,6 +16,7 @@ import org.mockito.Mockito;
 public class ThreadRegisterTest extends FievelTestBase {
   private ThreadRegister threadRegister;
   private ThreadMXBean threadMXBean;
+  private CpuUsageMeter cpuUsageMeter;
   private TestUtils.TestTicker testTicker;
 
   @Before
@@ -23,7 +24,8 @@ public class ThreadRegisterTest extends FievelTestBase {
     threadMXBean = Mockito.mock(ThreadMXBean.class);
     testTicker = new TestUtils.TestTicker();
     Mockito.when(threadMXBean.isThreadCpuTimeEnabled()).thenReturn(true);
-    threadRegister = new ThreadRegister(threadMXBean, testTicker);
+    cpuUsageMeter = new CpuUsageMeter(testTicker);
+    threadRegister = new ThreadRegister(threadMXBean, cpuUsageMeter);
   }
 
   @Test
@@ -45,24 +47,6 @@ public class ThreadRegisterTest extends FievelTestBase {
   }
 
   @Test
-  public void testTick() {
-    // Given: Mock thread with CPU time enabled
-    Thread mockThread = Mockito.mock(Thread.class);
-    Mockito.when(mockThread.getId()).thenReturn(1L);
-    Mockito.when(threadMXBean.isThreadCpuTimeEnabled()).thenReturn(true);
-    Mockito.when(threadMXBean.getThreadCpuTime(1L))
-        .thenReturn(1000L, 2000L); // First call returns 1000, second call returns 2000
-
-    // When: Register thread and call tick
-    threadRegister.register(mockThread);
-    threadRegister.tick(); // First tick - establishes baseline
-    threadRegister.tick(); // Second tick - calculates CPU usage
-
-    // Then: Verify that getThreadCpuTime was called for the registered thread
-    Mockito.verify(threadMXBean, Mockito.times(2)).getThreadCpuTime(1L);
-  }
-
-  @Test
   public void testGetUsage() {
     // Given: Mock thread with CPU time enabled and some CPU usage
     Thread mockThread = Mockito.mock(Thread.class);
@@ -72,8 +56,8 @@ public class ThreadRegisterTest extends FievelTestBase {
 
     // When: Register thread, call tick twice, then get usage
     threadRegister.register(mockThread);
-    threadRegister.tick(); // Establish baseline
-    threadRegister.tick(); // Calculate usage
+    threadRegister.getUsage(); // Establish baseline
+    threadRegister.getUsage(); // Calculate usage
     testTicker.add(Duration.ofSeconds(10));
     double usage = threadRegister.getUsage();
 
@@ -89,8 +73,8 @@ public class ThreadRegisterTest extends FievelTestBase {
     // When: Get usage
     double usage = new ThreadRegister(threadMXBean).getUsage();
 
-    // Then: Should return NaN when CPU time is disabled
-    Assert.assertTrue("Usage should be NaN when CPU time is disabled", Double.isNaN(usage));
+    // Then: Should return 0.0 when CPU time is disabled
+    Assert.assertTrue(usage == 0.0);
   }
 
   @Test
@@ -103,15 +87,9 @@ public class ThreadRegisterTest extends FievelTestBase {
     // When: Register thread and call tick
     threadRegister = new ThreadRegister(threadMXBean);
     threadRegister.register(mockThread);
-    threadRegister.tick();
+    threadRegister.getUsage();
 
     // Then: Should not call getThreadCpuTime when CPU time is disabled
     Mockito.verify(threadMXBean, Mockito.never()).getThreadCpuTime(Mockito.anyLong());
-  }
-
-  @Test
-  public void testNOOPCpuMeter() {
-    ThreadRegister.NOOP.tick();
-    Assert.assertEquals(0.0, ThreadRegister.NOOP.getUsage(), 0.0);
   }
 }

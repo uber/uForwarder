@@ -89,7 +89,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
                 .setMiscConfig(
                     MiscConfig.newBuilder().setOwnerServiceName(CONSUMER_SERVICE_NAME).build())
                 .build(),
-            cpuUsageMeter,
+            cpuUsageMeter::getUsage,
             scope);
   }
 

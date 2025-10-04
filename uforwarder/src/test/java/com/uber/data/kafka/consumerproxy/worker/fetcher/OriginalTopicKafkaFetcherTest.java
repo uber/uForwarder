@@ -8,7 +8,6 @@ import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
-import com.uber.data.kafka.datatransfer.worker.common.CpuUsageMeter;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.CheckpointManager;
@@ -85,7 +84,7 @@ public class OriginalTopicKafkaFetcherTest extends FievelTestBase {
                         .setPartition(0)
                         .build())
                 .build(),
-            Mockito.mock(CpuUsageMeter.class),
+            () -> 0.0,
             scope);
     fetcherThread =
         new OriginalTopicKafkaFetcher(
