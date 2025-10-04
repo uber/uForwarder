@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.worker.pipelines;
 
+import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
@@ -21,6 +22,7 @@ import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 public class KafkaPipelineStateManagerTest extends FievelTestBase {
@@ -34,8 +36,31 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
   private Scope scope;
   private Gauge gauge;
 
+  private PipelineHealthManager pipelineHealthManager;
+
   @Before
   public void setUp() {
+    pipelineHealthManager = Mockito.mock(PipelineHealthManager.class);
+    MockedStatic<PipelineHealthManager> staticContext =
+        Mockito.mockStatic(PipelineHealthManager.class);
+    staticContext
+        .when(() -> PipelineHealthManager.newBuilder())
+        .thenReturn(
+            new PipelineHealthManager.Builder() {
+              public PipelineHealthManager.Builder setTicker(Ticker ticker) {
+                return this;
+              }
+
+              @Override
+              public PipelineHealthManager.Builder setScope(Scope scope) {
+                return this;
+              }
+
+              @Override
+              public PipelineHealthManager build(Job job) {
+                return pipelineHealthManager;
+              }
+            });
     scope = Mockito.mock(Scope.class);
     Counter counter = Mockito.mock(Counter.class);
     gauge = Mockito.mock(Gauge.class);
@@ -372,6 +397,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
           job.getFlowControl().getMaxInflightMessages()
         },
         valueCaptor.getAllValues().toArray(new Double[] {}));
+    Mockito.verify(pipelineHealthManager, Mockito.times(1)).publishMetrics();
   }
 
   @Test

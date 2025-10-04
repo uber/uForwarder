@@ -3,13 +3,17 @@ package com.uber.data.kafka.datatransfer.worker.pipelines;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
 import com.uber.data.kafka.datatransfer.Job;
+import com.uber.data.kafka.datatransfer.common.StructuredTags;
+import com.uber.data.kafka.datatransfer.worker.common.MetricSource;
+import com.uber.m3.tally.NoopScope;
+import com.uber.m3.tally.Scope;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.kafka.common.TopicPartition;
 
 /** PipelineHealthManager tracks and reports health issue of a pipeline. */
-public class PipelineHealthManager {
+public class PipelineHealthManager implements MetricSource {
   // heath state window duration
   // TODO make this configurable
   private static final Duration stateWindowDuration = Duration.ofSeconds(10);
@@ -20,14 +24,17 @@ public class PipelineHealthManager {
   private final Map<TopicPartition, PipelineHealthState> stateMap;
   private final Job jobTemplate;
 
+  private final Scope scope;
+
   /**
    * Instantiates a new Pipeline heath manager.
    *
    * @param ticker the ticker
    */
-  PipelineHealthManager(Ticker ticker, Job jobTemplate) {
+  PipelineHealthManager(Ticker ticker, Job jobTemplate, Scope scope) {
     this.ticker = ticker;
     this.jobTemplate = jobTemplate;
+    this.scope = scope;
     this.stateMap = new ConcurrentHashMap<>();
   }
 
@@ -79,6 +86,23 @@ public class PipelineHealthManager {
     stateMap.clear();
   }
 
+  @Override
+  public void publishMetrics() {
+    stateMap.forEach(
+        (tp, state) -> {
+          StructuredTags structuredTags =
+              StructuredTags.builder()
+                  .setKafkaCluster(jobTemplate.getKafkaConsumerTask().getCluster())
+                  .setKafkaGroup(jobTemplate.getKafkaConsumerTask().getConsumerGroup())
+                  .setKafkaTopic(jobTemplate.getKafkaConsumerTask().getTopic())
+                  .setKafkaPartition(tp.partition());
+          scope
+              .tagged(structuredTags.build())
+              .gauge(MetricNames.JOB_HEALTH_STATE)
+              .update(state.getStateValue());
+        });
+  }
+
   public static Builder newBuilder() {
     return new Builder();
   }
@@ -86,6 +110,8 @@ public class PipelineHealthManager {
   /** The type Builder. */
   public static class Builder {
     private Ticker ticker = Ticker.systemTicker();
+
+    private Scope scope = new NoopScope();
 
     /**
      * Sets ticker.
@@ -99,12 +125,28 @@ public class PipelineHealthManager {
     }
 
     /**
+     * Sets scope.
+     *
+     * @param scope the scope
+     * @return the scope
+     */
+    public Builder setScope(Scope scope) {
+      this.scope = scope;
+      return this;
+    }
+
+    /**
      * Build pipeline heath manager.
      *
      * @return the pipeline heath manager
      */
     public PipelineHealthManager build(Job jobTemplate) {
-      return new PipelineHealthManager(ticker, jobTemplate);
+      return new PipelineHealthManager(ticker, jobTemplate, scope);
     }
+  }
+
+  protected static class MetricNames {
+
+    static final String JOB_HEALTH_STATE = "pipeline.health-manager.job-health-state";
   }
 }
