@@ -1,26 +1,25 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
 import com.uber.data.kafka.datatransfer.ScaleStoreSnapshot;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.time.Duration;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class ReactiveScaleWindowManagerTest extends FievelTestBase {
+public class ReactiveScaleWindowManagerTest {
   private ReactiveScaleWindowManager reactiveScaleWindowManager;
   private ReactiveScaleWindowCalculator reactiveScaleWindowCalculator;
   private AutoScalarConfiguration autoScalingConfig;
   private TestUtils.TestTicker ticker;
   private ScaleStatusStore scaleStatusStore;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     reactiveScaleWindowCalculator = Mockito.mock(ReactiveScaleWindowCalculator.class);
     autoScalingConfig = new AutoScalarConfiguration();
@@ -37,16 +36,16 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
   @Test
   public void testConstructor() {
     // Test that the manager is properly constructed
-    assertNotNull("ReactiveScaleWindowManager should not be null", reactiveScaleWindowManager);
+    assertNotNull(reactiveScaleWindowManager, "ReactiveScaleWindowManager should not be null");
 
     // Verify that we can access inherited methods
     Duration downScaleWindow = reactiveScaleWindowManager.getDownScaleWindowDuration();
     Duration upScaleWindow = reactiveScaleWindowManager.getUpScaleWindowDuration();
     Duration hibernateWindow = reactiveScaleWindowManager.getHibernateWindowDuration();
 
-    assertNotNull("Down-scale window should not be null", downScaleWindow);
-    assertNotNull("Up-scale window should not be null", upScaleWindow);
-    assertNotNull("Hibernate window should not be null", hibernateWindow);
+    assertNotNull(downScaleWindow, "Down-scale window should not be null");
+    assertNotNull(upScaleWindow, "Up-scale window should not be null");
+    assertNotNull(hibernateWindow, "Hibernate window should not be null");
   }
 
   @Test
@@ -59,7 +58,7 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
 
     // Verify that the manager is still functional after processing the sample
     Duration downScaleWindow = reactiveScaleWindowManager.getDownScaleWindowDuration();
-    Assert.assertEquals(autoScalingConfig.getDownScaleWindowDuration(), downScaleWindow);
+    Assertions.assertEquals(autoScalingConfig.getDownScaleWindowDuration(), downScaleWindow);
   }
 
   @Test
@@ -138,12 +137,12 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
     Duration result =
         reactiveScaleWindowManager.validateDownScaleWindow(
             Duration.ofHours(1), reactiveScaleWindowManager.getDownScaleWindowDuration());
-    Assert.assertEquals(config.getDownScaleWindowDuration(), result);
+    Assertions.assertEquals(config.getDownScaleWindowDuration(), result);
 
     result =
         reactiveScaleWindowManager.validateDownScaleWindow(
             Duration.ofDays(2), reactiveScaleWindowManager.getDownScaleWindowDuration());
-    Assert.assertEquals(config.getDownScaleWindowDuration(), result);
+    Assertions.assertEquals(config.getDownScaleWindowDuration(), result);
   }
 
   @Test
@@ -153,7 +152,7 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
     Duration result =
         reactiveScaleWindowManager.validateDownScaleWindow(
             newDownScaleWindow, reactiveScaleWindowManager.getDownScaleWindowDuration());
-    Assert.assertEquals(autoScalingConfig.getDownScaleWindowDuration(), result);
+    Assertions.assertEquals(autoScalingConfig.getDownScaleWindowDuration(), result);
   }
 
   @Test
@@ -169,7 +168,7 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
     Duration result =
         reactiveScaleWindowManager.validateDownScaleWindow(
             newDownScaleWindow, reactiveScaleWindowManager.getDownScaleWindowDuration());
-    Assert.assertEquals(Duration.ofMinutes(144), result);
+    Assertions.assertEquals(Duration.ofMinutes(144), result);
   }
 
   @Test
@@ -187,7 +186,7 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
         reactiveScaleWindowManager.validateDownScaleWindow(
             newDownScaleWindow, reactiveScaleWindowManager.getDownScaleWindowDuration());
     Duration expected = Duration.ofSeconds((long) (12 * 60 * 60 * 1.2));
-    Assert.assertEquals(expected, result);
+    Assertions.assertEquals(expected, result);
   }
 
   @Test
@@ -205,6 +204,6 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
         reactiveScaleWindowManager.validateDownScaleWindow(
             newDownScaleWindow, reactiveScaleWindowManager.getDownScaleWindowDuration());
     Duration expected = Duration.ofSeconds((long) (12 * 60 * 60 * 0.8));
-    Assert.assertEquals(expected, result);
+    Assertions.assertEquals(expected, result);
   }
 }

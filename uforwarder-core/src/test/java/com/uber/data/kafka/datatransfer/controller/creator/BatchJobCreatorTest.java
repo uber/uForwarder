@@ -1,5 +1,7 @@
 package com.uber.data.kafka.datatransfer.controller.creator;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.protobuf.Timestamp;
@@ -15,7 +17,6 @@ import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.common.AdminClient;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.JobUtils;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -28,12 +29,12 @@ import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.internals.KafkaFutureImpl;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class BatchJobCreatorTest extends FievelTestBase {
+public class BatchJobCreatorTest {
   private static final String TEST_CLUSTER = "test-cluster";
   private static final String TEST_GROUP = "test-group";
   private static final String TEST_TOPIC = "test-topic";
@@ -50,7 +51,7 @@ public class BatchJobCreatorTest extends FievelTestBase {
   private KafkaFuture<Map<TopicPartition, OffsetAndMetadata>> listConsumerOffsetFutureMock;
   private ListConsumerGroupOffsetsResult listConsumerGroupOffsetsResult;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     adminClient = Mockito.mock(AdminClient.class);
     adminBuilder = Mockito.mock(AdminClient.Builder.class);
@@ -89,8 +90,8 @@ public class BatchJobCreatorTest extends FievelTestBase {
     Mockito.when(adminClient.endOffsets(ImmutableList.of(topicPartition)))
         .thenReturn(new ListOffsetsResult(ImmutableMap.of(topicPartition, offsetFuture)));
     StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
-    Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
-    Assert.assertEquals(JobState.JOB_STATE_CANCELED, storedJob.getState());
+    Assertions.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
+    Assertions.assertEquals(JobState.JOB_STATE_CANCELED, storedJob.getState());
   }
 
   @Test
@@ -124,8 +125,8 @@ public class BatchJobCreatorTest extends FievelTestBase {
         .when(adminClient)
         .endOffsets(ImmutableList.of(topicPartition));
     StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
-    Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
-    Assert.assertEquals(JobState.JOB_STATE_RUNNING, storedJob.getState());
+    Assertions.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
+    Assertions.assertEquals(JobState.JOB_STATE_RUNNING, storedJob.getState());
   }
 
   @Test
@@ -149,8 +150,8 @@ public class BatchJobCreatorTest extends FievelTestBase {
         .when(adminClient)
         .endOffsets(ImmutableList.of(topicPartition));
     StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
-    Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
-    Assert.assertEquals(JobState.JOB_STATE_CANCELED, storedJob.getState());
+    Assertions.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
+    Assertions.assertEquals(JobState.JOB_STATE_CANCELED, storedJob.getState());
   }
 
   // different start and end timestamp map to the same offsets.
@@ -168,8 +169,8 @@ public class BatchJobCreatorTest extends FievelTestBase {
         .when(adminClient)
         .offsetsForTimes(ImmutableMap.of(topicPartition, Timestamps.toMillis(TEST_END_TIME)));
     StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
-    Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
-    Assert.assertEquals(JobState.JOB_STATE_CANCELED, storedJob.getState());
+    Assertions.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
+    Assertions.assertEquals(JobState.JOB_STATE_CANCELED, storedJob.getState());
   }
 
   @Test
@@ -192,8 +193,9 @@ public class BatchJobCreatorTest extends FievelTestBase {
         .offsetsForTimes(ImmutableMap.of(topicPartition, Timestamps.toMillis(TEST_END_TIME)));
 
     StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
-    Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
-    Assert.assertEquals(TEST_END_OFFSET, storedJob.getJob().getKafkaConsumerTask().getEndOffset());
+    Assertions.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
+    Assertions.assertEquals(
+        TEST_END_OFFSET, storedJob.getJob().getKafkaConsumerTask().getEndOffset());
   }
 
   @Test
@@ -219,8 +221,8 @@ public class BatchJobCreatorTest extends FievelTestBase {
         .offsetsForTimes(ImmutableMap.of(topicPartition, Timestamps.toMillis(TEST_START_TIME)));
 
     StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, TEST_PARTITION);
-    Assert.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
-    Assert.assertEquals(
+    Assertions.assertTrue(JobUtils.isDerived(storedJobGroup.getJobGroup(), storedJob.getJob()));
+    Assertions.assertEquals(
         TEST_END_OFFSET, storedJob.getJob().getKafkaConsumerTask().getStartOffset());
   }
 
@@ -234,9 +236,9 @@ public class BatchJobCreatorTest extends FievelTestBase {
     BatchJobCreator.assertValidOffsets(2, 2);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testAssertValidOffsetsLargerStartOffset() {
-    BatchJobCreator.assertValidOffsets(3, 2);
+    assertThrows(IllegalArgumentException.class, () -> BatchJobCreator.assertValidOffsets(3, 2));
   }
 
   @Test
@@ -249,19 +251,23 @@ public class BatchJobCreatorTest extends FievelTestBase {
     BatchJobCreator.assertValidTimestamps(0, 2);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testAssertValidTimestampNegativeStartTime() {
-    BatchJobCreator.assertValidTimestamps(-1, 2);
+    assertThrows(
+        IllegalArgumentException.class, () -> BatchJobCreator.assertValidTimestamps(-1, 2));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testAssertValidTimestampNegativeEndTime() {
-    BatchJobCreator.assertValidTimestamps(1, -1);
+    assertThrows(
+        IllegalArgumentException.class, () -> BatchJobCreator.assertValidTimestamps(1, -1));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testAssertValidTimestampsTooLargeEndTime() {
-    BatchJobCreator.assertValidTimestamps(2, Long.MAX_VALUE);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> BatchJobCreator.assertValidTimestamps(2, Long.MAX_VALUE));
   }
 
   @Test
@@ -269,37 +275,45 @@ public class BatchJobCreatorTest extends FievelTestBase {
     BatchJobCreator.assertValidTimestamps(2, 2);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testAssertValidTimestampsLargerStartTimestamp() {
-    BatchJobCreator.assertValidTimestamps(3, 2);
+    assertThrows(IllegalArgumentException.class, () -> BatchJobCreator.assertValidTimestamps(3, 2));
   }
 
   @Test
   public void testGetOffset() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         TEST_START_OFFSET,
         BatchJobCreator.getOffset(() -> TEST_START_OFFSET, () -> TEST_START_OFFSET));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testGetOffsetNullOffset() {
-    TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
-    BatchJobCreator.getOffset(
-        () -> null,
+    assertThrows(
+        IllegalArgumentException.class,
         () -> {
-          throw new IllegalArgumentException(
-              String.format("failed to resolve offsetForTimes for %s", topicPartition));
+          TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
+          BatchJobCreator.getOffset(
+              () -> null,
+              () -> {
+                throw new IllegalArgumentException(
+                    String.format("failed to resolve offsetForTimes for %s", topicPartition));
+              });
         });
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testGetOffsetNegativeOffset() {
-    TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
-    BatchJobCreator.getOffset(
-        () -> -1L,
+    assertThrows(
+        IllegalArgumentException.class,
         () -> {
-          throw new IllegalArgumentException(
-              String.format("failed to resolve offsetForTimes for %s", topicPartition));
+          TopicPartition topicPartition = new TopicPartition(TEST_TOPIC, TEST_PARTITION);
+          BatchJobCreator.getOffset(
+              () -> -1L,
+              () -> {
+                throw new IllegalArgumentException(
+                    String.format("failed to resolve offsetForTimes for %s", topicPartition));
+              });
         });
   }
 
@@ -344,10 +358,11 @@ public class BatchJobCreatorTest extends FievelTestBase {
 
     // The adminClient should not be called for offsets in this case, but we can still mock it
     StoredJob storedJob = jobCreator.newJob(jobGroupWithOffsets, 1, TEST_PARTITION);
-    Assert.assertTrue(JobUtils.isDerived(jobGroupWithOffsets.getJobGroup(), storedJob.getJob()));
-    Assert.assertEquals(100, storedJob.getJob().getKafkaConsumerTask().getStartOffset());
-    Assert.assertEquals(200, storedJob.getJob().getKafkaConsumerTask().getEndOffset());
+    Assertions.assertTrue(
+        JobUtils.isDerived(jobGroupWithOffsets.getJobGroup(), storedJob.getJob()));
+    Assertions.assertEquals(100, storedJob.getJob().getKafkaConsumerTask().getStartOffset());
+    Assertions.assertEquals(200, storedJob.getJob().getKafkaConsumerTask().getEndOffset());
     // If start == end, state should be CANCELED, otherwise RUNNING
-    Assert.assertEquals(JobState.JOB_STATE_RUNNING, storedJob.getState());
+    Assertions.assertEquals(JobState.JOB_STATE_RUNNING, storedJob.getState());
   }
 }

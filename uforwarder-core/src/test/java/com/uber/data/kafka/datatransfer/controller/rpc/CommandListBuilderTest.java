@@ -8,29 +8,20 @@ import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.JobStatus;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.StoredJob;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import java.util.Arrays;
 import java.util.List;
 import javax.annotation.Nullable;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 
-@RunWith(Parameterized.class)
-public class CommandListBuilderTest extends FievelTestBase {
-  @Parameterized.Parameter public JobStatus actualJob;
-
-  @Parameterized.Parameter(1)
+public class CommandListBuilderTest {
+  public JobStatus actualJob;
   public StoredJob expectedJob;
-
-  @Nullable
-  @Parameterized.Parameter(2)
-  public CommandType command;
+  @Nullable public CommandType command;
 
   /** Use JUnit parameterized tests to test every combination of actual and expected states. */
-  @Parameterized.Parameters
   public static Iterable<Object[]> data() {
     return Arrays.asList(
         new Object[][] {
@@ -116,19 +107,21 @@ public class CommandListBuilderTest extends FievelTestBase {
         });
   }
 
-  @Test
-  public void test() {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void test(JobStatus actualJob, StoredJob expectedJob, CommandType command) {
+    initCommandListBuilderTest(actualJob, expectedJob, command);
     List<Command> commandList =
         new CommandListBuilder(new NoopScope()).add(1L, expectedJob, actualJob).build();
-    Assert.assertEquals(command, getCommandType(commandList));
+    Assertions.assertEquals(command, getCommandType(commandList));
     if (command != null) {
       switch (command) {
         case COMMAND_TYPE_CANCEL_JOB:
-          Assert.assertEquals(actualJob.getJob(), commandList.get(0).getJob());
+          Assertions.assertEquals(actualJob.getJob(), commandList.get(0).getJob());
           break;
         case COMMAND_TYPE_RUN_JOB:
         case COMMAND_TYPE_UPDATE_JOB:
-          Assert.assertEquals(expectedJob.getJob(), commandList.get(0).getJob());
+          Assertions.assertEquals(expectedJob.getJob(), commandList.get(0).getJob());
           break;
       }
     }
@@ -171,5 +164,12 @@ public class CommandListBuilderTest extends FievelTestBase {
                 .setCluster("cluster")
                 .build())
         .build();
+  }
+
+  public void initCommandListBuilderTest(
+      JobStatus actualJob, StoredJob expectedJob, CommandType command) {
+    this.actualJob = actualJob;
+    this.expectedJob = expectedJob;
+    this.command = command;
   }
 }

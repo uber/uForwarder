@@ -1,15 +1,14 @@
 package com.uber.data.kafka.datatransfer.common;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import com.uber.fievel.testing.base.FievelTestBase;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartitionInfo;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class JobPodAssignerTest extends FievelTestBase {
+public class JobPodAssignerTest {
 
   @Test
   public void testNoopJobPodAssigner_withValidTopicPartitionInfo_returnsEmptyString() {

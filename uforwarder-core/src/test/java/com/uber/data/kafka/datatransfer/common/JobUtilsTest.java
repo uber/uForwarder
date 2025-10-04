@@ -1,5 +1,7 @@
 package com.uber.data.kafka.datatransfer.common;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.common.collect.ImmutableList;
 import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
@@ -30,21 +32,20 @@ import com.uber.data.kafka.datatransfer.SecurityConfig;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.Arrays;
 import java.util.List;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class JobUtilsTest extends FievelTestBase {
+public class JobUtilsTest {
 
   private StoredJob job;
   private StoredJob rpcJob;
   private StoredJobStatus jobStatus;
   private StoredJobGroup storedJobGroup;
 
-  @Before
+  @BeforeEach
   public void setup() {
     StoredJob.Builder builder = StoredJob.newBuilder();
     builder.getJobBuilder().setJobId(1);
@@ -65,32 +66,32 @@ public class JobUtilsTest extends FievelTestBase {
 
   @Test
   public void newJobSnapshot() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1, JobUtils.newJobSnapshot(job, jobStatus).getExpectedJob().getJob().getJobId());
   }
 
   @Test
   public void newStoredJob() {
-    Assert.assertEquals(1, JobUtils.newStoredJob(job.getJob()).getJob().getJobId());
+    Assertions.assertEquals(1, JobUtils.newStoredJob(job.getJob()).getJob().getJobId());
   }
 
   @Test
   public void getJobKeyForConsumerToRpcDispatcherJob() {
     StoredJob.Builder jobBuilder = StoredJob.newBuilder(job);
     jobBuilder.getJobBuilder().setType(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER);
-    Assert.assertEquals(0, JobUtils.getJobKey(jobBuilder.build()));
+    Assertions.assertEquals(0, JobUtils.getJobKey(jobBuilder.build()));
   }
 
   @Test
   public void getJobKeyForAuditJob() {
     StoredJob.Builder jobBuilder = StoredJob.newBuilder(job);
     jobBuilder.getJobBuilder().setType(JobType.JOB_TYPE_KAFKA_AUDIT);
-    Assert.assertEquals(0, JobUtils.getJobKey(jobBuilder.build()));
+    Assertions.assertEquals(0, JobUtils.getJobKey(jobBuilder.build()));
   }
 
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void getUnsupportedJobKey() {
-    JobUtils.getJobKey(job);
+    assertThrows(UnsupportedOperationException.class, () -> JobUtils.getJobKey(job));
   }
 
   @Test
@@ -98,7 +99,7 @@ public class JobUtilsTest extends FievelTestBase {
     StoredJob.Builder jobBuilder = StoredJob.newBuilder(job);
 
     jobBuilder.getJobBuilder().setType(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         2,
         JobUtils.getJobKey(
             StoredJob.newBuilder()
@@ -111,7 +112,7 @@ public class JobUtilsTest extends FievelTestBase {
     StoredJob.Builder jobBuilder = StoredJob.newBuilder(job);
 
     jobBuilder.getJobBuilder().setType(JobType.JOB_TYPE_KAFKA_AUDIT);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         2,
         JobUtils.getJobKey(
             StoredJob.newBuilder()
@@ -122,12 +123,13 @@ public class JobUtilsTest extends FievelTestBase {
   @Test
   public void withJobsList() {
     List<StoredJob> jobsList = ImmutableList.of(job);
-    Assert.assertEquals(jobsList, JobUtils.withJobsList(storedJobGroup, jobsList).getJobsList());
+    Assertions.assertEquals(
+        jobsList, JobUtils.withJobsList(storedJobGroup, jobsList).getJobsList());
   }
 
   @Test
   public void withJobGroupState() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         JobState.JOB_STATE_RUNNING,
         JobUtils.withJobGroupState(storedJobGroup, JobState.JOB_STATE_RUNNING).getState());
   }
@@ -140,31 +142,36 @@ public class JobUtilsTest extends FievelTestBase {
     JobUtils.assertUnpartitionedJob(job);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void assertUnpartitionedJobWithJobId() {
-    JobUtils.assertUnpartitionedJob(rpcJob.getJob());
+    assertThrows(
+        IllegalArgumentException.class, () -> JobUtils.assertUnpartitionedJob(rpcJob.getJob()));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void assertUnpartitionedJobWithJobKey() {
-    Job.Builder builder = Job.newBuilder(rpcJob.getJob());
-    builder.setJobId(0);
-    JobUtils.assertUnpartitionedJob(builder.build());
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          Job.Builder builder = Job.newBuilder(rpcJob.getJob());
+          builder.setJobId(0);
+          JobUtils.assertUnpartitionedJob(builder.build());
+        });
   }
 
   @Test
   public void setCurrentTimestamp() {
     StoredJob.Builder jobBuilder = StoredJob.newBuilder();
     JobUtils.setCurrentTimestamp(jobBuilder);
-    Assert.assertNotEquals(0, jobBuilder.build().getLastUpdated().getSeconds());
+    Assertions.assertNotEquals(0, jobBuilder.build().getLastUpdated().getSeconds());
 
     StoredJobGroup.Builder groupBuilder = StoredJobGroup.newBuilder();
     JobUtils.setCurrentTimestamp(groupBuilder);
-    Assert.assertNotEquals(0, groupBuilder.build().getLastUpdated().getSeconds());
+    Assertions.assertNotEquals(0, groupBuilder.build().getLastUpdated().getSeconds());
 
     StoredJobStatus.Builder statusBuilder = StoredJobStatus.newBuilder();
     JobUtils.setCurrentTimestamp(statusBuilder);
-    Assert.assertNotEquals(0, statusBuilder.build().getLastUpdated().getSeconds());
+    Assertions.assertNotEquals(0, statusBuilder.build().getLastUpdated().getSeconds());
   }
 
   @Test
@@ -178,16 +185,16 @@ public class JobUtilsTest extends FievelTestBase {
     builder.getKafkaConsumerTaskBuilder().setStartOffset(20);
     Job job2 = builder.build();
 
-    Assert.assertTrue(JobUtils.isSameExceptStartOffset(job1, job2));
+    Assertions.assertTrue(JobUtils.isSameExceptStartOffset(job1, job2));
   }
 
   @Test
   public void isJobGroupCanceled() {
     StoredJobGroup.Builder builder = StoredJobGroup.newBuilder();
-    Assert.assertFalse(JobUtils.isJobGroupCanceled(builder.build()));
+    Assertions.assertFalse(JobUtils.isJobGroupCanceled(builder.build()));
 
     builder.setState(JobState.JOB_STATE_CANCELED);
-    Assert.assertTrue(JobUtils.isJobGroupCanceled(builder.build()));
+    Assertions.assertTrue(JobUtils.isJobGroupCanceled(builder.build()));
   }
 
   @Test
@@ -195,15 +202,15 @@ public class JobUtilsTest extends FievelTestBase {
     StoredJob.Builder jobBuilder = StoredJob.newBuilder();
     StoredJobGroup.Builder groupBuilder = StoredJobGroup.newBuilder();
 
-    Assert.assertTrue(JobUtils.areJobsAllCanceled(groupBuilder.build().getJobsList()));
+    Assertions.assertTrue(JobUtils.areJobsAllCanceled(groupBuilder.build().getJobsList()));
 
     jobBuilder.setState(JobState.JOB_STATE_CANCELED);
     groupBuilder.addJobs(jobBuilder.build());
-    Assert.assertTrue(JobUtils.areJobsAllCanceled(groupBuilder.build().getJobsList()));
+    Assertions.assertTrue(JobUtils.areJobsAllCanceled(groupBuilder.build().getJobsList()));
 
     jobBuilder.setState(JobState.JOB_STATE_RUNNING);
     groupBuilder.addJobs(jobBuilder.build());
-    Assert.assertFalse(JobUtils.areJobsAllCanceled(groupBuilder.build().getJobsList()));
+    Assertions.assertFalse(JobUtils.areJobsAllCanceled(groupBuilder.build().getJobsList()));
   }
 
   @Test
@@ -211,34 +218,37 @@ public class JobUtilsTest extends FievelTestBase {
     StoredJob.Builder jobBuilder = StoredJob.newBuilder();
     StoredJobGroup.Builder groupBuilder = StoredJobGroup.newBuilder();
 
-    Assert.assertFalse(JobUtils.areJobsNotEmptyAndAllCanceled(groupBuilder.build().getJobsList()));
+    Assertions.assertFalse(
+        JobUtils.areJobsNotEmptyAndAllCanceled(groupBuilder.build().getJobsList()));
 
     jobBuilder.setState(JobState.JOB_STATE_CANCELED);
     groupBuilder.addJobs(jobBuilder.build());
-    Assert.assertTrue(JobUtils.areJobsNotEmptyAndAllCanceled(groupBuilder.build().getJobsList()));
+    Assertions.assertTrue(
+        JobUtils.areJobsNotEmptyAndAllCanceled(groupBuilder.build().getJobsList()));
 
     jobBuilder.setState(JobState.JOB_STATE_RUNNING);
     groupBuilder.addJobs(jobBuilder.build());
-    Assert.assertFalse(JobUtils.areJobsNotEmptyAndAllCanceled(groupBuilder.build().getJobsList()));
+    Assertions.assertFalse(
+        JobUtils.areJobsNotEmptyAndAllCanceled(groupBuilder.build().getJobsList()));
   }
 
   @Test
   public void getKafkaProducerCluster() {
     Job.Builder builder = Job.newBuilder();
-    Assert.assertEquals("", JobUtils.getKafkaProducerCluster(builder.build()));
+    Assertions.assertEquals("", JobUtils.getKafkaProducerCluster(builder.build()));
 
     builder.setType(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER);
-    Assert.assertEquals("dlq", JobUtils.getKafkaProducerCluster(builder.build()));
+    Assertions.assertEquals("dlq", JobUtils.getKafkaProducerCluster(builder.build()));
 
     builder.setType(JobType.JOB_TYPE_KAFKA_REPLICATION);
     builder.setKafkaDispatcherTask(
         KafkaDispatcherTask.newBuilder().setCluster("kloak-dca1a").build());
-    Assert.assertEquals("kloak-dca1a", JobUtils.getKafkaProducerCluster(builder.build()));
+    Assertions.assertEquals("kloak-dca1a", JobUtils.getKafkaProducerCluster(builder.build()));
 
     builder.setType(JobType.JOB_TYPE_KAFKA_AVAILABILITY);
     builder.setKafkaDispatcherTask(
         KafkaDispatcherTask.newBuilder().setCluster("kloak-phx2d").build());
-    Assert.assertEquals("kloak-phx2d", JobUtils.getKafkaProducerCluster(builder.build()));
+    Assertions.assertEquals("kloak-phx2d", JobUtils.getKafkaProducerCluster(builder.build()));
   }
 
   @Test
@@ -309,31 +319,31 @@ public class JobUtilsTest extends FievelTestBase {
             .setRetryConfig(retryConfig)
             .build();
     Job job = JobUtils.newJob(jobGroup);
-    Assert.assertEquals(0, job.getJobId());
-    Assert.assertEquals(-1, job.getKafkaConsumerTask().getPartition());
-    Assert.assertEquals(-1, job.getKafkaConsumerTask().getStartOffset());
-    Assert.assertEquals(0, job.getKafkaConsumerTask().getEndOffset());
-    Assert.assertEquals(cluster, job.getKafkaConsumerTask().getCluster());
-    Assert.assertEquals(consumeGroup, job.getKafkaConsumerTask().getConsumerGroup());
-    Assert.assertEquals(
+    Assertions.assertEquals(0, job.getJobId());
+    Assertions.assertEquals(-1, job.getKafkaConsumerTask().getPartition());
+    Assertions.assertEquals(-1, job.getKafkaConsumerTask().getStartOffset());
+    Assertions.assertEquals(0, job.getKafkaConsumerTask().getEndOffset());
+    Assertions.assertEquals(cluster, job.getKafkaConsumerTask().getCluster());
+    Assertions.assertEquals(consumeGroup, job.getKafkaConsumerTask().getConsumerGroup());
+    Assertions.assertEquals(
         AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST,
         job.getKafkaConsumerTask().getAutoOffsetResetPolicy());
-    Assert.assertEquals(topic, job.getKafkaConsumerTask().getTopic());
-    Assert.assertEquals(uri, job.getRpcDispatcherTask().getUri());
-    Assert.assertEquals(procedure, job.getRpcDispatcherTask().getProcedure());
-    Assert.assertEquals(rpcTimeoutMs, job.getRpcDispatcherTask().getRpcTimeoutMs());
-    Assert.assertEquals(maxRpcTimeouts, job.getRpcDispatcherTask().getMaxRpcTimeouts());
-    Assert.assertEquals(retryQueueTopic, job.getRpcDispatcherTask().getRetryQueueTopic());
-    Assert.assertEquals(retryCluster, job.getRpcDispatcherTask().getRetryCluster());
-    Assert.assertEquals(dlqTopic, job.getRpcDispatcherTask().getDlqTopic());
-    Assert.assertEquals(dlqCluster, job.getRpcDispatcherTask().getDlqCluster());
-    Assert.assertEquals(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER, job.getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(topic, job.getKafkaConsumerTask().getTopic());
+    Assertions.assertEquals(uri, job.getRpcDispatcherTask().getUri());
+    Assertions.assertEquals(procedure, job.getRpcDispatcherTask().getProcedure());
+    Assertions.assertEquals(rpcTimeoutMs, job.getRpcDispatcherTask().getRpcTimeoutMs());
+    Assertions.assertEquals(maxRpcTimeouts, job.getRpcDispatcherTask().getMaxRpcTimeouts());
+    Assertions.assertEquals(retryQueueTopic, job.getRpcDispatcherTask().getRetryQueueTopic());
+    Assertions.assertEquals(retryCluster, job.getRpcDispatcherTask().getRetryCluster());
+    Assertions.assertEquals(dlqTopic, job.getRpcDispatcherTask().getDlqTopic());
+    Assertions.assertEquals(dlqCluster, job.getRpcDispatcherTask().getDlqCluster());
+    Assertions.assertEquals(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER, job.getType());
+    Assertions.assertEquals(
         0, job.getKafkaConsumerTask().getAuditMetadata().getAuditConfigsList().size());
-    Assert.assertEquals(isSecure, job.getSecurityConfig().getIsSecure());
-    Assert.assertEquals(serviceIdentities, job.getSecurityConfig().getServiceIdentitiesList());
-    Assert.assertEquals(retryEnabled, job.getRetryConfig().getRetryEnabled());
-    Assert.assertEquals(retryQueues, job.getRetryConfig().getRetryQueuesList());
+    Assertions.assertEquals(isSecure, job.getSecurityConfig().getIsSecure());
+    Assertions.assertEquals(serviceIdentities, job.getSecurityConfig().getServiceIdentitiesList());
+    Assertions.assertEquals(retryEnabled, job.getRetryConfig().getRetryEnabled());
+    Assertions.assertEquals(retryQueues, job.getRetryConfig().getRetryQueuesList());
   }
 
   @Test
@@ -364,21 +374,21 @@ public class JobUtilsTest extends FievelTestBase {
             .setKafkaConsumerTaskGroup(kafkaConsumerTaskGroup)
             .build();
     Job job = JobUtils.newJob(jobGroup);
-    Assert.assertEquals(0, job.getJobId());
-    Assert.assertEquals(-1, job.getKafkaConsumerTask().getPartition());
-    Assert.assertEquals(-1, job.getKafkaConsumerTask().getStartOffset());
-    Assert.assertEquals(0, job.getKafkaConsumerTask().getEndOffset());
-    Assert.assertEquals(cluster, job.getKafkaConsumerTask().getCluster());
-    Assert.assertEquals(consumeGroup, job.getKafkaConsumerTask().getConsumerGroup());
-    Assert.assertEquals(
+    Assertions.assertEquals(0, job.getJobId());
+    Assertions.assertEquals(-1, job.getKafkaConsumerTask().getPartition());
+    Assertions.assertEquals(-1, job.getKafkaConsumerTask().getStartOffset());
+    Assertions.assertEquals(0, job.getKafkaConsumerTask().getEndOffset());
+    Assertions.assertEquals(cluster, job.getKafkaConsumerTask().getCluster());
+    Assertions.assertEquals(consumeGroup, job.getKafkaConsumerTask().getConsumerGroup());
+    Assertions.assertEquals(
         AutoOffsetResetPolicy.AUTO_OFFSET_RESET_POLICY_LATEST,
         job.getKafkaConsumerTask().getAutoOffsetResetPolicy());
-    Assert.assertEquals(topic, job.getKafkaConsumerTask().getTopic());
-    Assert.assertEquals(JobType.JOB_TYPE_KAFKA_AUDIT, job.getType());
-    Assert.assertEquals(
+    Assertions.assertEquals(topic, job.getKafkaConsumerTask().getTopic());
+    Assertions.assertEquals(JobType.JOB_TYPE_KAFKA_AUDIT, job.getType());
+    Assertions.assertEquals(
         AuditType.AUDIT_TYPE_EXACT_UNIQ,
         job.getKafkaConsumerTask().getAuditMetadata().getAuditConfigs(0).getAuditType());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         auditIntervalInSecs,
         job.getKafkaConsumerTask()
             .getAuditMetadata()
@@ -401,13 +411,13 @@ public class JobUtilsTest extends FievelTestBase {
             .setExtension(Any.getDefaultInstance())
             .setType(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER);
 
-    Assert.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
+    Assertions.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
 
     jobBuilder.getKafkaConsumerTaskBuilder().setPartition(1);
-    Assert.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
+    Assertions.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
 
     jobGroupBuilder.getKafkaConsumerTaskGroupBuilder().setCluster("cluster");
-    Assert.assertFalse(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
+    Assertions.assertFalse(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
   }
 
   @Test
@@ -423,13 +433,13 @@ public class JobUtilsTest extends FievelTestBase {
             .setExtension(Any.getDefaultInstance())
             .setType(JobType.JOB_TYPE_KAFKA_AUDIT);
 
-    Assert.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
+    Assertions.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
 
     jobBuilder.getKafkaConsumerTaskBuilder().setPartition(1);
-    Assert.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
+    Assertions.assertTrue(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
 
     jobGroupBuilder.getKafkaConsumerTaskGroupBuilder().setCluster("cluster");
-    Assert.assertFalse(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
+    Assertions.assertFalse(JobUtils.isDerived(jobGroupBuilder.build(), jobBuilder.build()));
   }
 
   @Test
@@ -445,7 +455,7 @@ public class JobUtilsTest extends FievelTestBase {
     JobGroup.Builder jobGroupBuilder =
         JobGroup.newBuilder().setType(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER);
     // Created job should have empty resilience queue configs
-    Assert.assertEquals(
+    Assertions.assertEquals(
         ResqConfig.newBuilder().build(),
         JobUtils.newJobBuilder(jobGroupBuilder.build()).build().getResqConfig());
     ResqConfig resqConfig =
@@ -457,7 +467,7 @@ public class JobUtilsTest extends FievelTestBase {
             .build();
     jobGroupBuilder.setResqConfig(resqConfig);
     // Created job should have resilience queue configs same as job group
-    Assert.assertEquals(
+    Assertions.assertEquals(
         resqConfig, JobUtils.newJobBuilder(jobGroupBuilder.build()).build().getResqConfig());
   }
 
@@ -468,7 +478,8 @@ public class JobUtilsTest extends FievelTestBase {
             .setType(JobType.JOB_TYPE_KAFKA_CONSUMER_TO_RPC_DISPATCHER)
             .setExtension(Any.pack(MiscConfig.newBuilder().setEnableDebug(true).build()));
     Job.Builder jobBuilder = JobUtils.newJobBuilder(jobGroupBuilder.build());
-    Assert.assertTrue(jobBuilder.build().getExtension().unpack(MiscConfig.class).getEnableDebug());
+    Assertions.assertTrue(
+        jobBuilder.build().getExtension().unpack(MiscConfig.class).getEnableDebug());
   }
 
   @Test
@@ -506,7 +517,7 @@ public class JobUtilsTest extends FievelTestBase {
                     .build())
             .build();
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         kafkaDispatcherTask, JobUtils.newJobBuilder(jobGroup).build().getKafkaDispatcherTask());
   }
 
@@ -529,7 +540,7 @@ public class JobUtilsTest extends FievelTestBase {
             .setZoneIsolated(true)
             .build();
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         availabilityTask, JobUtils.newJobBuilder(jobGroup).build().getAvailabilityTask());
   }
 
@@ -541,7 +552,7 @@ public class JobUtilsTest extends FievelTestBase {
             .setMiscConfig(MiscConfig.newBuilder().setOwnerServiceName("owner-service").build())
             .build();
     Job.Builder jobBuilder = JobUtils.newJobBuilder(jobGroup);
-    Assert.assertNotNull(jobBuilder.getMiscConfig());
-    Assert.assertEquals("owner-service", jobBuilder.getMiscConfig().getOwnerServiceName());
+    Assertions.assertNotNull(jobBuilder.getMiscConfig());
+    Assertions.assertEquals("owner-service", jobBuilder.getMiscConfig().getOwnerServiceName());
   }
 }

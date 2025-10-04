@@ -5,13 +5,12 @@ import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.HostResolver;
 import com.uber.data.kafka.datatransfer.common.ManagedChannelFactory;
 import com.uber.data.kafka.datatransfer.worker.common.Controllable;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class GrpcControllerTest extends FievelTestBase {
+public class GrpcControllerTest {
   private GrpcControllerConfiguration config;
   private CoreInfra infra;
   private Node worker;
@@ -20,7 +19,7 @@ public class GrpcControllerTest extends FievelTestBase {
   private GrpcController grpcController;
   private ManagedChannelFactory managedChannelFactory;
 
-  @Before
+  @BeforeEach
   public void setup() {
     config = new GrpcControllerConfiguration();
     infra = CoreInfra.NOOP;
@@ -35,14 +34,14 @@ public class GrpcControllerTest extends FievelTestBase {
   @Test
   public void lifecycle() {
     grpcController.start();
-    Assert.assertTrue(grpcController.isRunning());
+    Assertions.assertTrue(grpcController.isRunning());
     grpcController.stop();
   }
 
   @Test
   public void run() {
-    Assert.assertTrue(grpcController.getState() instanceof StateConnecting);
+    Assertions.assertTrue(grpcController.getState() instanceof StateConnecting);
     grpcController.run();
-    Assert.assertTrue(grpcController.getState() instanceof StateConnecting);
+    Assertions.assertTrue(grpcController.getState() instanceof StateConnecting);
   }
 }

@@ -1,12 +1,11 @@
 package com.uber.data.kafka.datatransfer.worker.pipelines;
 
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.HashSet;
 import java.util.Set;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class KafkaPipelineIssueTest extends FievelTestBase {
+public class KafkaPipelineIssueTest {
   @Test
   public void testGetValue() {
     Set<String> expected =
@@ -23,6 +22,6 @@ public class KafkaPipelineIssueTest extends FievelTestBase {
     for (KafkaPipelineIssue issue : KafkaPipelineIssue.values()) {
       actual.add(issue.getPipelineHealthIssue().getName());
     }
-    Assert.assertEquals(expected, actual);
+    Assertions.assertEquals(expected, actual);
   }
 }

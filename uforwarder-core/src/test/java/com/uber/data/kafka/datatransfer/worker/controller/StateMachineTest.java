@@ -15,7 +15,6 @@ import com.uber.data.kafka.datatransfer.RegisterWorkerRequest;
 import com.uber.data.kafka.datatransfer.RegisterWorkerResponse;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.Controllable;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Stopwatch;
@@ -28,14 +27,16 @@ import java.time.Duration;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class StateMachineTest extends FievelTestBase {
+public class StateMachineTest {
 
   private Node worker;
   private Node master;
@@ -51,7 +52,7 @@ public class StateMachineTest extends FievelTestBase {
   private Job job3;
   private CoreInfra infra;
 
-  @Before
+  @BeforeEach
   public void setup() {
     worker = Node.newBuilder().setId(1).build();
     master = Node.newBuilder().setId(2).build();
@@ -87,13 +88,13 @@ public class StateMachineTest extends FievelTestBase {
             commandExecutors,
             controllable);
     // oldState is CONNECTING
-    Assert.assertEquals(StateConnecting.STATE, oldState.toString());
+    Assertions.assertEquals(StateConnecting.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be REGISTERING
-    Assert.assertEquals(StateRegistering.STATE, newState.toString());
+    Assertions.assertEquals(StateRegistering.STATE, newState.toString());
     // Lease should not be extended because it is not a heartbeat success.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
   }
 
   /** Test that failed call to UNS will result in re-lookup to UDG. */
@@ -112,13 +113,13 @@ public class StateMachineTest extends FievelTestBase {
             commandExecutors,
             controllable);
     // oldState is CONNECTING
-    Assert.assertEquals(StateConnecting.STATE, oldState.toString());
+    Assertions.assertEquals(StateConnecting.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be CONNECTING
-    Assert.assertEquals(StateConnecting.STATE, newState.toString());
+    Assertions.assertEquals(StateConnecting.STATE, newState.toString());
     // Lease should not be extended because it is not a heartbeat success.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
   }
 
   /** Test that a successful register call to the master will move the state machine to WORKING. */
@@ -149,15 +150,15 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is REGISTERING
-    Assert.assertEquals(StateRegistering.STATE, oldState.toString());
+    Assertions.assertEquals(StateRegistering.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateWorking.STATE, newState.toString());
+    Assertions.assertEquals(StateWorking.STATE, newState.toString());
     // Lease should be reset
-    Assert.assertNotEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertNotEquals(lastSuccessTime, lease.lastSuccessTime());
     // Controller node should be updated to reflect the one returned by the master
-    Assert.assertEquals(workerWithNewId, newState.worker);
+    Assertions.assertEquals(workerWithNewId, newState.worker);
   }
 
   /**
@@ -196,13 +197,13 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is REGISTERING
-    Assert.assertEquals(StateRegistering.STATE, oldState.toString());
+    Assertions.assertEquals(StateRegistering.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be REGISTERING
-    Assert.assertEquals(StateRegistering.STATE, newState.toString());
+    Assertions.assertEquals(StateRegistering.STATE, newState.toString());
     // Lease should be reset
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
   }
 
   @Test
@@ -230,15 +231,15 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is Registering
-    Assert.assertEquals(StateRegistering.STATE, oldState.toString());
+    Assertions.assertEquals(StateRegistering.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be CONNECTING
-    Assert.assertEquals(StateConnecting.STATE, newState.toString());
+    Assertions.assertEquals(StateConnecting.STATE, newState.toString());
     // Heartbeat failed so lease should not be updated.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
     // make sure the worker node does not change.
-    Assert.assertEquals(oldState.worker, newState.worker);
+    Assertions.assertEquals(oldState.worker, newState.worker);
   }
 
   /**
@@ -267,13 +268,13 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is REGISTERING
-    Assert.assertEquals(StateRegistering.STATE, oldState.toString());
+    Assertions.assertEquals(StateRegistering.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be CONNECTING
-    Assert.assertEquals(StateConnecting.STATE, newState.toString());
+    Assertions.assertEquals(StateConnecting.STATE, newState.toString());
     // Lease should not be extended because it is not a heartbeat success.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
   }
 
   /**
@@ -306,13 +307,13 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is REGISTERING
-    Assert.assertEquals(StateRegistering.STATE, oldState.toString());
+    Assertions.assertEquals(StateRegistering.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be CONNECTING
-    Assert.assertEquals(StateConnecting.STATE, newState.toString());
+    Assertions.assertEquals(StateConnecting.STATE, newState.toString());
     // Lease should not be extended because it is not a heartbeat success.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
   }
 
   /**
@@ -355,17 +356,18 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is REGISTERING
-    Assert.assertEquals(StateRegistering.STATE, oldState.toString());
+    Assertions.assertEquals(StateRegistering.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be CONNECTING
-    Assert.assertEquals(StateConnecting.STATE, newState.toString());
+    Assertions.assertEquals(StateConnecting.STATE, newState.toString());
     // Lease should be not be updated
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
   }
 
   /** Test worker receives and executes commands from master. */
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void workingToWorking() throws Exception {
     long lastSuccessTime = lease.lastSuccessTime();
     Mockito.when(controllable.getJobStatus())
@@ -425,13 +427,13 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateWorking.STATE, newState.toString());
+    Assertions.assertEquals(StateWorking.STATE, newState.toString());
     // Successful heartbeat so lease should be incremented
-    Assert.assertTrue(lease.lastSuccessTime() > lastSuccessTime);
+    Assertions.assertTrue(lease.lastSuccessTime() > lastSuccessTime);
     // Assert that the command are issued to controllable and run the async runnables
     ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
     Mockito.verify(commandExecutors, Mockito.times(3)).execute(runnableArgumentCaptor.capture());
@@ -441,9 +443,9 @@ public class StateMachineTest extends FievelTestBase {
     Mockito.verify(controllable, Mockito.times(1)).cancel(jobArgumentCaptor.capture());
     Mockito.verify(controllable, Mockito.times(1)).run(jobArgumentCaptor.capture());
     Mockito.verify(controllable, Mockito.times(1)).update(jobArgumentCaptor.capture());
-    Assert.assertEquals(job1, jobArgumentCaptor.getAllValues().get(0));
-    Assert.assertEquals(job2, jobArgumentCaptor.getAllValues().get(1));
-    Assert.assertEquals(job3, jobArgumentCaptor.getAllValues().get(2));
+    Assertions.assertEquals(job1, jobArgumentCaptor.getAllValues().get(0));
+    Assertions.assertEquals(job2, jobArgumentCaptor.getAllValues().get(1));
+    Assertions.assertEquals(job3, jobArgumentCaptor.getAllValues().get(2));
     // one heartbeat
     Mockito.verify(scope, Mockito.times(1)).counter("controller.heartbeat.success");
     // update command execution failure
@@ -453,7 +455,8 @@ public class StateMachineTest extends FievelTestBase {
   }
 
   /** Tests the behavior of workers when master client is closed. */
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void workingToWorkingWhenMasterClientChannelIsTerminated() throws Exception {
     Mockito.when(channel.isTerminated()).thenReturn(true);
     Mockito.when(controllerClientFactory.reconnect(ArgumentMatchers.any()))
@@ -472,15 +475,15 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateWorking.STATE, newState.toString());
+    Assertions.assertEquals(StateWorking.STATE, newState.toString());
     // Heartbeat failed so lease should not be updated.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
     // make sure the worker node does not change.
-    Assert.assertEquals(oldState.worker, newState.worker);
+    Assertions.assertEquals(oldState.worker, newState.worker);
     // Work should not be canceled.
     Mockito.verify(controllable, Mockito.times(0)).cancelAll();
   }
@@ -491,7 +494,8 @@ public class StateMachineTest extends FievelTestBase {
    *
    * @throws Exception
    */
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void workingToWorkingWithControllableFailure() throws Exception {
     long lastSuccessTime = lease.lastSuccessTime();
     Mockito.doThrow(new RuntimeException()).when(controllable).run(Mockito.any());
@@ -524,13 +528,13 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateWorking.STATE, newState.toString());
+    Assertions.assertEquals(StateWorking.STATE, newState.toString());
     // Successful heartbeat so lease should be incremented
-    Assert.assertTrue(lease.lastSuccessTime() > lastSuccessTime);
+    Assertions.assertTrue(lease.lastSuccessTime() > lastSuccessTime);
     // Assert that the command are issued to controllable and run the async runnables
     ArgumentCaptor<Runnable> runnableArgumentCaptor = ArgumentCaptor.forClass(Runnable.class);
     Mockito.verify(commandExecutors, Mockito.times(1)).execute(runnableArgumentCaptor.capture());
@@ -538,7 +542,8 @@ public class StateMachineTest extends FievelTestBase {
   }
 
   /** This tests that worker gracefully handles master leader election (without hard restart). */
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void workingToWorkingFailoverOnMasterElection() throws Exception {
     lease.success();
     long lastSuccessTime = lease.lastSuccessTime();
@@ -567,15 +572,15 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateWorking.STATE, newState.toString());
+    Assertions.assertEquals(StateWorking.STATE, newState.toString());
     // Heartbeat failed so lease should not be updated.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
     // make sure the worker node does not change.
-    Assert.assertEquals(oldState.worker, newState.worker);
+    Assertions.assertEquals(oldState.worker, newState.worker);
     // make sure the reconnectOnChange method was invoked
     Mockito.verify(controllerClientFactory, Mockito.times(1))
         .reconnectOnChange(Mockito.any(), Mockito.any());
@@ -585,7 +590,8 @@ public class StateMachineTest extends FievelTestBase {
    * This verifies that worker will gracefully switch master on master restart by looking up with
    * UDG and connecting to new master.
    */
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void workingToWorkingFailoverOnMasterRestart() throws Exception {
     ControllerClient controllerClient = new ControllerClient(master, channel, stub, infra);
     lease.success();
@@ -617,13 +623,13 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             controllerClient);
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateWorking.STATE, newState.toString());
+    Assertions.assertEquals(StateWorking.STATE, newState.toString());
     // Heartbeat failed so lease should not be updated.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
     // Verify that master client factory is invoked for master switch
     Mockito.verify(controllerClientFactory, Mockito.times(1)).reconnect(Mockito.any());
   }
@@ -654,15 +660,15 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be CONNECTING
-    Assert.assertEquals(StateConnecting.STATE, newState.toString());
+    Assertions.assertEquals(StateConnecting.STATE, newState.toString());
     // Heartbeat failed so lease should not be updated.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
     // make sure the worker node does not change.
-    Assert.assertEquals(oldState.worker, newState.worker);
+    Assertions.assertEquals(oldState.worker, newState.worker);
     // Work should be canceled.
     Mockito.verify(controllable, Mockito.times(1)).cancelAll();
   }
@@ -672,7 +678,8 @@ public class StateMachineTest extends FievelTestBase {
    * threw exception.
    */
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void workingToConnectingWithControllableException() throws Exception {
     long lastSuccessTime = lease.lastSuccessTime();
     List<JobStatus> jobStatusList =
@@ -702,15 +709,15 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Wait for the lease to expire.
     Thread.sleep(1000 * 3);
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateConnecting.STATE, newState.toString());
+    Assertions.assertEquals(StateConnecting.STATE, newState.toString());
     // Heartbeat failed so lease should not be updated.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
     // Work should be canceled.
     Mockito.verify(controllable, Mockito.times(1)).cancelAll();
   }
@@ -720,7 +727,8 @@ public class StateMachineTest extends FievelTestBase {
    * expires.
    */
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void workingToConnectingCausedByHeartbeatFailureWhenLeaseExpires() throws Exception {
     long lastSuccessTime = lease.lastSuccessTime();
     List<JobStatus> jobStatusList =
@@ -748,13 +756,13 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateConnecting.STATE, newState.toString());
+    Assertions.assertEquals(StateConnecting.STATE, newState.toString());
     // Heartbeat failed so lease should not be updated.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
     // Work should be canceled.
     Mockito.verify(controllable, Mockito.times(1)).cancelAll();
   }
@@ -792,11 +800,11 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateWorking.STATE, newState.toString());
+    Assertions.assertEquals(StateWorking.STATE, newState.toString());
   }
 
   /**
@@ -804,7 +812,8 @@ public class StateMachineTest extends FievelTestBase {
    * expires and master client close fails.
    */
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void workingToConnectingCausedByHeartbeatFailureWhenLeaseExpiresAndCloseException()
       throws Exception {
     long lastSuccessTime = lease.lastSuccessTime();
@@ -837,15 +846,15 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Wait for the lease to expire.
     Thread.sleep(1000 * 3);
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateConnecting.STATE, newState.toString());
+    Assertions.assertEquals(StateConnecting.STATE, newState.toString());
     // Heartbeat failed so lease should not be updated.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
     // Work should be canceled.
     Mockito.verify(controllable, Mockito.times(1)).cancelAll();
   }
@@ -854,7 +863,8 @@ public class StateMachineTest extends FievelTestBase {
    * This tests that worker transitions to CONNECTING and cancelAll jobs when reconnecting to a new
    * master failed
    */
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void workingToWorkingCausedByReconnectFailureOnMasterElection() throws Exception {
     Mockito.when(
             controllerClientFactory.reconnectOnChange(
@@ -890,15 +900,15 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateWorking.STATE, newState.toString());
+    Assertions.assertEquals(StateWorking.STATE, newState.toString());
     // Heartbeat failed so lease should not be updated.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
     // make sure the worker node does not change.
-    Assert.assertEquals(oldState.worker, newState.worker);
+    Assertions.assertEquals(oldState.worker, newState.worker);
     // Work should not be canceled.
     Mockito.verify(controllable, Mockito.times(0)).cancelAll();
   }
@@ -907,7 +917,8 @@ public class StateMachineTest extends FievelTestBase {
    * This tests that worker transitions to CONNECTING and cancelAll jobs when reconnecting to a new
    * master failed after lease expires.
    */
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void workingToWorkingCausedByReconnectFailureOnMasterRestart() throws Exception {
     lease.success();
     long lastSuccessTime = lease.lastSuccessTime();
@@ -938,13 +949,13 @@ public class StateMachineTest extends FievelTestBase {
             controllable,
             new ControllerClient(master, channel, stub, infra));
     // oldState is WORKING
-    Assert.assertEquals(StateWorking.STATE, oldState.toString());
+    Assertions.assertEquals(StateWorking.STATE, oldState.toString());
     // Transition state.
     State newState = oldState.nextState();
     // newState should be WORKING
-    Assert.assertEquals(StateWorking.STATE, newState.toString());
+    Assertions.assertEquals(StateWorking.STATE, newState.toString());
     // Heartbeat failed so lease should not be updated.
-    Assert.assertEquals(lastSuccessTime, lease.lastSuccessTime());
+    Assertions.assertEquals(lastSuccessTime, lease.lastSuccessTime());
     // Verify that master client factory is invoked for master switch
     Mockito.verify(controllerClientFactory, Mockito.times(1)).reconnect(Mockito.any());
     // Work should not be canceled.

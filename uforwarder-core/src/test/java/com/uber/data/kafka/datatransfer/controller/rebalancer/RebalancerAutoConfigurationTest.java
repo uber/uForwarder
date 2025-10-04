@@ -1,13 +1,12 @@
 package com.uber.data.kafka.datatransfer.controller.rebalancer;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
-public class RebalancerAutoConfigurationTest extends FievelTestBase {
+public class RebalancerAutoConfigurationTest {
 
   @Test
   public void testInitialized() {
@@ -20,8 +19,8 @@ public class RebalancerAutoConfigurationTest extends FievelTestBase {
         .run(
             context -> {
               Rebalancer rebalancer = context.getBean(Rebalancer.class);
-              Assert.assertNotNull(rebalancer);
-              Assert.assertFalse(
+              Assertions.assertNotNull(rebalancer);
+              Assertions.assertFalse(
                   rebalancer instanceof RebalancerAutoConfiguration2.SimpleRebalancer);
             });
   }
@@ -39,8 +38,8 @@ public class RebalancerAutoConfigurationTest extends FievelTestBase {
         .run(
             context -> {
               Rebalancer rebalancer = context.getBean(Rebalancer.class);
-              Assert.assertNotNull(rebalancer);
-              Assert.assertTrue(
+              Assertions.assertNotNull(rebalancer);
+              Assertions.assertTrue(
                   rebalancer instanceof RebalancerAutoConfiguration2.SimpleRebalancer);
             });
   }

@@ -5,20 +5,19 @@ import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.common.VersionedProto;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class WorkerManagerTest extends FievelTestBase {
+public class WorkerManagerTest {
   private Store<Long, StoredWorker> workerStore;
   private WorkerManager workerManager;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     LeaderSelector leaderSelector = Mockito.mock(LeaderSelector.class);
     Mockito.when(leaderSelector.isLeader()).thenReturn(true);

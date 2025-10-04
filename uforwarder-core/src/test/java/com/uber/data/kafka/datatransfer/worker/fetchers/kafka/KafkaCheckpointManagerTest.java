@@ -1,26 +1,27 @@
 package com.uber.data.kafka.datatransfer.worker.fetchers.kafka;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.common.KafkaUtils;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Stopwatch;
 import com.uber.m3.tally.Timer;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class KafkaCheckpointManagerTest extends FievelTestBase {
+public class KafkaCheckpointManagerTest {
 
   private Job job;
   private KafkaCheckpointManager kafkaCheckpointManager;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     job =
         Job.newBuilder()
@@ -52,19 +53,19 @@ public class KafkaCheckpointManagerTest extends FievelTestBase {
   @Test
   public void testGetCheckpointInfo() {
     CheckpointInfo checkpointInfo = kafkaCheckpointManager.getCheckpointInfo(job);
-    Assert.assertEquals(job, checkpointInfo.getJob());
-    Assert.assertEquals(-1, checkpointInfo.getStartingOffset());
-    Assert.assertEquals(-1, checkpointInfo.getFetchOffset());
-    Assert.assertEquals(-1, checkpointInfo.getOffsetToCommit());
+    Assertions.assertEquals(job, checkpointInfo.getJob());
+    Assertions.assertEquals(-1, checkpointInfo.getStartingOffset());
+    Assertions.assertEquals(-1, checkpointInfo.getFetchOffset());
+    Assertions.assertEquals(-1, checkpointInfo.getOffsetToCommit());
   }
 
   @Test
   public void testAddCheckpointInfo() {
     CheckpointInfo checkpointInfo = kafkaCheckpointManager.addCheckpointInfo(job);
-    Assert.assertEquals(job, checkpointInfo.getJob());
-    Assert.assertEquals(-1, checkpointInfo.getStartingOffset());
-    Assert.assertEquals(-1, checkpointInfo.getFetchOffset());
-    Assert.assertEquals(-1, checkpointInfo.getOffsetToCommit());
+    Assertions.assertEquals(job, checkpointInfo.getJob());
+    Assertions.assertEquals(-1, checkpointInfo.getStartingOffset());
+    Assertions.assertEquals(-1, checkpointInfo.getFetchOffset());
+    Assertions.assertEquals(-1, checkpointInfo.getOffsetToCommit());
   }
 
   @Test
@@ -73,35 +74,39 @@ public class KafkaCheckpointManagerTest extends FievelTestBase {
     kafkaCheckpointManager.setFetchOffset(job, 70);
     kafkaCheckpointManager.setCommittedOffset(job, 80);
     CheckpointInfo checkpointInfo = kafkaCheckpointManager.getCheckpointInfo(job);
-    Assert.assertEquals(job, checkpointInfo.getJob());
-    Assert.assertEquals(-1L, checkpointInfo.getStartingOffset());
-    Assert.assertEquals(70L, checkpointInfo.getFetchOffset());
-    Assert.assertEquals(60L, checkpointInfo.getOffsetToCommit());
-    Assert.assertEquals(80L, checkpointInfo.getCommittedOffset());
+    Assertions.assertEquals(job, checkpointInfo.getJob());
+    Assertions.assertEquals(-1L, checkpointInfo.getStartingOffset());
+    Assertions.assertEquals(70L, checkpointInfo.getFetchOffset());
+    Assertions.assertEquals(60L, checkpointInfo.getOffsetToCommit());
+    Assertions.assertEquals(80L, checkpointInfo.getCommittedOffset());
   }
 
   @Test
   public void testGetOffsetToCommit() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         KafkaUtils.MAX_INVALID_OFFSET_TO_COMMIT, kafkaCheckpointManager.getOffsetToCommit(job));
 
     kafkaCheckpointManager.setOffsetToCommit(job, 60L);
     kafkaCheckpointManager.setCommittedOffset(job, 60L);
-    Assert.assertEquals(60, kafkaCheckpointManager.getOffsetToCommit(job));
+    Assertions.assertEquals(60, kafkaCheckpointManager.getOffsetToCommit(job));
 
     kafkaCheckpointManager.setOffsetToCommit(job, 70L);
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         KafkaUtils.MAX_INVALID_OFFSET_TO_COMMIT, kafkaCheckpointManager.getOffsetToCommit(job));
 
     kafkaCheckpointManager.setOffsetToCommit(job, 59L);
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         KafkaUtils.MAX_INVALID_OFFSET_TO_COMMIT, kafkaCheckpointManager.getOffsetToCommit(job));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testNonKafkaConsumerTask() {
-    Job job = Job.newBuilder().build();
-    kafkaCheckpointManager.setFetchOffset(job, 10L);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          Job job = Job.newBuilder().build();
+          kafkaCheckpointManager.setFetchOffset(job, 10L);
+        });
   }
 
   @Test

@@ -1,13 +1,12 @@
 package com.uber.data.kafka.datatransfer.controller.creator;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.springframework.boot.autoconfigure.AutoConfigurations;
 import org.springframework.boot.test.context.ConfigDataApplicationContextInitializer;
 import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 
-public class JobCreatorAutoConfigurationTest extends FievelTestBase {
+public class JobCreatorAutoConfigurationTest {
 
   @Test
   public void testInitialized() {
@@ -20,8 +19,8 @@ public class JobCreatorAutoConfigurationTest extends FievelTestBase {
         .run(
             context -> {
               JobCreator jobCreator = context.getBean(JobCreator.class);
-              Assert.assertNotNull(jobCreator);
-              Assert.assertFalse(
+              Assertions.assertNotNull(jobCreator);
+              Assertions.assertFalse(
                   jobCreator instanceof JobCreatorAutoConfiguration2.SimpleJobCreator);
             });
   }
@@ -39,8 +38,8 @@ public class JobCreatorAutoConfigurationTest extends FievelTestBase {
         .run(
             context -> {
               JobCreator jobCreator = context.getBean(JobCreator.class);
-              Assert.assertNotNull(jobCreator);
-              Assert.assertTrue(
+              Assertions.assertNotNull(jobCreator);
+              Assertions.assertTrue(
                   jobCreator instanceof JobCreatorAutoConfiguration2.SimpleJobCreator);
             });
   }

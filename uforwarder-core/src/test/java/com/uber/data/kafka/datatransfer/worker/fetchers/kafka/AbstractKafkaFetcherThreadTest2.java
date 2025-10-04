@@ -11,7 +11,6 @@ import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadTracker;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Histogram;
@@ -26,14 +25,14 @@ import org.apache.kafka.clients.consumer.MockConsumer;
 import org.apache.kafka.clients.consumer.OffsetResetStrategy;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.record.TimestampType;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 // this test class uses a mock kafka consumer to test.
-public class AbstractKafkaFetcherThreadTest2 extends FievelTestBase {
+public class AbstractKafkaFetcherThreadTest2 {
   private static final String THREAD_NAME = "AbstractKafkaFetcherThreadTest";
   private static final String GROUP = "group";
   private static final String TOPIC = "topic";
@@ -46,7 +45,7 @@ public class AbstractKafkaFetcherThreadTest2 extends FievelTestBase {
   private CoreInfra infra;
   private KafkaFetcherConfiguration kafkaFetcherConfiguration;
 
-  @Before
+  @BeforeEach
   public void setup() {
     mockConsumer = new MockConsumer(OffsetResetStrategy.EARLIEST);
     processor = Mockito.mock(Sink.class);
@@ -117,13 +116,13 @@ public class AbstractKafkaFetcherThreadTest2 extends FievelTestBase {
     configManager.run(job).toCompletableFuture().get();
     fetcherThread.doWork();
     CheckpointInfo checkpointInfo = checkpointManager.getCheckpointInfo(job);
-    Assert.assertEquals(15, checkpointInfo.getOffsetToCommit());
-    Assert.assertEquals(-1, checkpointInfo.getCommittedOffset());
+    Assertions.assertEquals(15, checkpointInfo.getOffsetToCommit());
+    Assertions.assertEquals(-1, checkpointInfo.getCommittedOffset());
 
     Thread.sleep(1000);
     fetcherThread.doWork();
-    Assert.assertEquals(15, checkpointInfo.getOffsetToCommit());
-    Assert.assertEquals(15, checkpointInfo.getCommittedOffset());
+    Assertions.assertEquals(15, checkpointInfo.getOffsetToCommit());
+    Assertions.assertEquals(15, checkpointInfo.getCommittedOffset());
   }
 
   private Job createConsumerJob(

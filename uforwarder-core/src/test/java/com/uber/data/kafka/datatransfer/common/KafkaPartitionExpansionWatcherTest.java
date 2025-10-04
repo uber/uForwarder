@@ -19,7 +19,6 @@ import com.uber.data.kafka.datatransfer.controller.creator.JobCreator;
 import com.uber.data.kafka.datatransfer.controller.storage.IdProvider;
 import com.uber.data.kafka.datatransfer.controller.storage.LocalSequencer;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Histogram;
@@ -40,14 +39,14 @@ import org.apache.kafka.clients.admin.TopicListing;
 import org.apache.kafka.common.KafkaFuture;
 import org.apache.kafka.common.Node;
 import org.apache.kafka.common.TopicPartitionInfo;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
+public class KafkaPartitionExpansionWatcherTest {
   private static final String TEST_CLUSTER = "test-cluster";
   private static final String TEST_GROUP = "test-group";
   private static final String TEST_TOPIC = "test-topic";
@@ -61,7 +60,7 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
   private LeaderSelector leaderSelector;
   private JobPodAssigner jobPodAssigner;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     Scope scope = Mockito.mock(Scope.class);
     Tracer tracer = new MockTracer();
@@ -165,7 +164,7 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
 
     // Verify that numJobs expands to 2
     verify(jobGroupStore).put(idArgumentCaptor.capture(), itemCaptor.capture());
-    Assert.assertEquals(2, itemCaptor.getValue().model().getJobsCount());
+    Assertions.assertEquals(2, itemCaptor.getValue().model().getJobsCount());
   }
 
   @Test
@@ -191,7 +190,7 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
 
     // Verify that numJobs shrinks  4 to 2.
     verify(jobGroupStore).put(idArgumentCaptor.capture(), itemCaptor.capture());
-    Assert.assertEquals(2, itemCaptor.getValue().model().getJobsCount());
+    Assertions.assertEquals(2, itemCaptor.getValue().model().getJobsCount());
   }
 
   @Test
@@ -226,7 +225,7 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
     kafkaPartitionExpansionWatcher.watchPartitionExpansion();
     StoredJobGroup storedJobGroup = jobGroup.model();
     for (StoredJob storedJob : storedJobGroup.getJobsList()) {
-      Assert.assertEquals("", storedJob.getJobPod());
+      Assertions.assertEquals("", storedJob.getJobPod());
     }
 
     // new partitioninfo with leader
@@ -262,7 +261,7 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
 
     kafkaPartitionExpansionWatcher.watchPartitionExpansion();
     verify(jobGroupStore, times(1)).put(idArgumentCaptor.capture(), itemCaptor.capture());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         jobGroup.model().getJobGroup().getJobGroupId(), idArgumentCaptor.getValue());
     StoredJobGroup capturedJobGroup = itemCaptor.getValue().model();
     Set<String> allPods = new HashSet<>();
@@ -270,9 +269,9 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
       allPods.add(storedJob.getJobPod());
     }
 
-    Assert.assertEquals(2, allPods.size());
-    Assert.assertTrue(allPods.contains("canary-broker"));
-    Assert.assertTrue(allPods.contains("default"));
+    Assertions.assertEquals(2, allPods.size());
+    Assertions.assertTrue(allPods.contains("canary-broker"));
+    Assertions.assertTrue(allPods.contains("default"));
   }
 
   @Test

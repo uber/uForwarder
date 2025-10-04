@@ -1,7 +1,7 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 import com.uber.data.kafka.datatransfer.JobGroupScaleStatusSnapshot;
 import com.uber.data.kafka.datatransfer.ScaleComputerSnapshot;
@@ -10,20 +10,19 @@ import com.uber.data.kafka.datatransfer.ScaleStoreSnapshot;
 import com.uber.data.kafka.datatransfer.WindowSnapshot;
 import com.uber.data.kafka.datatransfer.WindowedComputerSnapshot;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.io.IOException;
 import java.time.Duration;
 import java.util.Arrays;
 import java.util.stream.Collectors;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ReactiveScaleWindowCalculatorTest extends FievelTestBase {
+public class ReactiveScaleWindowCalculatorTest {
   private ReactiveScaleWindowCalculator reactiveScaleWindowCalculator;
   private TestUtils.TestTicker ticker;
 
   @SuppressWarnings("ForbidClassloaderGetResourceInTests")
-  @Before
+  @BeforeEach
   public void setUp() throws IOException {
     ticker = new TestUtils.TestTicker();
     reactiveScaleWindowCalculator = new ReactiveScaleWindowCalculator(ticker);
@@ -40,8 +39,8 @@ public class ReactiveScaleWindowCalculatorTest extends FievelTestBase {
         reactiveScaleWindowCalculator.calculateDownScaleWindowDuration(
             ScaleStoreSnapshot.getDefaultInstance(), load, lastModifyNano, currentValue);
 
-    assertNotNull("Result should not be null", result);
-    assertEquals("Should return current value for normal load", currentValue, result);
+    assertNotNull(result, "Result should not be null");
+    assertEquals(currentValue, result, "Should return current value for normal load");
   }
 
   @Test
@@ -55,11 +54,11 @@ public class ReactiveScaleWindowCalculatorTest extends FievelTestBase {
         reactiveScaleWindowCalculator.calculateDownScaleWindowDuration(
             ScaleStoreSnapshot.getDefaultInstance(), load, lastModifyNano, currentValue);
 
-    assertNotNull("Result should not be null", result);
+    assertNotNull(result, "Result should not be null");
     assertEquals(
-        "Should return current value for normal load",
         currentValue.plus(Duration.ofMinutes(1)),
-        result);
+        result,
+        "Should return current value for normal load");
   }
 
   @Test
@@ -98,9 +97,9 @@ public class ReactiveScaleWindowCalculatorTest extends FievelTestBase {
         reactiveScaleWindowCalculator.calculateDownScaleWindowDuration(
             scaleStoreSnapshot, load, lastModifyNano, currentValue);
 
-    assertNotNull("Result should not be null", result);
+    assertNotNull(result, "Result should not be null");
     Duration expected = Duration.ofSeconds((23 * 60 + 1) * 60 + 44);
-    assertEquals("Should return reduced value for heavy load", expected, result);
+    assertEquals(expected, result, "Should return reduced value for heavy load");
   }
 
   @Test
@@ -135,9 +134,9 @@ public class ReactiveScaleWindowCalculatorTest extends FievelTestBase {
         reactiveScaleWindowCalculator.calculateDownScaleWindowDuration(
             scaleStoreSnapshot, load, lastModifyNano, currentValue);
 
-    assertNotNull("Result should not be null", result);
+    assertNotNull(result, "Result should not be null");
     Duration expected = currentValue.minus(Duration.ofMinutes(10));
-    assertEquals("Should return reduced value for heavy load", expected, result);
+    assertEquals(expected, result, "Should return reduced value for heavy load");
   }
 
   @Test
@@ -172,8 +171,8 @@ public class ReactiveScaleWindowCalculatorTest extends FievelTestBase {
         reactiveScaleWindowCalculator.calculateDownScaleWindowDuration(
             scaleStoreSnapshot, load, lastModifyNano, currentValue);
 
-    assertNotNull("Result should not be null", result);
-    assertEquals("Should return reduced value for heavy load", currentValue, result);
+    assertNotNull(result, "Result should not be null");
+    assertEquals(currentValue, result, "Should return reduced value for heavy load");
   }
 
   @Test
@@ -208,9 +207,9 @@ public class ReactiveScaleWindowCalculatorTest extends FievelTestBase {
         reactiveScaleWindowCalculator.calculateDownScaleWindowDuration(
             scaleStoreSnapshot, load, lastModifyNano, currentValue);
 
-    assertNotNull("Result should not be null", result);
+    assertNotNull(result, "Result should not be null");
     Duration expected = currentValue.minus(Duration.ofMinutes(15));
-    assertEquals("Should return reduced value for heavy load", expected, result);
+    assertEquals(expected, result, "Should return reduced value for heavy load");
   }
 
   @Test
@@ -245,8 +244,8 @@ public class ReactiveScaleWindowCalculatorTest extends FievelTestBase {
         reactiveScaleWindowCalculator.calculateDownScaleWindowDuration(
             scaleStoreSnapshot, load, lastModifyNano, currentValue);
 
-    assertNotNull("Result should not be null", result);
-    assertEquals("Should return reduced value for heavy load", currentValue, result);
+    assertNotNull(result, "Result should not be null");
+    assertEquals(currentValue, result, "Should return reduced value for heavy load");
   }
 
   private JobGroupScaleStatusSnapshot createJobGroupScaleStatusSnapshot(

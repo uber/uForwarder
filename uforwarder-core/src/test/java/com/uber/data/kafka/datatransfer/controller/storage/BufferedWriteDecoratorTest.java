@@ -2,24 +2,23 @@ package com.uber.data.kafka.datatransfer.controller.storage;
 
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.TimeUnit;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
 import org.awaitility.Awaitility;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 
-public class BufferedWriteDecoratorTest extends FievelTestBase {
+public class BufferedWriteDecoratorTest {
   private Logger logger;
   private Store<Long, StoredWorker> implStore;
   private BufferedWriteDecorator<Long, StoredWorker> wrappedStore;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     logger = Mockito.mock(Logger.class);
     implStore = Mockito.mock(Store.class);
@@ -68,15 +67,16 @@ public class BufferedWriteDecoratorTest extends FievelTestBase {
     wrappedStore.put(1L, Versioned.from(StoredWorker.newBuilder().build(), 2));
     wrappedStore.put(2L, Versioned.from(StoredWorker.newBuilder().build(), 2));
     wrappedStore.put(3L, Versioned.from(StoredWorker.newBuilder().build(), 2));
-    Assert.assertEquals(3, ((BufferedWriteDecorator) wrappedStore).writeCache.size());
+    Assertions.assertEquals(3, ((BufferedWriteDecorator) wrappedStore).writeCache.size());
     wrappedStore.remove(3L);
-    Assert.assertEquals(2, ((BufferedWriteDecorator) wrappedStore).writeCache.size());
+    Assertions.assertEquals(2, ((BufferedWriteDecorator) wrappedStore).writeCache.size());
     wrappedStore.start();
     Awaitility.await()
         .atMost(1, TimeUnit.SECONDS)
         .untilAsserted(
             () ->
-                Assert.assertEquals(0, ((BufferedWriteDecorator) wrappedStore).writeCache.size()));
+                Assertions.assertEquals(
+                    0, ((BufferedWriteDecorator) wrappedStore).writeCache.size()));
   }
 
   @Test

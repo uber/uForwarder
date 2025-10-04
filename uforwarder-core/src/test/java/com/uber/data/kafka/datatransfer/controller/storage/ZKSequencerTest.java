@@ -1,22 +1,21 @@
 package com.uber.data.kafka.datatransfer.controller.storage;
 
 import com.uber.data.kafka.datatransfer.common.TestUtils;
-import com.uber.fievel.testing.base.FievelTestBase;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.CuratorFrameworkFactory;
 import org.apache.curator.retry.RetryOneTime;
 import org.apache.curator.test.TestingServer;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ZKSequencerTest extends FievelTestBase {
+public class ZKSequencerTest {
   private TestingServer zkServer;
   private CuratorFramework zkClient;
   private IdProvider sequencer;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     int port = 0;
     // try at most 5 times
@@ -37,7 +36,7 @@ public class ZKSequencerTest extends FievelTestBase {
     sequencer.start();
   }
 
-  @After
+  @AfterEach
   public void teardown() throws Exception {
     sequencer.stop();
   }
@@ -45,13 +44,13 @@ public class ZKSequencerTest extends FievelTestBase {
   @Test
   public void testLifecycle() {
     sequencer.start();
-    Assert.assertTrue(sequencer.isRunning());
+    Assertions.assertTrue(sequencer.isRunning());
     sequencer.stop();
   }
 
   @Test
   public void testNextLong() throws Exception {
-    Assert.assertEquals(1L, sequencer.getId(null));
-    Assert.assertEquals(2L, sequencer.getId(null));
+    Assertions.assertEquals(1L, sequencer.getId(null));
+    Assertions.assertEquals(2L, sequencer.getId(null));
   }
 }

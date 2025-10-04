@@ -4,12 +4,11 @@ import static com.uber.data.kafka.datatransfer.common.StructuredFields.HOST;
 import static com.uber.data.kafka.datatransfer.common.StructuredFields.PORT;
 
 import com.uber.data.kafka.datatransfer.Node;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.Map;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class StructuredTagsTest extends FievelTestBase {
+public class StructuredTagsTest {
 
   // test get node
   @Test
@@ -18,7 +17,7 @@ public class StructuredTagsTest extends FievelTestBase {
     CoreInfra infra = CoreInfra.builder().withNode(node).build();
 
     Map<String, String> tags = StructuredTags.builder().setNode(infra.getNode()).build();
-    Assert.assertEquals("host", tags.get(HOST));
-    Assert.assertEquals(Integer.toString(1234), tags.get(PORT));
+    Assertions.assertEquals("host", tags.get(HOST));
+    Assertions.assertEquals(Integer.toString(1234), tags.get(PORT));
   }
 }

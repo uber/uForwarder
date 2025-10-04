@@ -1,15 +1,15 @@
 package com.uber.data.kafka.datatransfer.worker.common;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNull;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.google.common.collect.ImmutableMap;
-import com.uber.fievel.testing.base.FievelTestBase;
 import io.opentracing.Span;
 import io.opentracing.SpanContext;
 import io.opentracing.Tracer;
@@ -26,13 +26,13 @@ import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeader;
 import org.apache.kafka.common.header.internals.RecordHeaders;
 import org.apache.kafka.common.record.TimestampType;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
-public class TracedConsumerRecordTest extends FievelTestBase {
+public class TracedConsumerRecordTest {
   private static final String TRACE_ID = "uber-trace-id";
   boolean extracted;
   boolean injected;
@@ -42,7 +42,7 @@ public class TracedConsumerRecordTest extends FievelTestBase {
   Span span;
   int count;
 
-  @Before
+  @BeforeEach
   public void setup() {
     extracted = false;
     injected = false;
@@ -59,7 +59,8 @@ public class TracedConsumerRecordTest extends FievelTestBase {
     Mockito.doAnswer(
             invocationOnMock -> {
               Object[] args = invocationOnMock.getArguments();
-              Assert.assertTrue(args[2] instanceof TracedConsumerRecord.HeadersMapInjectAdapter);
+              Assertions.assertTrue(
+                  args[2] instanceof TracedConsumerRecord.HeadersMapInjectAdapter);
               TextMap textMap = (TextMap) args[2];
               textMap.put(TRACE_ID, "trace-id-2");
               injected = true;
@@ -94,14 +95,14 @@ public class TracedConsumerRecordTest extends FievelTestBase {
                 invocationOnMock -> {
                   Object[] args = invocationOnMock.getArguments();
 
-                  Assert.assertTrue(
+                  Assertions.assertTrue(
                       args[1] instanceof TracedConsumerRecord.HeadersMapExtractAdapter);
                   TextMap textMap = (TextMap) args[1];
                   Iterator<Map.Entry<String, String>> iter = textMap.iterator();
                   while (iter.hasNext()) {
                     Map.Entry<String, String> entry = iter.next();
                     if (entry.getKey().equals(TRACE_ID)) {
-                      Assert.assertEquals("trace-id-1", entry.getValue());
+                      Assertions.assertEquals("trace-id-1", entry.getValue());
                       extracted = true;
                     }
                   }
@@ -114,9 +115,9 @@ public class TracedConsumerRecordTest extends FievelTestBase {
     Long offset = 10L;
 
     TracedConsumerRecord tracedConsumerRecord = TracedConsumerRecord.of(record, tracer, "cg");
-    Assert.assertTrue(extracted);
-    Assert.assertTrue(injected);
-    Assert.assertEquals(3, record.headers().toArray().length);
+    Assertions.assertTrue(extracted);
+    Assertions.assertTrue(injected);
+    Assertions.assertEquals(3, record.headers().toArray().length);
     boolean matched =
         StreamSupport.stream(record.headers().spliterator(), false)
             .filter(
@@ -133,8 +134,8 @@ public class TracedConsumerRecordTest extends FievelTestBase {
                 })
             .allMatch(
                 header -> new String(header.value(), StandardCharsets.UTF_8).equals("trace-id-2"));
-    Assert.assertEquals(1, count);
-    Assert.assertTrue(matched);
+    Assertions.assertEquals(1, count);
+    Assertions.assertTrue(matched);
     tracedConsumerRecord.complete(offset, null);
     verify(span).log(ImmutableMap.of("message", offset));
     verify(span).finish();
@@ -152,9 +153,9 @@ public class TracedConsumerRecordTest extends FievelTestBase {
     TracedConsumerRecord tracedConsumerRecord = TracedConsumerRecord.of(record, tracer, "cg");
     Mockito.verify(spanBuilder, Mockito.never()).asChildOf(Mockito.any(SpanContext.class));
     Mockito.verify(spanBuilder, Mockito.never()).withTag(Tags.ERROR, Boolean.TRUE);
-    Assert.assertFalse(extracted);
-    Assert.assertTrue(injected);
-    Assert.assertEquals(2, record.headers().toArray().length);
+    Assertions.assertFalse(extracted);
+    Assertions.assertTrue(injected);
+    Assertions.assertEquals(2, record.headers().toArray().length);
     boolean matched =
         StreamSupport.stream(record.headers().spliterator(), false)
             .filter(
@@ -171,8 +172,8 @@ public class TracedConsumerRecordTest extends FievelTestBase {
                 })
             .allMatch(
                 header -> new String(header.value(), StandardCharsets.UTF_8).equals("trace-id-1"));
-    Assert.assertEquals(0, count);
-    Assert.assertTrue(matched);
+    Assertions.assertEquals(0, count);
+    Assertions.assertTrue(matched);
     tracedConsumerRecord.complete(null, e);
     verify(span).log(ImmutableMap.of("error.object", e));
     verify(span).finish();
@@ -191,9 +192,9 @@ public class TracedConsumerRecordTest extends FievelTestBase {
     TracedConsumerRecord tracedConsumerRecord = TracedConsumerRecord.of(record, tracer, "cg");
     Mockito.verify(spanBuilder, Mockito.never()).asChildOf(Mockito.any(SpanContext.class));
     Mockito.verify(spanBuilder).withTag(Tags.ERROR, Boolean.TRUE);
-    Assert.assertFalse(extracted);
-    Assert.assertTrue(injected);
-    Assert.assertEquals(3, record.headers().toArray().length);
+    Assertions.assertFalse(extracted);
+    Assertions.assertTrue(injected);
+    Assertions.assertEquals(3, record.headers().toArray().length);
     boolean matched =
         StreamSupport.stream(record.headers().spliterator(), false)
             .filter(
@@ -210,8 +211,8 @@ public class TracedConsumerRecordTest extends FievelTestBase {
                 })
             .allMatch(
                 header -> new String(header.value(), StandardCharsets.UTF_8).equals("trace-id-2"));
-    Assert.assertEquals(1, count);
-    Assert.assertTrue(matched);
+    Assertions.assertEquals(1, count);
+    Assertions.assertTrue(matched);
     tracedConsumerRecord.complete(null, e);
     verify(span).log(ImmutableMap.of("error.object", e));
     verify(span).finish();
@@ -259,8 +260,12 @@ public class TracedConsumerRecordTest extends FievelTestBase {
     assertEquals(header.getValue(), "%%");
   }
 
-  @Test(expected = UnsupportedOperationException.class)
+  @Test
   public void testPut() {
-    new TracedConsumerRecord.HeadersMapExtractAdapter(new RecordHeaders()).put("key", "value");
+    assertThrows(
+        UnsupportedOperationException.class,
+        () ->
+            new TracedConsumerRecord.HeadersMapExtractAdapter(new RecordHeaders())
+                .put("key", "value"));
   }
 }

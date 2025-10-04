@@ -8,12 +8,14 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.TimeUnit;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
@@ -26,7 +28,7 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
   private TopicPartition topicPartition = new TopicPartition("test-topic", 1);
   private int currentTimeAdditionMs = 10;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     scope = Mockito.mock(Scope.class);
     Gauge gauge = Mockito.mock(Gauge.class);
@@ -45,7 +47,7 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
     ConsumerRecord<byte[], byte[]> consumerRecord = Mockito.mock(ConsumerRecord.class);
     Mockito.when(consumerRecord.timestamp())
         .thenReturn(System.currentTimeMillis() + currentTimeAdditionMs);
-    Assert.assertTrue(delayProcessManager.shouldDelayProcess(consumerRecord));
+    Assertions.assertTrue(delayProcessManager.shouldDelayProcess(consumerRecord));
   }
 
   @Test
@@ -56,7 +58,7 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
     ConsumerRecord<byte[], byte[]> consumerRecord = Mockito.mock(ConsumerRecord.class);
     Mockito.when(consumerRecord.timestamp())
         .thenReturn(System.currentTimeMillis() - processingDelayMs - currentTimeAdditionMs);
-    Assert.assertFalse(delayProcessManager.shouldDelayProcess(consumerRecord));
+    Assertions.assertFalse(delayProcessManager.shouldDelayProcess(consumerRecord));
   }
 
   @Test
@@ -67,7 +69,7 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
     ConsumerRecord<byte[], byte[]> consumerRecord = Mockito.mock(ConsumerRecord.class);
     Mockito.when(consumerRecord.timestamp())
         .thenReturn(System.currentTimeMillis() + currentTimeAdditionMs);
-    Assert.assertFalse(delayProcessManager.shouldDelayProcess(consumerRecord));
+    Assertions.assertFalse(delayProcessManager.shouldDelayProcess(consumerRecord));
   }
 
   @Test
@@ -80,10 +82,10 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
     unprocessedRecords.add(Mockito.mock(ConsumerRecord.class));
 
     delayProcessManager.pausedPartitionsAndRecords(topicPartition, unprocessedRecords);
-    Assert.assertEquals(2, delayProcessManager.getRecords(topicPartition).size());
+    Assertions.assertEquals(2, delayProcessManager.getRecords(topicPartition).size());
 
     TopicPartition topicPartition2 = new TopicPartition("test-topic", 2);
-    Assert.assertEquals(0, delayProcessManager.getRecords(topicPartition2).size());
+    Assertions.assertEquals(0, delayProcessManager.getRecords(topicPartition2).size());
   }
 
   @Test
@@ -98,11 +100,11 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
     delayProcessManager.pausedPartitionsAndRecords(topicPartition, unprocessedRecords);
 
     List<TopicPartition> pausedPartitions = delayProcessManager.getAll();
-    Assert.assertEquals(1, pausedPartitions.size());
-    Assert.assertEquals(topicPartition, pausedPartitions.get(0));
+    Assertions.assertEquals(1, pausedPartitions.size());
+    Assertions.assertEquals(topicPartition, pausedPartitions.get(0));
     delayProcessManager
         .getRecords(topicPartition)
-        .forEach(record -> Assert.assertTrue(unprocessedRecords.contains(record)));
+        .forEach(record -> Assertions.assertTrue(unprocessedRecords.contains(record)));
   }
 
   @Test
@@ -121,7 +123,7 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
     unprocessedRecords2.add(Mockito.mock(ConsumerRecord.class));
     try {
       delayProcessManager.pausedPartitionsAndRecords(topicPartition, unprocessedRecords2);
-      Assert.fail("The topic partition test-topic-1 is already in delayedRecords");
+      Assertions.fail("The topic partition test-topic-1 is already in delayedRecords");
     } catch (IllegalStateException e) {
       // expected
     }
@@ -137,7 +139,8 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 50000)
+  @Test
+  @Timeout(value = 50000, unit = TimeUnit.MILLISECONDS)
   public void testResume() throws InterruptedException {
     int processingDelayMs = 5000; // 5 seconds
     delayProcessManager =
@@ -161,14 +164,14 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
 
     Map<TopicPartition, List<ConsumerRecord<K, V>>> resumedRecords1 =
         delayProcessManager.resumePausedPartitionsAndRecords();
-    Assert.assertEquals(1, resumedRecords1.size());
-    Assert.assertEquals(topicPartition, resumedRecords1.keySet().iterator().next());
-    Assert.assertEquals(unprocessedRecords1, resumedRecords1.values().iterator().next());
+    Assertions.assertEquals(1, resumedRecords1.size());
+    Assertions.assertEquals(topicPartition, resumedRecords1.keySet().iterator().next());
+    Assertions.assertEquals(unprocessedRecords1, resumedRecords1.values().iterator().next());
 
     // Processed topic partitions should be deleted in the next round
     delayProcessManager.resumePausedPartitionsAndRecords();
-    Assert.assertEquals(1, delayProcessManager.getAll().size());
-    Assert.assertEquals(topicPartition2, delayProcessManager.getAll().get(0));
+    Assertions.assertEquals(1, delayProcessManager.getAll().size());
+    Assertions.assertEquals(topicPartition2, delayProcessManager.getAll().get(0));
   }
 
   @Test
@@ -189,8 +192,8 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
 
     delayProcessManager.delete(Collections.singletonList(topicPartition));
     List<TopicPartition> topicPartitions = delayProcessManager.getAll();
-    Assert.assertEquals(1, topicPartitions.size());
-    Assert.assertEquals(topicPartition2, topicPartitions.get(0));
+    Assertions.assertEquals(1, topicPartitions.size());
+    Assertions.assertEquals(topicPartition2, topicPartitions.get(0));
   }
 
   @Test
@@ -203,7 +206,7 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
     unprocessedRecords.add(Mockito.mock(ConsumerRecord.class));
     delayProcessManager.pausedPartitionsAndRecords(topicPartition, unprocessedRecords);
     delayProcessManager.close();
-    Assert.assertTrue(delayProcessManager.getAll().isEmpty());
+    Assertions.assertTrue(delayProcessManager.getAll().isEmpty());
   }
 
   @Test
@@ -216,6 +219,6 @@ public class KafkaDelayProcessManagerTest<K, V> extends FievelTestBase {
     unprocessedRecords.add(Mockito.mock(ConsumerRecord.class));
     delayProcessManager.pausedPartitionsAndRecords(topicPartition, unprocessedRecords);
     delayProcessManager.close();
-    Assert.assertTrue(delayProcessManager.getAll().isEmpty());
+    Assertions.assertTrue(delayProcessManager.getAll().isEmpty());
   }
 }

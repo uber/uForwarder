@@ -1,15 +1,14 @@
 package com.uber.data.kafka.datatransfer.common;
 
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.nio.charset.StandardCharsets;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ZKStringSerializerTest extends FievelTestBase {
+public class ZKStringSerializerTest {
   public ZKStringSerializer serializer;
 
-  @Before
+  @BeforeEach
   public void setup() {
     serializer = new ZKStringSerializer();
   }
@@ -17,16 +16,16 @@ public class ZKStringSerializerTest extends FievelTestBase {
   @Test
   public void testSerialize() {
     byte[] result = serializer.serialize(null);
-    Assert.assertNull(result);
+    Assertions.assertNull(result);
     result = serializer.serialize("test");
-    Assert.assertArrayEquals("test".getBytes(StandardCharsets.UTF_8), result);
+    Assertions.assertArrayEquals("test".getBytes(StandardCharsets.UTF_8), result);
   }
 
   @Test
   public void testDeserialize() {
     Object result = serializer.deserialize(null);
-    Assert.assertNull(result);
+    Assertions.assertNull(result);
     result = serializer.deserialize("test".getBytes(StandardCharsets.UTF_8));
-    Assert.assertEquals("test", result);
+    Assertions.assertEquals("test", result);
   }
 }

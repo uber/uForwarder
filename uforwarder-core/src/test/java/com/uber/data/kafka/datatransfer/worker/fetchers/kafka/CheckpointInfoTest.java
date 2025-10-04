@@ -1,16 +1,15 @@
 package com.uber.data.kafka.datatransfer.worker.fetchers.kafka;
 
 import com.uber.data.kafka.datatransfer.Job;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class CheckpointInfoTest extends FievelTestBase {
+public class CheckpointInfoTest {
   private Job job;
   private CheckpointInfo checkpointInfo;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     job = Job.newBuilder().build();
     checkpointInfo = new CheckpointInfo(job, 50L, 100L);
@@ -18,19 +17,19 @@ public class CheckpointInfoTest extends FievelTestBase {
 
   @Test
   public void testGet() {
-    Assert.assertEquals(job, checkpointInfo.getJob());
-    Assert.assertEquals(50L, checkpointInfo.getStartingOffset());
-    Assert.assertEquals(50L, checkpointInfo.getOffsetToCommit());
-    Assert.assertEquals(50L, checkpointInfo.getFetchOffset());
-    Assert.assertTrue(checkpointInfo.bounded(100L));
-    Assert.assertFalse(checkpointInfo.bounded(99L));
+    Assertions.assertEquals(job, checkpointInfo.getJob());
+    Assertions.assertEquals(50L, checkpointInfo.getStartingOffset());
+    Assertions.assertEquals(50L, checkpointInfo.getOffsetToCommit());
+    Assertions.assertEquals(50L, checkpointInfo.getFetchOffset());
+    Assertions.assertTrue(checkpointInfo.bounded(100L));
+    Assertions.assertFalse(checkpointInfo.bounded(99L));
   }
 
   @Test
   public void testSet() {
     checkpointInfo.setOffsetToCommit(60L);
     checkpointInfo.setFetchOffset(70L);
-    Assert.assertEquals(60L, checkpointInfo.getOffsetToCommit());
-    Assert.assertEquals(70L, checkpointInfo.getFetchOffset());
+    Assertions.assertEquals(60L, checkpointInfo.getOffsetToCommit());
+    Assertions.assertEquals(70L, checkpointInfo.getFetchOffset());
   }
 }

@@ -5,20 +5,21 @@ import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.WorkerUtils;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.time.Duration;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.After;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 // This test verifies that buffered write with ttl still updates ttl correctly.
-public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
+public class BufferedWriteDecoratorWithTTLTest {
   private static final Logger logger =
       LoggerFactory.getLogger(BufferedWriteDecoratorWithTTLTest.class);
   private static Duration WRITE_INTERVAL = Duration.ofSeconds(2);
@@ -33,7 +34,7 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
   private ArgumentCaptor<Runnable> runnableCaptor;
   private StoredWorker worker;
 
-  @Before
+  @BeforeEach
   public void setup() {
     worker = StoredWorker.newBuilder().setNode(Node.newBuilder().setId(1).build()).build();
     stringCaptor = ArgumentCaptor.forClass(String.class);
@@ -52,13 +53,14 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
     workerStore.start();
   }
 
-  @After
+  @AfterEach
   public void teardown() {
     workerStore.stop();
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 20000)
+  @Test
+  @Timeout(value = 20000, unit = TimeUnit.MILLISECONDS)
   public void testPutUpdatesTTL() throws Exception {
     Versioned<StoredWorker> versionedWorker = Versioned.from(worker, 1);
     workerStore.put(1L, versionedWorker);
@@ -87,7 +89,8 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 13000)
+  @Test
+  @Timeout(value = 13000, unit = TimeUnit.MILLISECONDS)
   public void testPutThroughUpdatesTTL() throws Exception {
     Versioned<StoredWorker> versionedWorker = Versioned.from(worker, 1);
     workerStore.putThrough(1L, versionedWorker);
@@ -108,7 +111,8 @@ public class BufferedWriteDecoratorWithTTLTest extends FievelTestBase {
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 20000)
+  @Test
+  @Timeout(value = 20000, unit = TimeUnit.MILLISECONDS)
   public void testPutThenPutThroughPrefersPutThrough() throws Exception {
     Versioned<StoredWorker> workerV1 = Versioned.from(worker, 1);
     workerStore.put(1L, workerV1);

@@ -9,20 +9,19 @@ import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.Throughput;
-import com.uber.fievel.testing.base.FievelTestBase;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class RebalancingJobGroupTest extends FievelTestBase {
+public class RebalancingJobGroupTest {
   private StoredJob jobOne;
   private StoredJob jobTwo;
   private StoredJobGroup jobGroup;
   private StoredJobStatus jobStatus;
   private RebalancingJobGroup rebalancingJobGroup;
 
-  @Before
+  @BeforeEach
   public void setup() {
     StoredJob.Builder jobBuilder = StoredJob.newBuilder();
     jobBuilder
@@ -46,27 +45,27 @@ public class RebalancingJobGroupTest extends FievelTestBase {
     jobStatus = jobStatusBuilder.build();
     rebalancingJobGroup =
         RebalancingJobGroup.of(Versioned.from(jobGroup, 1), ImmutableMap.of(1L, jobStatus));
-    Assert.assertFalse(rebalancingJobGroup.isChanged());
+    Assertions.assertFalse(rebalancingJobGroup.isChanged());
   }
 
   @Test
   public void testGetJobGroup() {
-    Assert.assertEquals(jobGroup.getJobGroup(), rebalancingJobGroup.getJobGroup());
+    Assertions.assertEquals(jobGroup.getJobGroup(), rebalancingJobGroup.getJobGroup());
   }
 
   @Test
   public void testGetJobGroupState() {
-    Assert.assertEquals(JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobGroupState());
+    Assertions.assertEquals(JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobGroupState());
   }
 
   @Test
   public void testGetJobs() {
-    Assert.assertEquals(ImmutableMap.of(1L, jobOne, 2L, jobTwo), rebalancingJobGroup.getJobs());
+    Assertions.assertEquals(ImmutableMap.of(1L, jobOne, 2L, jobTwo), rebalancingJobGroup.getJobs());
   }
 
   @Test
   public void testGetJobStatusMap() {
-    Assert.assertEquals(ImmutableMap.of(1L, jobStatus), rebalancingJobGroup.getJobStatusMap());
+    Assertions.assertEquals(ImmutableMap.of(1L, jobStatus), rebalancingJobGroup.getJobStatusMap());
   }
 
   @Test
@@ -75,37 +74,37 @@ public class RebalancingJobGroupTest extends FievelTestBase {
         jobOne.toBuilder().setWorkerId(3).setState(JobState.JOB_STATE_CANCELED).build();
     StoredJobGroup newJobGroup =
         jobGroup.toBuilder().clearJobs().addJobs(newJobOne).addJobs(jobTwo).build();
-    Assert.assertTrue(rebalancingJobGroup.updateJob(1L, newJobOne));
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertTrue(rebalancingJobGroup.updateJob(1L, newJobOne));
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
     Versioned<StoredJobGroup> got = rebalancingJobGroup.toStoredJobGroup();
-    Assert.assertEquals(1, got.version());
-    Assert.assertEquals(newJobGroup, got.model());
+    Assertions.assertEquals(1, got.version());
+    Assertions.assertEquals(newJobGroup, got.model());
   }
 
   @Test
   public void testUpdateJobSkipForWrongKey() {
     StoredJob newJobOne = jobOne.toBuilder().setState(JobState.JOB_STATE_CANCELED).build();
-    Assert.assertFalse(rebalancingJobGroup.updateJob(3L, newJobOne));
-    Assert.assertFalse(rebalancingJobGroup.isChanged());
+    Assertions.assertFalse(rebalancingJobGroup.updateJob(3L, newJobOne));
+    Assertions.assertFalse(rebalancingJobGroup.isChanged());
     Versioned<StoredJobGroup> got = rebalancingJobGroup.toStoredJobGroup();
-    Assert.assertEquals(1, got.version());
-    Assert.assertEquals(jobGroup, got.model());
+    Assertions.assertEquals(1, got.version());
+    Assertions.assertEquals(jobGroup, got.model());
   }
 
   @Test
   public void testUpdateJobGroupState() {
-    Assert.assertFalse(rebalancingJobGroup.updateJobGroupState(JobState.JOB_STATE_RUNNING));
-    Assert.assertEquals(JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobGroupState());
-    Assert.assertTrue(rebalancingJobGroup.updateJobGroupState(JobState.JOB_STATE_CANCELED));
-    Assert.assertEquals(JobState.JOB_STATE_CANCELED, rebalancingJobGroup.getJobGroupState());
+    Assertions.assertFalse(rebalancingJobGroup.updateJobGroupState(JobState.JOB_STATE_RUNNING));
+    Assertions.assertEquals(JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobGroupState());
+    Assertions.assertTrue(rebalancingJobGroup.updateJobGroupState(JobState.JOB_STATE_CANCELED));
+    Assertions.assertEquals(JobState.JOB_STATE_CANCELED, rebalancingJobGroup.getJobGroupState());
   }
 
   @Test
   public void testFilterByJobGroupState() {
-    Assert.assertTrue(
+    Assertions.assertTrue(
         RebalancingJobGroup.filterByJobGroupState(ImmutableSet.of(JobState.JOB_STATE_RUNNING))
             .test(rebalancingJobGroup));
-    Assert.assertFalse(
+    Assertions.assertFalse(
         RebalancingJobGroup.filterByJobGroupState(ImmutableSet.of(JobState.JOB_STATE_CANCELED))
             .test(rebalancingJobGroup));
   }
@@ -113,12 +112,12 @@ public class RebalancingJobGroupTest extends FievelTestBase {
   @Test
   public void testUpdateScale() {
     boolean updated = rebalancingJobGroup.updateScale(1.5, new Throughput(1.5d, 1.5d));
-    Assert.assertFalse(updated);
-    Assert.assertFalse(rebalancingJobGroup.isChanged());
+    Assertions.assertFalse(updated);
+    Assertions.assertFalse(rebalancingJobGroup.isChanged());
     updated = rebalancingJobGroup.updateScale(3.0, new Throughput(3.0d, 3.0d));
-    Assert.assertTrue(updated);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(
+    Assertions.assertTrue(updated);
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(
         3.0, rebalancingJobGroup.toStoredJobGroup().model().getScaleStatus().getScale(), 0.001);
   }
 }

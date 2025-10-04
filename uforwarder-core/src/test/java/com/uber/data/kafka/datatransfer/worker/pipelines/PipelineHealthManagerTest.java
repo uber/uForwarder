@@ -3,20 +3,19 @@ package com.uber.data.kafka.datatransfer.worker.pipelines;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
 import java.time.Duration;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Set;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class PipelineHealthManagerTest extends FievelTestBase {
+public class PipelineHealthManagerTest {
   private PipelineHealthManager pipelineHealthManager;
 
   private TestUtils.TestTicker ticker;
@@ -28,7 +27,7 @@ public class PipelineHealthManagerTest extends FievelTestBase {
   private Scope mockScope;
   private Gauge mockGauge;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     job =
         Job.newBuilder()
@@ -59,9 +58,10 @@ public class PipelineHealthManagerTest extends FievelTestBase {
     pipelineHealthManager.reportIssue(job, issue1);
     pipelineHealthManager.reportIssue(job, issue2);
     Set<PipelineHealthIssue> issues = pipelineHealthManager.getPipelineHealthIssues(job);
-    Assert.assertEquals(issues, Set.of(issue1, issue2));
+    Assertions.assertEquals(issues, Set.of(issue1, issue2));
     pipelineHealthManager.cancel(job);
-    Assert.assertEquals(Collections.emptySet(), pipelineHealthManager.getPipelineHealthIssues(job));
+    Assertions.assertEquals(
+        Collections.emptySet(), pipelineHealthManager.getPipelineHealthIssues(job));
   }
 
   @Test
@@ -70,12 +70,13 @@ public class PipelineHealthManagerTest extends FievelTestBase {
     ticker.add(Duration.ofSeconds(15));
     pipelineHealthManager.reportIssue(job, issue2);
     Set<PipelineHealthIssue> issues = pipelineHealthManager.getPipelineHealthIssues(job);
-    Assert.assertEquals(issues, Set.of(issue1, issue2));
+    Assertions.assertEquals(issues, Set.of(issue1, issue2));
     ticker.add(Duration.ofSeconds(20));
     issues = pipelineHealthManager.getPipelineHealthIssues(job);
-    Assert.assertEquals(issues, Set.of(issue2));
+    Assertions.assertEquals(issues, Set.of(issue2));
     pipelineHealthManager.cancelAll();
-    Assert.assertEquals(Collections.emptySet(), pipelineHealthManager.getPipelineHealthIssues(job));
+    Assertions.assertEquals(
+        Collections.emptySet(), pipelineHealthManager.getPipelineHealthIssues(job));
   }
 
   @Test
@@ -84,7 +85,7 @@ public class PipelineHealthManagerTest extends FievelTestBase {
     pipelineHealthManager.reportIssue(job, issue2);
     ticker.add(Duration.ofMinutes(1));
     Set<PipelineHealthIssue> issues = pipelineHealthManager.getPipelineHealthIssues(job);
-    Assert.assertEquals(0, issues.size());
+    Assertions.assertEquals(0, issues.size());
   }
 
   @Test
@@ -103,7 +104,7 @@ public class PipelineHealthManagerTest extends FievelTestBase {
                     .build())
             .build();
     Set<PipelineHealthIssue> issues = pipelineHealthManager.getPipelineHealthIssues(job2);
-    Assert.assertEquals(0, issues.size());
+    Assertions.assertEquals(0, issues.size());
   }
 
   @Test

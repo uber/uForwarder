@@ -1,7 +1,6 @@
 package com.uber.data.kafka.datatransfer.common;
 
 import com.google.common.collect.ImmutableMap;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.Map;
@@ -11,19 +10,19 @@ import org.apache.kafka.clients.admin.DescribeTopicsOptions;
 import org.apache.kafka.clients.admin.OffsetSpec;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
-public class AdminClientTest extends FievelTestBase {
+public class AdminClientTest {
   private AdminClient AdminClient;
   private org.apache.kafka.clients.admin.AdminClient delegator;
   private AdminClient.Builder builder;
   private Function<String, Properties> propertyProvider;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     propertyProvider = Mockito.mock(Function.class);
     delegator = Mockito.mock(org.apache.kafka.clients.admin.AdminClient.class);
@@ -38,7 +37,7 @@ public class AdminClientTest extends FievelTestBase {
     Mockito.when(propertyProvider.apply("c1")).thenReturn(properties);
     AdminClient adapter1 = builder.build("c1");
     AdminClient adapter2 = builder.build("c1");
-    Assert.assertEquals(adapter1, adapter2);
+    Assertions.assertEquals(adapter1, adapter2);
     Mockito.verify(propertyProvider, Mockito.times(1)).apply(Mockito.anyString());
   }
 
@@ -54,7 +53,7 @@ public class AdminClientTest extends FievelTestBase {
     ArgumentCaptor<Collection> captor = ArgumentCaptor.forClass(Collection.class);
     Mockito.verify(delegator, Mockito.times(1))
         .describeTopics(captor.capture(), Mockito.any(DescribeTopicsOptions.class));
-    Assert.assertTrue(captor.getValue().contains("topic1"));
+    Assertions.assertTrue(captor.getValue().contains("topic1"));
   }
 
   @Test
@@ -63,7 +62,7 @@ public class AdminClientTest extends FievelTestBase {
     AdminClient.offsetsForTimes(Collections.singletonMap(tp, 100L));
     ArgumentCaptor<Map<TopicPartition, OffsetSpec>> captor = ArgumentCaptor.forClass(Map.class);
     Mockito.verify(delegator, Mockito.times(1)).listOffsets(captor.capture());
-    Assert.assertTrue(captor.getValue().get(tp) instanceof OffsetSpec.TimestampSpec);
+    Assertions.assertTrue(captor.getValue().get(tp) instanceof OffsetSpec.TimestampSpec);
   }
 
   @Test
@@ -72,7 +71,7 @@ public class AdminClientTest extends FievelTestBase {
     AdminClient.beginningOffsets(Collections.singletonList(tp));
     ArgumentCaptor<Map<TopicPartition, OffsetSpec>> captor = ArgumentCaptor.forClass(Map.class);
     Mockito.verify(delegator, Mockito.times(1)).listOffsets(captor.capture());
-    Assert.assertTrue(captor.getValue().get(tp) instanceof OffsetSpec.EarliestSpec);
+    Assertions.assertTrue(captor.getValue().get(tp) instanceof OffsetSpec.EarliestSpec);
   }
 
   @Test
@@ -81,7 +80,7 @@ public class AdminClientTest extends FievelTestBase {
     AdminClient.endOffsets(Collections.singletonList(tp));
     ArgumentCaptor<Map<TopicPartition, OffsetSpec>> captor = ArgumentCaptor.forClass(Map.class);
     Mockito.verify(delegator, Mockito.times(1)).listOffsets(captor.capture());
-    Assert.assertTrue(captor.getValue().get(tp) instanceof OffsetSpec.LatestSpec);
+    Assertions.assertTrue(captor.getValue().get(tp) instanceof OffsetSpec.LatestSpec);
   }
 
   @Test
@@ -99,6 +98,6 @@ public class AdminClientTest extends FievelTestBase {
     AdminClient.alterConsumerGroupOffsets("group1", ImmutableMap.of(tp, offsetAndMetadata));
     Mockito.verify(delegator, Mockito.times(1))
         .alterConsumerGroupOffsets(Mockito.eq("group1"), captor.capture());
-    Assert.assertEquals(offsetAndMetadata, captor.getValue().get(tp));
+    Assertions.assertEquals(offsetAndMetadata, captor.getValue().get(tp));
   }
 }

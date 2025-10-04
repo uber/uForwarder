@@ -1,12 +1,13 @@
 package com.uber.data.kafka.datatransfer.controller.storage;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.VersionedProto;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
@@ -16,14 +17,14 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.function.Consumer;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
-public class TTLDecoratorTest extends FievelTestBase {
+public class TTLDecoratorTest {
   private Store<Long, StoredWorker> workerStore;
   private TTLDecorator<Long, StoredWorker> ttlWorkerStore;
   private ScheduledExecutorService executorService;
@@ -32,7 +33,7 @@ public class TTLDecoratorTest extends FievelTestBase {
   private Versioned<StoredWorker> itemOne;
   private CoreInfra coreInfra;
 
-  @Before
+  @BeforeEach
   public void setup() {
     coreInfra = CoreInfra.NOOP;
     itemOne =
@@ -60,7 +61,7 @@ public class TTLDecoratorTest extends FievelTestBase {
     ttlWorkerStore.start();
   }
 
-  @After
+  @AfterEach
   public void teardown() {
     ttlWorkerStore.stop();
   }
@@ -72,8 +73,8 @@ public class TTLDecoratorTest extends FievelTestBase {
         .when(executorService)
         .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
     ttlWorkerStore.updateTTL(itemOne);
-    Assert.assertEquals(1, expirationTaskMap.size());
-    Assert.assertEquals(scheduledFuture, expirationTaskMap.get(1L));
+    Assertions.assertEquals(1, expirationTaskMap.size());
+    Assertions.assertEquals(scheduledFuture, expirationTaskMap.get(1L));
     Mockito.verify(executorService, Mockito.times(1))
         .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
   }
@@ -85,8 +86,8 @@ public class TTLDecoratorTest extends FievelTestBase {
         .when(executorService)
         .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
     ttlWorkerStore.updateTTL(itemOne);
-    Assert.assertEquals(1, expirationTaskMap.size());
-    Assert.assertEquals(firstScheduledFuture, expirationTaskMap.get(1L));
+    Assertions.assertEquals(1, expirationTaskMap.size());
+    Assertions.assertEquals(firstScheduledFuture, expirationTaskMap.get(1L));
     Mockito.verify(executorService, Mockito.times(1))
         .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
 
@@ -98,8 +99,8 @@ public class TTLDecoratorTest extends FievelTestBase {
         .when(executorService)
         .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
     ttlWorkerStore.updateTTL(itemOne);
-    Assert.assertEquals(1, expirationTaskMap.size());
-    Assert.assertEquals(secondScheduledFuture, expirationTaskMap.get(1L));
+    Assertions.assertEquals(1, expirationTaskMap.size());
+    Assertions.assertEquals(secondScheduledFuture, expirationTaskMap.get(1L));
     Mockito.verify(executorService, Mockito.times(2))
         .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
     Mockito.verify(firstScheduledFuture, Mockito.times(1)).cancel(false);
@@ -136,7 +137,7 @@ public class TTLDecoratorTest extends FievelTestBase {
     ArgumentCaptor<TTLDecorator.ExpirationTask> argumentCaptor =
         ArgumentCaptor.forClass(TTLDecorator.ExpirationTask.class);
     Mockito.verify(rescheduleFunc, Mockito.times(1)).accept(argumentCaptor.capture());
-    Assert.assertEquals(1, argumentCaptor.getValue().getAttempt());
+    Assertions.assertEquals(1, argumentCaptor.getValue().getAttempt());
   }
 
   @Test
@@ -155,35 +156,35 @@ public class TTLDecoratorTest extends FievelTestBase {
     Versioned<StoredWorker> itemTwo =
         VersionedProto.from(
             StoredWorker.newBuilder().setNode(Node.newBuilder().setId(2).build()).build());
-    Assert.assertEquals(0, expirationTaskMap.size());
+    Assertions.assertEquals(0, expirationTaskMap.size());
     Mockito.when(workerStore.getAll()).thenReturn(ImmutableMap.of(1L, itemOne, 2L, itemTwo));
     Mockito.when(workerStore.get(1L)).thenReturn(itemOne);
 
     // get() should updateTTL for the item retrieved
     ttlWorkerStore.get(1L);
-    Assert.assertEquals(1, expirationTaskMap.size());
-    Assert.assertTrue(expirationTaskMap.containsKey(1L));
+    Assertions.assertEquals(1, expirationTaskMap.size());
+    Assertions.assertTrue(expirationTaskMap.containsKey(1L));
     Mockito.verify(executorService, Mockito.times(1))
         .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
     Mockito.clearInvocations(executorService);
 
     // Call getAll() - this should trigger updateTTL for items that don't have expiration tasks
     Map<Long, Versioned<StoredWorker>> result = ttlWorkerStore.getAll();
-    Assert.assertEquals(2, result.size());
-    Assert.assertEquals(itemOne, result.get(1L));
-    Assert.assertEquals(itemTwo, result.get(2L));
+    Assertions.assertEquals(2, result.size());
+    Assertions.assertEquals(itemOne, result.get(1L));
+    Assertions.assertEquals(itemTwo, result.get(2L));
     Mockito.verify(executorService, Mockito.times(1))
         .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
-    Assert.assertEquals(2, expirationTaskMap.size());
-    Assert.assertTrue(expirationTaskMap.containsKey(1L));
-    Assert.assertTrue(expirationTaskMap.containsKey(2L));
+    Assertions.assertEquals(2, expirationTaskMap.size());
+    Assertions.assertTrue(expirationTaskMap.containsKey(1L));
+    Assertions.assertTrue(expirationTaskMap.containsKey(2L));
     Mockito.verify(workerStore, Mockito.times(1)).getAll();
     Mockito.clearInvocations(executorService);
 
     // Call getAll() again, this should not trigger updateTTL for items that already have expiration
     // tasks
     result = ttlWorkerStore.getAll();
-    Assert.assertEquals(2, result.size());
+    Assertions.assertEquals(2, result.size());
     Mockito.verifyNoMoreInteractions(executorService);
   }
 
@@ -194,7 +195,7 @@ public class TTLDecoratorTest extends FievelTestBase {
             executorService.schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any()))
         .thenReturn(scheduledFuture);
     Mockito.when(workerStore.get(Mockito.anyLong())).thenReturn(itemOne);
-    Assert.assertEquals(itemOne, ttlWorkerStore.get(1L));
+    Assertions.assertEquals(itemOne, ttlWorkerStore.get(1L));
     Mockito.verify(workerStore, Mockito.times(1)).get(Mockito.anyLong());
     Mockito.verify(executorService, Mockito.times(1))
         .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
@@ -207,7 +208,7 @@ public class TTLDecoratorTest extends FievelTestBase {
             executorService.schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any()))
         .thenReturn(scheduledFuture);
     Mockito.when(workerStore.getThrough(Mockito.anyLong())).thenReturn(itemOne);
-    Assert.assertEquals(itemOne, ttlWorkerStore.getThrough(1L));
+    Assertions.assertEquals(itemOne, ttlWorkerStore.getThrough(1L));
     Mockito.verify(workerStore, Mockito.times(1)).getThrough(Mockito.anyLong());
     Mockito.verify(executorService, Mockito.times(1))
         .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
@@ -220,7 +221,7 @@ public class TTLDecoratorTest extends FievelTestBase {
             executorService.schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any()))
         .thenReturn(scheduledFuture);
     Mockito.when(workerStore.create(Mockito.any(), Mockito.any())).thenReturn(itemOne);
-    Assert.assertEquals(itemOne, ttlWorkerStore.create(itemOne.model(), (k, v) -> v));
+    Assertions.assertEquals(itemOne, ttlWorkerStore.create(itemOne.model(), (k, v) -> v));
     Mockito.verify(workerStore, Mockito.times(1)).create(Mockito.any(), Mockito.any());
     Mockito.verify(executorService, Mockito.times(1))
         .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
@@ -269,7 +270,7 @@ public class TTLDecoratorTest extends FievelTestBase {
     Mockito.when(workerStore.getAll()).thenReturn(ImmutableMap.of(1L, itemOne));
     ttlWorkerStore.isLeader();
     Mockito.verify(workerStore, Mockito.atLeastOnce()).getAll();
-    Assert.assertEquals(1, expirationTaskMap.size());
+    Assertions.assertEquals(1, expirationTaskMap.size());
 
     ttlWorkerStore.notLeader();
 
@@ -278,22 +279,26 @@ public class TTLDecoratorTest extends FievelTestBase {
     ttlWorkerStore.isLeader();
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testUpdateTTLWithNegativeTTL() {
-    new TTLDecorator<>(
-        coreInfra,
-        workerStore,
-        w -> w.getNode().getId(),
-        executorService,
-        expirationTaskMap,
-        Duration.ZERO,
-        leaderSelector);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new TTLDecorator<>(
+              coreInfra,
+              workerStore,
+              w -> w.getNode().getId(),
+              executorService,
+              expirationTaskMap,
+              Duration.ZERO,
+              leaderSelector);
+        });
   }
 
   @Test
   public void testIsRunning() {
     Mockito.when(workerStore.isRunning()).thenReturn(true);
-    Assert.assertTrue(ttlWorkerStore.isRunning());
+    Assertions.assertTrue(ttlWorkerStore.isRunning());
   }
 
   @Test
@@ -305,8 +310,8 @@ public class TTLDecoratorTest extends FievelTestBase {
 
     CompletableFuture<Map<Long, Versioned<StoredWorker>>> ttlFuture = ttlWorkerStore.initialized();
 
-    Assert.assertTrue(ttlFuture.isDone());
-    Assert.assertEquals(1, expirationTaskMap.size());
+    Assertions.assertTrue(ttlFuture.isDone());
+    Assertions.assertEquals(1, expirationTaskMap.size());
   }
 
   @Test
@@ -320,8 +325,8 @@ public class TTLDecoratorTest extends FievelTestBase {
 
     CompletableFuture<Map<Long, Versioned<StoredWorker>>> ttlFuture = ttlWorkerStore.initialized();
 
-    Assert.assertTrue(ttlFuture.isDone());
-    Assert.assertEquals(0, expirationTaskMap.size());
+    Assertions.assertTrue(ttlFuture.isDone());
+    Assertions.assertEquals(0, expirationTaskMap.size());
   }
 
   @Test
@@ -329,8 +334,8 @@ public class TTLDecoratorTest extends FievelTestBase {
     Map<Long, Versioned<StoredWorker>> workerMap = ImmutableMap.of(1L, itemOne);
     Mockito.when(workerStore.getAll()).thenReturn(workerMap);
     Mockito.when(workerStore.getAll(Mockito.any())).thenReturn(workerMap);
-    Assert.assertEquals(1, ttlWorkerStore.getAll().size());
-    Assert.assertEquals(1, ttlWorkerStore.getAll(w -> true).size());
+    Assertions.assertEquals(1, ttlWorkerStore.getAll().size());
+    Assertions.assertEquals(1, ttlWorkerStore.getAll(w -> true).size());
   }
 
   @Test

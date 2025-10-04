@@ -1,14 +1,13 @@
 package com.uber.data.kafka.datatransfer.worker.common;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ChainableTest extends FievelTestBase {
+public class ChainableTest {
   private Chainable chainable;
   private Sink sink;
 
-  @Before
+  @BeforeEach
   public void setup() {
     chainable = new Chainable() {};
     sink = new Sink() {};

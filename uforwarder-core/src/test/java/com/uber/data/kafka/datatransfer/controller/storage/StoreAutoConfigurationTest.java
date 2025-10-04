@@ -8,17 +8,16 @@ import com.uber.data.kafka.datatransfer.controller.config.JobStatusStoreConfigur
 import com.uber.data.kafka.datatransfer.controller.config.WorkerStoreConfiguration;
 import com.uber.data.kafka.datatransfer.controller.config.ZookeeperConfiguration;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Scope;
 import java.time.Duration;
 import org.apache.curator.test.TestingServer;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class StoreAutoConfigurationTest extends FievelTestBase {
+public class StoreAutoConfigurationTest {
   private CoreInfra infra;
   private LeaderSelector leaderSelector;
 
@@ -30,7 +29,7 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
 
   private JsonFormat.TypeRegistry typeRegistry;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     Scope scope = Mockito.mock(Scope.class);
     infra = CoreInfra.NOOP;
@@ -59,14 +58,14 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
     Mockito.when(scope.tagged(Mockito.anyMap())).thenReturn(scope);
   }
 
-  @After
+  @AfterEach
   public void teardown() throws Exception {
     zkServer.close();
   }
 
   @Test
   public void testJobStore() throws Exception {
-    Assert.assertNotNull(
+    Assertions.assertNotNull(
         storeAutoConfiguration.jobStore(
             storeAutoConfiguration.jobGroupStore(
                 new JobGroupStoreConfiguration(),
@@ -79,7 +78,7 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
 
   @Test
   public void testJobGroupStore() throws Exception {
-    Assert.assertNotNull(
+    Assertions.assertNotNull(
         storeAutoConfiguration.jobGroupStore(
             new JobGroupStoreConfiguration(),
             zkConfiguration,
@@ -91,7 +90,7 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
 
   @Test
   public void testJobStatusStore() throws Exception {
-    Assert.assertNotNull(
+    Assertions.assertNotNull(
         storeAutoConfiguration.jobStatusStore(
             new JobStatusStoreConfiguration(),
             zkConfiguration,
@@ -105,7 +104,7 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
   public void testWorkerStore() throws Exception {
     WorkerStoreConfiguration config = new WorkerStoreConfiguration();
     config.setTtl(Duration.ofSeconds(1));
-    Assert.assertNotNull(
+    Assertions.assertNotNull(
         storeAutoConfiguration.workerStore(
             config,
             zkConfiguration,
@@ -117,6 +116,6 @@ public class StoreAutoConfigurationTest extends FievelTestBase {
 
   @Test
   public void testJobIdProvider() throws Exception {
-    Assert.assertNotNull(storeAutoConfiguration.jobGroupIdProvider());
+    Assertions.assertNotNull(storeAutoConfiguration.jobGroupIdProvider());
   }
 }

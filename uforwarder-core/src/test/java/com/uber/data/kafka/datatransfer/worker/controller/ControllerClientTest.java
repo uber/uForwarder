@@ -1,24 +1,25 @@
 package com.uber.data.kafka.datatransfer.worker.controller;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.uber.data.kafka.datatransfer.MasterWorkerServiceGrpc;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
-import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.ManagedChannel;
 import java.io.IOException;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class ControllerClientTest extends FievelTestBase {
+public class ControllerClientTest {
   private Node node;
   private ManagedChannel managedChannel;
   private MasterWorkerServiceGrpc.MasterWorkerServiceBlockingStub stub;
   private ControllerClient client;
 
-  @Before
+  @BeforeEach
   public void setup() {
     node = Node.newBuilder().setId(1).setHost("foo").setPort(1).build();
     managedChannel = Mockito.mock(ManagedChannel.class);
@@ -28,17 +29,17 @@ public class ControllerClientTest extends FievelTestBase {
 
   @Test
   public void testGetNode() {
-    Assert.assertEquals(node, client.getNode());
+    Assertions.assertEquals(node, client.getNode());
   }
 
   @Test
   public void testGetChannel() {
-    Assert.assertEquals(managedChannel, client.getChannel());
+    Assertions.assertEquals(managedChannel, client.getChannel());
   }
 
   @Test
   public void testGetStub() {
-    Assert.assertEquals(stub, client.getStub());
+    Assertions.assertEquals(stub, client.getStub());
   }
 
   @Test
@@ -49,17 +50,22 @@ public class ControllerClientTest extends FievelTestBase {
     client.close();
   }
 
-  @Test(expected = IOException.class)
+  @Test
   public void testCloseWithTimeout() throws Exception {
-    client.close();
+    assertThrows(IOException.class, () -> client.close());
   }
 
-  @Test(expected = IOException.class)
-  public void testCloseWithException() throws InterruptedException, IOException {
-    Mockito.when(
-            managedChannel.awaitTermination(ArgumentMatchers.anyLong(), ArgumentMatchers.any()))
-        .thenThrow(new InterruptedException());
-    client.close();
+  @Test
+  public void testCloseWithException() throws InterruptedException {
+    assertThrows(
+        IOException.class,
+        () -> {
+          Mockito.when(
+                  managedChannel.awaitTermination(
+                      ArgumentMatchers.anyLong(), ArgumentMatchers.any()))
+              .thenThrow(new InterruptedException());
+          client.close();
+        });
   }
 
   @Test

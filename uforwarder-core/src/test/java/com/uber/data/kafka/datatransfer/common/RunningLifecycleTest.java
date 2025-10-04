@@ -1,14 +1,13 @@
 package com.uber.data.kafka.datatransfer.common;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class RunningLifecycleTest extends FievelTestBase {
+public class RunningLifecycleTest {
   private RunningLifecycle lifecycle;
 
-  @Before
+  @BeforeEach
   public void setup() {
     lifecycle = new RunningLifecycle() {};
   }
@@ -16,7 +15,7 @@ public class RunningLifecycleTest extends FievelTestBase {
   @Test
   public void testLifecycle() {
     lifecycle.start();
-    Assert.assertTrue(lifecycle.isRunning());
+    Assertions.assertTrue(lifecycle.isRunning());
     lifecycle.stop();
   }
 }

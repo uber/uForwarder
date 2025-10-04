@@ -10,23 +10,22 @@ import com.uber.data.kafka.datatransfer.ScaleStatus;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ShadowRebalancerDelegateTest extends FievelTestBase {
+public class ShadowRebalancerDelegateTest {
   private ShadowRebalancerDelegate shadowRebalancerDelegate;
 
   private Map<String, RebalancingJobGroup> jobGroupMap;
 
   private Map<Long, StoredWorker> workerMap;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     shadowRebalancerDelegate = new ShadowRebalancerDelegate() {};
 
@@ -82,7 +81,7 @@ public class ShadowRebalancerDelegateTest extends FievelTestBase {
         .forEach(
             entry -> {
               for (StoredJob job : entry.getValue().getJobs().values()) {
-                Assert.assertFalse(job.getJob().hasFlowControl());
+                Assertions.assertFalse(job.getJob().hasFlowControl());
               }
             });
   }
@@ -97,11 +96,11 @@ public class ShadowRebalancerDelegateTest extends FievelTestBase {
             entry -> {
               for (StoredJob job : entry.getValue().getJobs().values()) {
                 if (job.getWorkerId() == 1) {
-                  Assert.assertEquals(JobState.JOB_STATE_RUNNING, job.getState());
+                  Assertions.assertEquals(JobState.JOB_STATE_RUNNING, job.getState());
                 } else if (job.getWorkerId() == 2) {
-                  Assert.assertEquals(JobState.JOB_STATE_INVALID, job.getState());
+                  Assertions.assertEquals(JobState.JOB_STATE_INVALID, job.getState());
                 } else {
-                  Assert.fail("unexpected worker id");
+                  Assertions.fail("unexpected worker id");
                 }
               }
             });
@@ -122,11 +121,11 @@ public class ShadowRebalancerDelegateTest extends FievelTestBase {
                 workerIdSet.remove(job.getWorkerId());
               }
             });
-    Assert.assertTrue(workerIdSet.isEmpty());
+    Assertions.assertTrue(workerIdSet.isEmpty());
   }
 
   @Test
   public void testRunShadowRebalancer() throws Exception {
-    Assert.assertFalse(shadowRebalancerDelegate.runShadowRebalancer());
+    Assertions.assertFalse(shadowRebalancerDelegate.runShadowRebalancer());
   }
 }

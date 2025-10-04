@@ -1,19 +1,19 @@
 package com.uber.data.kafka.datatransfer.common;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.WorkerState;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ProtoSerializationFactoryTest extends FievelTestBase {
+public class ProtoSerializationFactoryTest {
   private ProtoSerializationFactory<StoredWorker> serializationFactory;
 
-  @Before
+  @BeforeEach
   public void setup() {
     serializationFactory = new ProtoSerializationFactory<>(StoredWorker.newBuilder().build());
   }
@@ -39,8 +39,9 @@ public class ProtoSerializationFactoryTest extends FievelTestBase {
     assertNotEquals(workerBytesOne, workerBytesTwo);
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testInvalidProtoBytes() {
-    serializationFactory.deserialize(new byte[] {1, 2, 3, 4});
+    assertThrows(
+        RuntimeException.class, () -> serializationFactory.deserialize(new byte[] {1, 2, 3, 4}));
   }
 }

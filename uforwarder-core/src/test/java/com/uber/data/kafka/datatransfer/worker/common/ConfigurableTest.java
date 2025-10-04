@@ -1,9 +1,8 @@
 package com.uber.data.kafka.datatransfer.worker.common;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class ConfigurableTest extends FievelTestBase {
+public class ConfigurableTest {
   @Test
   public void testSetPipelineConfigManager() {
     Configurable configurable = new Configurable() {};

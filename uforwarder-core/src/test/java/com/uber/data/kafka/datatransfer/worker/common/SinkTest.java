@@ -1,22 +1,21 @@
 package com.uber.data.kafka.datatransfer.worker.common;
 
 import com.uber.data.kafka.datatransfer.Job;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class SinkTest extends FievelTestBase {
+public class SinkTest {
   private Sink sink;
 
-  @Before
+  @BeforeEach
   public void setup() {
     sink = new Sink() {};
   }
 
   @Test
   public void testSubmit() {
-    Assert.assertTrue(
+    Assertions.assertTrue(
         sink.submit(ItemAndJob.of("foo", Job.newBuilder().build()))
             .toCompletableFuture()
             .isCompletedExceptionally());
@@ -34,6 +33,6 @@ public class SinkTest extends FievelTestBase {
 
   @Test
   public void testIsRunning() {
-    Assert.assertTrue(sink.isRunning());
+    Assertions.assertTrue(sink.isRunning());
   }
 }

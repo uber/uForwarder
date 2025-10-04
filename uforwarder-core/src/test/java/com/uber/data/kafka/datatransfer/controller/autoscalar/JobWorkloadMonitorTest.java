@@ -6,15 +6,14 @@ import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTaskGroup;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
 import com.uber.data.kafka.datatransfer.controller.rpc.Workload;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import java.time.Duration;
 import java.util.Optional;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class JobWorkloadMonitorTest extends FievelTestBase {
+public class JobWorkloadMonitorTest {
   private JobWorkloadMonitor jobWorkloadMonitor;
   private TestUtils.TestTicker testTicker;
   private Job job1;
@@ -24,7 +23,7 @@ public class JobWorkloadMonitorTest extends FievelTestBase {
   private final String cluster = "cluster1";
   private final String group = "group1";
 
-  @Before
+  @BeforeEach
   public void setup() {
     testTicker = new TestUtils.TestTicker();
     AutoScalarConfiguration configuration = new AutoScalarConfiguration();
@@ -69,8 +68,8 @@ public class JobWorkloadMonitorTest extends FievelTestBase {
     jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
     jobWorkloadMonitor.consume(job1, Workload.of(1, 5, 0));
     Optional<Workload> result = jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
-    Assert.assertEquals(1, result.get().getMessagesPerSecond(), 0.0001);
-    Assert.assertEquals(5, result.get().getBytesPerSecond(), 0.0001);
+    Assertions.assertEquals(1, result.get().getMessagesPerSecond(), 0.0001);
+    Assertions.assertEquals(5, result.get().getBytesPerSecond(), 0.0001);
   }
 
   @Test
@@ -79,8 +78,8 @@ public class JobWorkloadMonitorTest extends FievelTestBase {
     jobWorkloadMonitor.consume(job1, Workload.of(1, 5, 0));
     jobWorkloadMonitor.consume(job2, Workload.of(3, 25, 0));
     Optional<Workload> result = jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
-    Assert.assertEquals(4, result.get().getMessagesPerSecond(), 0.0001);
-    Assert.assertEquals(30, result.get().getBytesPerSecond(), 0.0001);
+    Assertions.assertEquals(4, result.get().getMessagesPerSecond(), 0.0001);
+    Assertions.assertEquals(30, result.get().getBytesPerSecond(), 0.0001);
   }
 
   @Test
@@ -90,7 +89,7 @@ public class JobWorkloadMonitorTest extends FievelTestBase {
     testTicker.add(Duration.ofSeconds(2));
     jobWorkloadMonitor.cleanUp();
     Optional<Workload> result = jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
-    Assert.assertFalse(result.isPresent());
+    Assertions.assertFalse(result.isPresent());
   }
 
   @Test
@@ -98,10 +97,10 @@ public class JobWorkloadMonitorTest extends FievelTestBase {
     jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
     jobWorkloadMonitor.consume(job1, Workload.of(1, 5, 0));
     Optional<Workload> result = jobWorkloadMonitor.get(JobGroupKey.of(jobGroup));
-    Assert.assertEquals(1, result.get().getMessagesPerSecond(), 0.0001);
-    Assert.assertEquals(5, result.get().getBytesPerSecond(), 0.0001);
+    Assertions.assertEquals(1, result.get().getMessagesPerSecond(), 0.0001);
+    Assertions.assertEquals(5, result.get().getBytesPerSecond(), 0.0001);
     testTicker.add(Duration.ofMinutes(6));
     jobWorkloadMonitor.cleanUp();
-    Assert.assertTrue(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
+    Assertions.assertTrue(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
   }
 }
