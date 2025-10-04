@@ -5,25 +5,26 @@ import java.util.Objects;
 
 /** health issue of the pipeline */
 public class PipelineHealthIssue {
-  private final int value;
+  private final String name;
 
   /**
    * Instantiates a new Pipeline health issue.
    *
-   * @param id the identity of the issue
+   * @param name the identity of the issue
    */
-  public PipelineHealthIssue(int id) {
-    Preconditions.checkArgument(id >= 0 && id < 32, "id should be between 0 and 31");
-    this.value = 1 << id;
+  public PipelineHealthIssue(String name) {
+    Preconditions.checkArgument(
+        org.apache.commons.lang3.StringUtils.isNotEmpty(name), "tag should not be empty");
+    this.name = name;
   }
 
   /**
-   * Gets issue value that will be reported with metrics value will be 2 power of identity
+   * Gets tag of the issue, issue be reported with the name
    *
    * @return the value
    */
-  public int getValue() {
-    return value;
+  public String getName() {
+    return name;
   }
 
   @Override
@@ -35,11 +36,11 @@ public class PipelineHealthIssue {
       return false;
     }
     PipelineHealthIssue that = (PipelineHealthIssue) o;
-    return value == that.value;
+    return name.equals(that.name);
   }
 
   @Override
   public int hashCode() {
-    return Objects.hash(value);
+    return Objects.hash(name);
   }
 }

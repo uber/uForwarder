@@ -7,6 +7,9 @@ import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.Map;
+import java.util.Set;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,8 +22,8 @@ public class PipelineHealthManagerTest extends FievelTestBase {
   private TestUtils.TestTicker ticker;
   private Job job;
 
-  private PipelineHealthIssue issue1 = new PipelineHealthIssue(0);
-  private PipelineHealthIssue issue2 = new PipelineHealthIssue(1);
+  private PipelineHealthIssue issue1 = new PipelineHealthIssue("test-issue-1");
+  private PipelineHealthIssue issue2 = new PipelineHealthIssue("test-issue-2");
 
   private Scope mockScope;
   private Gauge mockGauge;
@@ -55,10 +58,10 @@ public class PipelineHealthManagerTest extends FievelTestBase {
   public void testReportIssue() {
     pipelineHealthManager.reportIssue(job, issue1);
     pipelineHealthManager.reportIssue(job, issue2);
-    int value = pipelineHealthManager.getPipelineHealthStateValue(job);
-    Assert.assertEquals(value, issue1.getValue() + issue2.getValue());
+    Set<PipelineHealthIssue> issues = pipelineHealthManager.getPipelineHealthIssues(job);
+    Assert.assertEquals(issues, Set.of(issue1, issue2));
     pipelineHealthManager.cancel(job);
-    Assert.assertEquals(0, pipelineHealthManager.getPipelineHealthStateValue(job));
+    Assert.assertEquals(Collections.emptySet(), pipelineHealthManager.getPipelineHealthIssues(job));
   }
 
   @Test
@@ -66,13 +69,13 @@ public class PipelineHealthManagerTest extends FievelTestBase {
     pipelineHealthManager.reportIssue(job, issue1);
     ticker.add(Duration.ofSeconds(15));
     pipelineHealthManager.reportIssue(job, issue2);
-    int value = pipelineHealthManager.getPipelineHealthStateValue(job);
-    Assert.assertEquals(value, issue1.getValue() + issue2.getValue());
+    Set<PipelineHealthIssue> issues = pipelineHealthManager.getPipelineHealthIssues(job);
+    Assert.assertEquals(issues, Set.of(issue1, issue2));
     ticker.add(Duration.ofSeconds(20));
-    value = pipelineHealthManager.getPipelineHealthStateValue(job);
-    Assert.assertEquals(value, issue2.getValue());
+    issues = pipelineHealthManager.getPipelineHealthIssues(job);
+    Assert.assertEquals(issues, Set.of(issue2));
     pipelineHealthManager.cancelAll();
-    Assert.assertEquals(0, pipelineHealthManager.getPipelineHealthStateValue(job));
+    Assert.assertEquals(Collections.emptySet(), pipelineHealthManager.getPipelineHealthIssues(job));
   }
 
   @Test
@@ -80,8 +83,8 @@ public class PipelineHealthManagerTest extends FievelTestBase {
     pipelineHealthManager.reportIssue(job, issue1);
     pipelineHealthManager.reportIssue(job, issue2);
     ticker.add(Duration.ofMinutes(1));
-    int value = pipelineHealthManager.getPipelineHealthStateValue(job);
-    Assert.assertEquals(0, value);
+    Set<PipelineHealthIssue> issues = pipelineHealthManager.getPipelineHealthIssues(job);
+    Assert.assertEquals(0, issues.size());
   }
 
   @Test
@@ -99,25 +102,25 @@ public class PipelineHealthManagerTest extends FievelTestBase {
                     .setEndOffset(100)
                     .build())
             .build();
-    int value = pipelineHealthManager.getPipelineHealthStateValue(job2);
-    Assert.assertEquals(0, value);
+    Set<PipelineHealthIssue> issues = pipelineHealthManager.getPipelineHealthIssues(job2);
+    Assert.assertEquals(0, issues.size());
   }
 
   @Test
   public void testPublishMetrics() {
     pipelineHealthManager.reportIssue(job, issue1);
     pipelineHealthManager.publishMetrics();
-    Mockito.verify(mockScope, Mockito.times(1))
+    Mockito.verify(mockScope)
         .tagged(
-            Mockito.argThat(
-                tags ->
-                    tags.get("kafka_cluster").equals("cluster")
-                        && tags.get("kafka_group").equals("group")
-                        && tags.get("kafka_topic").equals("topic")
-                        && tags.get("kafka_partition").equals("1")));
+            Map.of(
+                "kafka_cluster", "cluster",
+                "kafka_group", "group",
+                "kafka_topic", "topic",
+                "kafka_partition", "1"));
+    Mockito.verify(mockScope).tagged(Map.of("error_type", "test-issue-1"));
     // Add assertions to verify the metrics published
     Mockito.verify(mockScope, Mockito.times(1))
         .gauge(PipelineHealthManager.MetricNames.JOB_HEALTH_STATE);
-    Mockito.verify(mockGauge, Mockito.times(1)).update(issue1.getValue());
+    Mockito.verify(mockGauge, Mockito.times(1)).update(1);
   }
 }

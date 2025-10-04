@@ -9,10 +9,19 @@ import org.junit.Test;
 public class KafkaPipelineIssueTest extends FievelTestBase {
   @Test
   public void testGetValue() {
-    Set<Integer> expected = Set.of(1 << 0, 1 << 1, 1 << 2, 1 << 3, 1 << 4, 1 << 5, 1 << 6, 1 << 7);
-    Set<Integer> actual = new HashSet<>();
+    Set<String> expected =
+        Set.of(
+            "message-rate-limited",
+            "bytes-rate-limited",
+            "inflight-message-limited",
+            "permission-denied",
+            "invalid-response-received",
+            "retry-without-retry-queue",
+            "median-rpc-latency-high",
+            "max-rpc-latency-high");
+    Set<String> actual = new HashSet<>();
     for (KafkaPipelineIssue issue : KafkaPipelineIssue.values()) {
-      actual.add(issue.getPipelineHealthIssue().getValue());
+      actual.add(issue.getPipelineHealthIssue().getName());
     }
     Assert.assertEquals(expected, actual);
   }

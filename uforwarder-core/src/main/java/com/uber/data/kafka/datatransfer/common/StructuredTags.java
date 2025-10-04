@@ -56,6 +56,11 @@ public final class StructuredTags extends StructuredFields {
     return this;
   }
 
+  public StructuredTags setError(String error) {
+    mapBuilder.put(ERROR_TYPE, error);
+    return this;
+  }
+
   public StructuredTags setJobGroup(String jobGroup) {
     mapBuilder.put(JOB_GROUP, jobGroup);
     return this;
