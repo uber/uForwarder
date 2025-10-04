@@ -186,12 +186,7 @@ public class AutoScalar implements Scalar {
         .update(newScale);
 
     // use default scale in dryRun mode
-    // TODO: remove hardcoded topic group after root cause fixed see KAFEP-2386
-    if (config.isDryRun()
-        || (jobGroupKey.getGroup().equals("fulfillment-indexing-gateway")
-            && jobGroupKey
-                .getTopic()
-                .equals("fulfillment-raw-transport-provider-session-state-changes"))) {
+    if (config.isDryRun()) {
       newScale = defaultScale;
     }
 

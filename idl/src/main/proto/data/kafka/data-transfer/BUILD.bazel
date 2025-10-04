@@ -113,7 +113,7 @@ uber_proto_java_library(
     strip_import_prefix = "/idl/code.uber.internal/",
     visibility = [
         "//data/kafka/...",
-        "//idl/code.uber.internal/data/kafka/consumer-proxy-config:__pkg__",
+        "//idl/code.uber.internal/data/kafka...",
     ],
 )
 
