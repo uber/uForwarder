@@ -1,7 +1,10 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
 import java.time.Duration;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -65,9 +68,6 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
    */
   private static final double MAX_LOAD = 2.0;
 
-  /** Neutral load value indicating balanced capacity. */
-  private static final double ONE = 1.0;
-
   /**
    * Percentile used for load calculation (50th percentile).
    *
@@ -81,6 +81,8 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
   private final ScaleStatusStore scaleStatusStore;
   private final AutoScalarConfiguration config;
   private volatile State state;
+  private final Duration minDownScaleWindowDuration;
+  private final Duration maxDownScaleWindowDuration;
 
   /**
    * Constructs a new ReactiveScaleWindowManager with the specified configuration and dependencies.
@@ -109,6 +111,12 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
                 () -> autoScalingConfig.getReactiveScaleWindowDuration().toNanos())
             .withTicker(ticker);
     this.state = new State(autoScalingConfig.getDownScaleWindowDuration());
+    this.minDownScaleWindowDuration =
+        Duration.ofSeconds(
+            (long)
+                (config.getDownScaleWindowDuration().toSeconds()
+                    * config.getDownScaleWindowMinRatio()));
+    this.maxDownScaleWindowDuration = config.getDownScaleWindowDuration();
   }
 
   /**
@@ -136,11 +144,41 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
 
   @Override
   public Duration getDownScaleWindowDuration() {
-    if (config.isReactiveScaleWindowEnabled()) {
-      return state.downScaleWindowDuration;
-    } else {
-      return config.getDownScaleWindowDuration();
-    }
+    return state.downScaleWindowDuration;
+  }
+
+  /**
+   * Validates scale window - new value must be smaller than max value - new value must be larger
+   * than min value - new value must be limited by change rate
+   *
+   * @param newValue
+   * @param oldValue
+   * @return
+   */
+  @VisibleForTesting
+  protected Duration validateDownScaleWindow(Duration newValue, Duration oldValue) {
+    newValue =
+        Collections.max(
+            List.of(
+                minDownScaleWindowDuration,
+                Duration.ofSeconds(
+                    (long) (oldValue.getSeconds() * (1 - config.getReactiveScaleWindowRate()))),
+                newValue));
+
+    newValue =
+        Collections.min(
+            List.of(
+                maxDownScaleWindowDuration,
+                Duration.ofSeconds(
+                    (long) (oldValue.getSeconds() * (1 + config.getReactiveScaleWindowRate()))),
+                newValue));
+
+    return newValue;
+  }
+
+  @VisibleForTesting
+  protected synchronized void setDownScaleWindowDuration(Duration downScaleWindowDuration) {
+    state = new State(downScaleWindowDuration);
   }
 
   /**
@@ -190,10 +228,13 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
       if (scaleWindow.isMature()) {
         if (closed.compareAndSet(false, true)) {
           double systemLoad = scaleWindow.getByPercentile(WINDOW_PERCENTILE);
-          Duration nextDownScaleWindowDuration =
+          Duration newDownScaleWindowDuration =
               reactiveScaleWindowCalculator.calculateDownScaleWindowDuration(
                   scaleStatusStore.snapshot(), systemLoad, stateTimeNano, downScaleWindowDuration);
-          return Optional.of(new State(nextDownScaleWindowDuration));
+
+          newDownScaleWindowDuration =
+              validateDownScaleWindow(newDownScaleWindowDuration, downScaleWindowDuration);
+          return Optional.of(new State(newDownScaleWindowDuration));
         }
       }
 
