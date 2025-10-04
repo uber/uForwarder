@@ -374,6 +374,8 @@ message SecurityConfig {
   // is_secure flag will be used to decide if the job should be run securely
   // the job will still be run unsecured(normal flow) if identity is provided but this flag is set to false
   bool is_secure = 2;
+  // the flag which determines if the job is multi-tenancy enabled
+  bool multi_tenancy_enabled = 3;
 }
 
 // AutoOffsetResetPolicy defines which offset to start to read when
