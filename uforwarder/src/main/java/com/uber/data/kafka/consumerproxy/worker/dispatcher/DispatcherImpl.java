@@ -8,6 +8,7 @@ import static io.grpc.Status.Code.UNIMPLEMENTED;
 import static io.grpc.Status.Code.UNKNOWN;
 
 import com.google.common.base.Preconditions;
+import com.uber.data.kafka.consumerproxy.common.LingerSampler;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.common.StructuredTags;
 import com.uber.data.kafka.consumerproxy.utils.RetryUtils;
@@ -32,14 +33,14 @@ import org.slf4j.LoggerFactory;
 
 public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, DispatcherResponse> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DispatcherImpl.class);
-  // minimum number of samples to consider the request latency histogram mature
-  private static final int MIN_LATENCY_SAMPLE_SIZE = 100;
   private final CoreInfra infra;
   private final GrpcDispatcher grpcDispatcher;
   private final KafkaDispatcher<byte[], byte[]> dlqProducer;
   private final Optional<KafkaDispatcher<byte[], byte[]>> resqProducer;
   private final AtomicBoolean isRunning;
   private final LatencyTracker latencyTracker;
+  private final LingerSampler<LatencyTracker.Stats> latencyStatsSampler;
+
   @Nullable private volatile PipelineStateManager pipelineStateManager;
 
   // We currently only allow a single grpc dispatcher, we may need to add more gRPC dispatchers
@@ -57,6 +58,7 @@ public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, Dis
     this.dlqProducer = dlqProducer;
     this.resqProducer = resqProducer;
     this.latencyTracker = latencyTracker;
+    this.latencyStatsSampler = new LingerSampler(() -> latencyTracker.getStats());
   }
 
   @Override
@@ -248,8 +250,8 @@ public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, Dis
     } else if (statusCode == PERMISSION_DENIED || statusCode == UNAUTHENTICATED) {
       issue.set(KafkaPipelineIssue.PERMISSION_DENIED);
     } else {
-      LatencyTracker.Sample sample = latencyTracker.getSample();
-      if (sample.size() > MIN_LATENCY_SAMPLE_SIZE) {
+      LatencyTracker.Stats sample = latencyStatsSampler.get();
+      if (sample.isMature()) {
         if (sample.isMedianLatencyHigh()) {
           issue.set(KafkaPipelineIssue.MEDIAN_RPC_LATENCY_HIGH);
         } else if (sample.isMaxLatencyHigh()) {
