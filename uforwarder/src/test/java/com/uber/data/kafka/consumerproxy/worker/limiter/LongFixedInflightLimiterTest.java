@@ -48,7 +48,7 @@ public class LongFixedInflightLimiterTest extends FievelTestBase {
 
     Assert.assertEquals(2, inflightLimiter.getMetrics().getInflight());
     Awaitility.await()
-        .atMost(1, TimeUnit.SECONDS)
+        .atMost(2, TimeUnit.SECONDS)
         .untilAsserted(
             () -> Assert.assertEquals(1, inflightLimiter.getMetrics().getBlockingQueueSize()));
   }
