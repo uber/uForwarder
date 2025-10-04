@@ -22,5 +22,6 @@ public class GrpcDispatcherConfigurationTest extends FievelTestBase {
     Assert.assertEquals(2, grpcDispatcherConfiguration.getMinRpcTimeoutMs());
     Assert.assertEquals(1800001, grpcDispatcherConfiguration.getMaxRpcTimeoutMs());
     Assert.assertEquals(2, grpcDispatcherConfiguration.getGrpcChannelPoolSize());
+    Assert.assertEquals(4, grpcDispatcherConfiguration.getThreadPoolSize());
   }
 }

@@ -39,6 +39,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Supplier;
@@ -69,10 +70,12 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
   private String caller;
   private final AtomicBoolean running;
   private final GrpcFilter grpcFilter;
+  private final Optional<ExecutorService> executor;
 
   @VisibleForTesting
   GrpcDispatcher(
       CoreInfra infra,
+      Optional<ExecutorService> executor,
       GrpcDispatcherConfiguration configuration,
       GrpcManagedChannelPool channel,
       MethodDescriptor<ByteString, Empty> methodDescriptor,
@@ -80,6 +83,7 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
       GrpcFilter grpcFilter,
       String caller) {
     this.infra = infra;
+    this.executor = executor;
     this.callee = callee;
     this.calleeAddress = RoutingUtils.extractAddress(callee);
     this.channel = channel;
@@ -92,6 +96,7 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
 
   public GrpcDispatcher(
       CoreInfra infra,
+      Optional<ExecutorService> executor,
       GrpcDispatcherConfiguration configuration,
       String caller,
       String callee,
@@ -99,9 +104,14 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
       GrpcFilter grpcFilter) {
     this(
         infra,
+        executor,
         configuration,
         new GrpcManagedChannelPool(
-            () -> ManagedChannelBuilder.forTarget(callee).usePlaintext().disableRetry().build(),
+            () -> {
+              ManagedChannelBuilder<?> builder = ManagedChannelBuilder.forTarget(callee);
+              executor.ifPresent(builder::executor);
+              return builder.usePlaintext().disableRetry().build();
+            },
             configuration.getGrpcChannelPoolSize(),
             configuration.getMaxConcurrentStreams()),
         buildMethodDescriptor(procedure),
@@ -200,6 +210,7 @@ public class GrpcDispatcher implements Sink<GrpcRequest, GrpcResponse> {
   public void stop() {
     running.set(false);
     channel.shutdown();
+    executor.ifPresent(ExecutorService::shutdown);
     LOGGER.info("closed GrpcDispatcher", StructuredLogging.rpcRoutingKey(callee));
   }
 
