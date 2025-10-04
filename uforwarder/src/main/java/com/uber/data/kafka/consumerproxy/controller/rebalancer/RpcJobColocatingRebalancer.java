@@ -20,6 +20,7 @@ import com.uber.data.kafka.datatransfer.controller.rebalancer.Rebalancer;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
 import com.uber.m3.tally.Scope;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.DoubleSummaryStatistics;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -124,8 +125,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
       }
 
       // step 5: emit metrics
-      emitMetrics(
-          rebalancingWorkerTable, workerNeededPerPartition, podAwareRebalanceGroup.getPod());
+      emitMetrics(rebalancingWorkerTable, workerNeededPerPartition, podAwareRebalanceGroup);
 
       int totalRequestedNumberOfWorkerPerPod =
           workerNeededPerPartition.stream().mapToInt(Integer::intValue).sum();
@@ -406,7 +406,8 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
   private void emitMetrics(
       RebalancingWorkerTable rebalancingWorkerTable,
       List<Integer> workerNeededPerPartition,
-      String pod) {
+      PodAwareRebalanceGroup podAwareRebalanceGroup) {
+    String pod = podAwareRebalanceGroup.getPod();
     Map<String, String> scopeTagsWithPod = new HashMap<>();
     scopeTagsWithPod.put(POD_TAG, pod);
     int usedWorkers = 0;
@@ -456,7 +457,6 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
             .gauge(MetricNames.WORKER_EXPECTED_LOAD)
             .update(worker.getLoad());
       }
-
       scope
           .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
           .tagged(partitionTags)
@@ -489,6 +489,18 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
           .gauge(MetricNames.WORKER_LOAD_STD_DEVIATION)
           .update(standardDeviation / usedWorkers);
     }
+    double podLoad =
+        calculateLoad(
+            podAwareRebalanceGroup.getGroupIdToJobs().values().stream()
+                .flatMap(Collection::stream)
+                .collect(Collectors.toList()),
+            podAwareRebalanceGroup.getWorkers().values());
+
+    scope
+        .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
+        .tagged(scopeTagsWithPod)
+        .gauge(MetricNames.REBALANCER_POD_LOAD)
+        .update(podLoad);
 
     scope
         .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
@@ -643,6 +655,8 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     private static final String JOB_MOVEMENT = "job.movement";
 
     private static final String STALE_JOB_COUNT = "stale.job.count";
+
+    private static final String REBALANCER_POD_LOAD = "rebalancer.pod.load";
 
     private MetricNames() {}
   }
