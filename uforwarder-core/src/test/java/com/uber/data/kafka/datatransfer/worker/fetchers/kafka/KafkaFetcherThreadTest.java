@@ -24,7 +24,6 @@ public class KafkaFetcherThreadTest extends FievelTestBase {
             new KafkaFetcherConfiguration(),
             new KafkaCheckpointManager(infra.scope()),
             new ThroughputTracker(),
-            new InflightMessageTracker(),
             Mockito.mock(Consumer.class),
             infra);
   }
