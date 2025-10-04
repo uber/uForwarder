@@ -2,6 +2,7 @@ package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
 import com.google.common.base.Preconditions;
 import java.time.Duration;
+import java.util.Optional;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /** The type Auto scalar configuration. */
@@ -19,8 +20,7 @@ public class AutoScalarConfiguration {
   private static final double DEFAULT_DOWN_SCALE_MAX_FACTOR = 0.8;
   private static final long DEFAULT_MESSAGES_PER_SECOND_PER_WORKER = 4000;
   private static final long DEFAULT_BYTES_PER_SECOND_PER_WORKER = 16 * 1024 * 1024; // 16MB/s
-  private static final double DEFAULT_CPU_USAGE_PER_WORKER =
-      0.0; // 0 indicates CPU usage scaling is disabled
+  private static final double DEFAULT_CPU_USAGE_PER_WORKER = 3.0; // 3 CPU cores
 
   // scale window duration for up scale
   private Duration upScaleWindowDuration = DEFAULT_UP_SCALE_WINDOW_DURATION;
@@ -72,6 +72,13 @@ public class AutoScalarConfiguration {
 
   // enable hibernating by scaling work load down to zero
   private boolean hibernatingEnabled = false;
+
+  // work load to scale configuration
+  private ScaleConverterMode scaleConverterMode = ScaleConverterMode.THROUGHPUT;
+
+  // optional shadow converter, enable only for convert mode migration
+  private Optional<ScaleConverterMode> shadowScaleConverterMode =
+      Optional.of(ScaleConverterMode.CPU);
 
   /**
    * Gets up scale window duration.
@@ -366,6 +373,7 @@ public class AutoScalarConfiguration {
    * @param cpuUsagePerWorker
    */
   public void setCpuUsagePerWorker(double cpuUsagePerWorker) {
+    Preconditions.checkArgument(cpuUsagePerWorker > 0.0, "cpuUsagePerWorker must be > 0");
     this.cpuUsagePerWorker = cpuUsagePerWorker;
   }
 
@@ -385,6 +393,42 @@ public class AutoScalarConfiguration {
    */
   public void setHibernatingEnabled(boolean hibernatingEnabled) {
     this.hibernatingEnabled = hibernatingEnabled;
+  }
+
+  /**
+   * Gets scale converter mode
+   *
+   * @return ScaleConvertMode
+   */
+  public ScaleConverterMode getScaleConverterMode() {
+    return scaleConverterMode;
+  }
+
+  /**
+   * Sets scale convert mode
+   *
+   * @param scaleConverterMode
+   */
+  public void setScaleConverterMode(ScaleConverterMode scaleConverterMode) {
+    this.scaleConverterMode = scaleConverterMode;
+  }
+
+  /**
+   * Gets optional shadow scale converter mode
+   *
+   * @return optional
+   */
+  public Optional<ScaleConverterMode> getShadowScaleConverterMode() {
+    return shadowScaleConverterMode;
+  }
+
+  /**
+   * Set shadow converter mode
+   *
+   * @param shadowScaleConverterMode
+   */
+  public void setShadowScaleConverterMode(ScaleConverterMode shadowScaleConverterMode) {
+    this.shadowScaleConverterMode = Optional.of(shadowScaleConverterMode);
   }
 
   private static void validateRange(double value, double min, double max, String name) {

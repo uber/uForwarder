@@ -43,6 +43,8 @@ public class AutoScalar implements Scalar {
   private final ScaleState.Builder stateBuilder;
   private final Scope scope;
   private final LeaderSelector leaderSelector;
+  private final ScaleConverter primaryScaleConverter;
+  private final Optional<ScaleConverter> shadowScaleConverter;
 
   /**
    * Instantiates a new Auto scalar.
@@ -69,6 +71,9 @@ public class AutoScalar implements Scalar {
     this.scope = scope;
     this.leaderSelector = leaderSelector;
     this.stateBuilder = ScaleState.newBuilder().withConfig(config).withTicker(ticker);
+    this.primaryScaleConverter = createScaleConverter(config.getScaleConverterMode());
+    this.shadowScaleConverter =
+        config.getShadowScaleConverterMode().map(this::createScaleConverter);
   }
 
   /** Update sample of throughput to window */
@@ -90,7 +95,7 @@ public class AutoScalar implements Scalar {
       JobWorkloadMonitor.get(entry.getKey())
           .ifPresent(
               t -> {
-                double sampleScale = workloadToScale(t);
+                double sampleScale = primaryScaleConverter.convert(t);
                 entry.getValue().sampleScale(sampleScale);
                 scope
                     .tagged(
@@ -100,6 +105,17 @@ public class AutoScalar implements Scalar {
                             .build())
                     .gauge(MetricNames.AUTOSCALAR_SAMPLED_SCALE)
                     .update(sampleScale);
+                if (shadowScaleConverter.isPresent()) {
+                  double shadowScale = shadowScaleConverter.get().convert(t);
+                  scope
+                      .tagged(
+                          StructuredTags.builder()
+                              .setKafkaGroup(entry.getKey().getGroup())
+                              .setKafkaTopic(entry.getKey().getTopic())
+                              .build())
+                      .gauge(MetricNames.AUTOSCALAR_SHADOW_SCALE)
+                      .update(shadowScale);
+                }
               });
     }
     timer.stop();
@@ -198,31 +214,11 @@ public class AutoScalar implements Scalar {
         .build();
   }
 
-  /**
-   * /** Converts the observed workload metrics to a recommended scale (number of workers).
-   *
-   * <p>This method determines the required scale based on the provided {@link Workload} object. If
-   * {@code cpuUsagePerWorker} is configured (non-zero), the scale is computed as the ratio of
-   * observed CPU usage to the CPU usage per worker. If not, the scale is determined by the maximum
-   * of the message rate and byte rate per worker.
-   *
-   * @param workload the observed workload containing messages per second, bytes per second, and CPU
-   *     usage
-   * @return the recommended scale (number of workers) as a double
-   */
-  private double workloadToScale(Workload workload) {
-    double cpuUsagePerWorker = config.getCpuUsagePerWorker();
-    if (cpuUsagePerWorker != ZERO) {
-      if (workload.getMessagesPerSecond() == ZERO) {
-        // If there are no messages being processed, the scale should be 0.
-        return ZERO;
-      } else {
-        return workload.getCpuUsage() / cpuUsagePerWorker;
-      }
+  private ScaleConverter createScaleConverter(ScaleConverterMode mode) {
+    if (mode == ScaleConverterMode.CPU) {
+      return new CpuScaleConverter();
     } else {
-      return Math.max(
-          workload.getMessagesPerSecond() / config.getMessagesPerSecPerWorker(),
-          workload.getBytesPerSecond() / config.getBytesPerSecPerWorker());
+      return new ThroughputScaleConverter();
     }
   }
 
@@ -365,5 +361,31 @@ public class AutoScalar implements Scalar {
     private static final String AUTOSCALAR_COMPUTED_SCALE = "autoscalar.computed.scale";
     private static final String AUTOSCALAR_APPLIED_SCALE = "autoscalar.applied.scale";
     private static final String AUTOSCALAR_SAMPLED_SCALE = "autoscalar.sampled.scale";
+    private static final String AUTOSCALAR_SHADOW_SCALE = "autoscalar.shadow.scale";
+  }
+
+  @VisibleForTesting
+  /** Convert throughput into workload scale */
+  protected class ThroughputScaleConverter implements ScaleConverter {
+    @Override
+    public double convert(Workload workload) {
+      return Math.max(
+          workload.getMessagesPerSecond() / config.getMessagesPerSecPerWorker(),
+          workload.getBytesPerSecond() / config.getBytesPerSecPerWorker());
+    }
+  }
+
+  @VisibleForTesting
+  /** Converts cpu usage into workload scale */
+  private class CpuScaleConverter implements ScaleConverter {
+    @Override
+    public double convert(Workload workload) {
+      if (workload.getMessagesPerSecond() == ZERO) {
+        // If there are no messages being processed, the scale should be 0.
+        return ZERO;
+      } else {
+        return workload.getCpuUsage() / config.getCpuUsagePerWorker();
+      }
+    }
   }
 }

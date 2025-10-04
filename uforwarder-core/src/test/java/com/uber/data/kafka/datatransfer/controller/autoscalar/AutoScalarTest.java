@@ -50,6 +50,9 @@ public class AutoScalarTest extends FievelTestBase {
     config.setUpScaleMinFactor(1.1);
     config.setDownScaleMaxFactor(0.9);
     config.setDownScaleMinFactor(0.8);
+    config.setCpuUsagePerWorker(2.0);
+    config.setScaleConverterMode(ScaleConverterMode.THROUGHPUT);
+    config.setShadowScaleConverterMode(ScaleConverterMode.CPU);
     jobWorkloadMonitor = new JobWorkloadMonitor(config, testTicker, new NoopScope());
     leaderSelector = Mockito.mock(LeaderSelector.class);
     Mockito.when(leaderSelector.isLeader()).thenReturn(true);
@@ -111,7 +114,9 @@ public class AutoScalarTest extends FievelTestBase {
 
   @Test
   public void testScaleUpAboveMaxFactorWithCpuUsage() {
-    config.setCpuUsagePerWorker(2.0);
+    config.setScaleConverterMode(ScaleConverterMode.CPU);
+    autoScalar =
+        new AutoScalar(config, jobWorkloadMonitor, testTicker, new NoopScope(), leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     Assert.assertEquals(
@@ -154,7 +159,9 @@ public class AutoScalarTest extends FievelTestBase {
 
   @Test
   public void testScaleUpBelowMinFactorWithCpuUsage() {
-    config.setCpuUsagePerWorker(2.0);
+    config.setScaleConverterMode(ScaleConverterMode.CPU);
+    autoScalar =
+        new AutoScalar(config, jobWorkloadMonitor, testTicker, new NoopScope(), leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     Assert.assertEquals(
@@ -197,7 +204,9 @@ public class AutoScalarTest extends FievelTestBase {
 
   @Test
   public void testScaleUp20PercentWIthCpuUsage() {
-    config.setCpuUsagePerWorker(2.0);
+    config.setScaleConverterMode(ScaleConverterMode.CPU);
+    autoScalar =
+        new AutoScalar(config, jobWorkloadMonitor, testTicker, new NoopScope(), leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     Assert.assertEquals(
@@ -335,7 +344,9 @@ public class AutoScalarTest extends FievelTestBase {
 
   @Test
   public void testHibernatingAndBootstrapWithCpuUsage() {
-    config.setCpuUsagePerWorker(2.0);
+    config.setScaleConverterMode(ScaleConverterMode.CPU);
+    autoScalar =
+        new AutoScalar(config, jobWorkloadMonitor, testTicker, new NoopScope(), leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     Assert.assertEquals(

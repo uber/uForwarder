@@ -45,6 +45,10 @@ public class AutoScalarConfigurationTest extends FievelTestBase {
     Assert.assertEquals(100, autoScalarConfiguration.getMessagesPerSecPerWorker());
     Assert.assertEquals(1000, autoScalarConfiguration.getBytesPerSecPerWorker());
     Assert.assertTrue(autoScalarConfiguration.isHibernatingEnabled());
+    Assert.assertEquals(5.0, autoScalarConfiguration.getCpuUsagePerWorker(), 0.00001);
+    Assert.assertEquals(ScaleConverterMode.CPU, autoScalarConfiguration.getScaleConverterMode());
+    Assert.assertEquals(
+        ScaleConverterMode.THROUGHPUT, autoScalarConfiguration.getShadowScaleConverterMode().get());
   }
 
   @Test
