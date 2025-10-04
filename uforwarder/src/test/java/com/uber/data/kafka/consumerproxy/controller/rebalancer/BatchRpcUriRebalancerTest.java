@@ -29,6 +29,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
   private static final String CLUSTER = "cluster";
   private static final String CONSUMER_GROUP = "consumer_group";
   private static final String TOPIC = "topic";
+  private static final String Job_GROUP = "jobGroup";
   private static final int PARTITION = 2;
   private BatchRpcUriRebalancer rebalancer;
   private AutoScalar autoScalar;
@@ -64,7 +65,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
             1, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_RUNNING, 2, 2, 2, 2, false);
-    rebalancer.computeJobState(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.computeJobState(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Assert.assertTrue(rebalancingJobGroup.isChanged());
     Assert.assertEquals(
         JobState.JOB_STATE_CANCELED, rebalancingJobGroup.getJobs().get(1L).getState());
@@ -77,7 +78,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
             1, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_RUNNING, 0, 0, 2, 2, false);
-    rebalancer.computeJobState(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.computeJobState(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Assert.assertTrue(rebalancingJobGroup.isChanged());
     Assert.assertEquals(
         JobState.JOB_STATE_CANCELED, rebalancingJobGroup.getJobs().get(1L).getState());
@@ -89,7 +90,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
             1, JobState.JOB_STATE_CANCELED, JobState.JOB_STATE_CANCELED, 2, 0, 2, 2, false);
-    rebalancer.computeJobState(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.computeJobState(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Assert.assertFalse(rebalancingJobGroup.isChanged());
     Assert.assertEquals(
         JobState.JOB_STATE_CANCELED, rebalancingJobGroup.getJobs().get(1L).getState());
@@ -101,7 +102,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
             1, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_RUNNING, 2, 0, 2, 2, false);
-    rebalancer.computeJobState(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.computeJobState(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Assert.assertTrue(rebalancingJobGroup.isChanged());
     Assert.assertEquals(
         JobState.JOB_STATE_CANCELED, rebalancingJobGroup.getJobs().get(1L).getState());
@@ -113,7 +114,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
             1, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_RUNNING, 2, 0, 2, 3, false);
-    rebalancer.computeJobState(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.computeJobState(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Assert.assertTrue(rebalancingJobGroup.isChanged());
     Assert.assertEquals(
         JobState.JOB_STATE_CANCELED, rebalancingJobGroup.getJobs().get(1L).getState());
@@ -125,7 +126,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
             1L, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_INVALID, 2, 0, 2, 0, false);
-    rebalancer.computeJobState(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.computeJobState(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Assert.assertTrue(rebalancingJobGroup.isChanged());
     Assert.assertEquals(
         JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobs().get(1L).getState());
@@ -137,7 +138,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
             1L, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_RUNNING, 2, 0, 2, 0, false);
-    rebalancer.computeJobState(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.computeJobState(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Assert.assertFalse(rebalancingJobGroup.isChanged());
     Assert.assertEquals(
         JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobs().get(1L).getState());
@@ -149,7 +150,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
             1L, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_CANCELED, 2, 0, 2, 3, false);
-    rebalancer.computeJobState(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.computeJobState(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Assert.assertTrue(rebalancingJobGroup.isChanged());
     Assert.assertEquals(
         JobState.JOB_STATE_CANCELED, rebalancingJobGroup.getJobs().get(1L).getState());
@@ -164,7 +165,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
             -1, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_CANCELED, 2, 0, 2, 3, false);
-    rebalancer.computeJobState(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.computeJobState(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Assert.assertFalse(rebalancingJobGroup.isChanged());
     Assert.assertEquals(JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobGroupState());
   }
@@ -174,7 +175,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup(
             1, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_RUNNING, 0, 0, 2, 2, false);
-    rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.postProcess(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Mockito.verify(adminClientBuilder, Mockito.never()).build(Mockito.anyString());
   }
 
@@ -190,7 +191,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
             0,
             2,
             false);
-    rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.postProcess(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Mockito.verify(adminClientBuilder, Mockito.never()).build(Mockito.anyString());
   }
 
@@ -206,7 +207,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
             2,
             2,
             false);
-    rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.postProcess(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Mockito.verify(adminClientBuilder, Mockito.never()).build(Mockito.anyString());
   }
 
@@ -222,7 +223,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
             2,
             2,
             false);
-    rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.postProcess(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     Mockito.verify(adminClientBuilder, Mockito.never()).build(Mockito.anyString());
   }
 
@@ -249,7 +250,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
             2,
             2,
             true);
-    rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.postProcess(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
 
     Mockito.verify(adminClientBuilder, Mockito.never()).build(Mockito.anyString());
   }
@@ -269,7 +270,7 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
             2,
             2,
             true);
-    rebalancer.postProcess(ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
+    rebalancer.postProcess(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
     ArgumentCaptor<String> clusterCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<String> consumerGroupCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<Map<TopicPartition, OffsetAndMetadata>> mapCaptor =
@@ -327,5 +328,86 @@ public class BatchRpcUriRebalancerTest extends FievelTestBase {
         .setCommitOffset(commitOffset);
     StoredJobStatus jobStatus = jobStatusBuilder.build();
     return RebalancingJobGroup.of(Versioned.from(jobGroup, 0), ImmutableMap.of(1L, jobStatus));
+  }
+
+  @Test
+  public void testPartitionOffsetsPreventTimestampCancellation() throws Exception {
+    StoredJobGroup.Builder jobGroupBuilder = StoredJobGroup.newBuilder();
+    jobGroupBuilder.setState(JobState.JOB_STATE_RUNNING);
+    jobGroupBuilder
+        .getJobGroupBuilder()
+        .setJobGroupId(Job_GROUP)
+        .getKafkaConsumerTaskGroupBuilder()
+        .setCluster(CLUSTER)
+        .setTopic(TOPIC)
+        .setConsumerGroup(CONSUMER_GROUP)
+        .setStartTimestamp(Timestamps.fromMillis(1000))
+        .setEndTimestamp(Timestamps.fromMillis(1000))
+        .getPartitionOffsetRangesBuilder()
+        .addPartitionOffsetRange(
+            com.uber.data.kafka.datatransfer.PartitionOffsetRange.newBuilder()
+                .setPartition(PARTITION)
+                .setStartOffset(100)
+                .setEndOffset(200)
+                .build());
+
+    StoredJob.Builder jobBuilder = StoredJob.newBuilder();
+    jobBuilder.setState(JobState.JOB_STATE_RUNNING);
+    jobBuilder
+        .getJobBuilder()
+        .setJobId(1)
+        .getKafkaConsumerTaskBuilder()
+        .setCluster(CLUSTER)
+        .setTopic(TOPIC)
+        .setPartition(PARTITION)
+        .setConsumerGroup(CONSUMER_GROUP)
+        .setStartOffset(100)
+        .setEndOffset(200);
+    jobGroupBuilder.addJobs(jobBuilder.build());
+
+    RebalancingJobGroup rebalancingJobGroup =
+        RebalancingJobGroup.of(Versioned.from(jobGroupBuilder.build(), 0), ImmutableMap.of());
+
+    // This should NOT cancel the job group because partition offsets are provided
+    rebalancer.computeJobState(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
+    Assert.assertEquals(JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobGroupState());
+    Assert.assertEquals(
+        JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobs().get(1L).getState());
+  }
+
+  @Test
+  public void testEqualTimestampsWithoutPartitionOffsetsCauseCancellation() throws Exception {
+    StoredJobGroup.Builder jobGroupBuilder = StoredJobGroup.newBuilder();
+    jobGroupBuilder.setState(JobState.JOB_STATE_RUNNING);
+    jobGroupBuilder
+        .getJobGroupBuilder()
+        .setJobGroupId(Job_GROUP)
+        .getKafkaConsumerTaskGroupBuilder()
+        .setCluster(CLUSTER)
+        .setTopic(TOPIC)
+        .setConsumerGroup(CONSUMER_GROUP)
+        .setStartTimestamp(Timestamps.fromMillis(1000))
+        .setEndTimestamp(Timestamps.fromMillis(1000));
+
+    StoredJob.Builder jobBuilder = StoredJob.newBuilder();
+    jobBuilder.setState(JobState.JOB_STATE_RUNNING);
+    jobBuilder
+        .getJobBuilder()
+        .setJobId(1)
+        .getKafkaConsumerTaskBuilder()
+        .setCluster(CLUSTER)
+        .setTopic(TOPIC)
+        .setPartition(PARTITION)
+        .setConsumerGroup(CONSUMER_GROUP)
+        .setStartOffset(100)
+        .setEndOffset(200);
+    jobGroupBuilder.addJobs(jobBuilder.build());
+
+    RebalancingJobGroup rebalancingJobGroup =
+        RebalancingJobGroup.of(Versioned.from(jobGroupBuilder.build(), 0), ImmutableMap.of());
+
+    // This SHOULD cancel the job group because timestamps are equal and no partition offsets
+    rebalancer.computeJobState(ImmutableMap.of(Job_GROUP, rebalancingJobGroup), ImmutableMap.of());
+    Assert.assertEquals(JobState.JOB_STATE_CANCELED, rebalancingJobGroup.getJobGroupState());
   }
 }
