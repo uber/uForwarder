@@ -112,7 +112,6 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     builder.getJobGroupBuilder().setJobGroupId("/dst/src");
     ScaleStatus scaleStatus =
         ScaleStatus.newBuilder()
-            .setScale(1.0)
             .setTotalMessagesPerSec(1000.0)
             .setTotalBytesPerSec(100000.0)
             .build();
@@ -142,7 +141,8 @@ public class ControllerAdminServiceTest extends FievelTestBase {
         ArgumentCaptor.forClass(AddJobGroupResponse.class);
     Mockito.verify(streamObserver).onNext(responseCaptor.capture());
     Assert.assertEquals(jobGroupToCreate, responseCaptor.getValue().getGroup().getJobGroup());
-    Assert.assertEquals(scaleStatus, jobGroupCaptor.getValue().model().getScaleStatus());
+    Assert.assertEquals(
+        0.25, jobGroupCaptor.getValue().model().getScaleStatus().getScale(), 0.0001);
     Mockito.verify(streamObserver).onCompleted();
   }
 
@@ -440,5 +440,170 @@ public class ControllerAdminServiceTest extends FievelTestBase {
                             .getStatus()
                             .getDescription()
                             .equals("Failed to get cluster scale status")));
+  }
+
+  @Test
+  public void addJobGroupWithScaleCalculationMessagesPerSecHigher() throws Exception {
+    autoScalarConfiguration.setMessagesPerSecPerWorker(1000L);
+    autoScalarConfiguration.setBytesPerSecPerWorker(50000L);
+
+    StoredJobGroup.Builder builder = StoredJobGroup.newBuilder();
+    builder.getJobGroupBuilder().setJobGroupId("/dst/src");
+    StoredJobGroup createdJobGroup = builder.build();
+    JobGroup jobGroupToCreate = createdJobGroup.getJobGroup();
+
+    ScaleStatus inputScaleStatus =
+        ScaleStatus.newBuilder()
+            .setTotalMessagesPerSec(2000.0)
+            .setTotalBytesPerSec(75000.0)
+            .build();
+
+    Mockito.when(jobGroupStore.get(Mockito.any())).thenThrow(new NoSuchElementException());
+    Mockito.when(jobGroupStore.create(Mockito.any(), Mockito.any()))
+        .thenReturn(VersionedProto.from(createdJobGroup, 0));
+
+    StreamObserver<AddJobGroupResponse> streamObserver = Mockito.mock(StreamObserver.class);
+    controllerAdminService.addJobGroup(
+        AddJobGroupRequest.newBuilder()
+            .setJobGroup(jobGroupToCreate)
+            .setScaleStatus(inputScaleStatus)
+            .setJobGroupState(JobState.JOB_STATE_RUNNING)
+            .build(),
+        streamObserver);
+
+    ArgumentCaptor<StoredJobGroup> createdJobGroupCaptor =
+        ArgumentCaptor.forClass(StoredJobGroup.class);
+    Mockito.verify(jobGroupStore).create(createdJobGroupCaptor.capture(), Mockito.any());
+
+    StoredJobGroup capturedJobGroup = createdJobGroupCaptor.getValue();
+    ScaleStatus resultScaleStatus = capturedJobGroup.getScaleStatus();
+
+    double expectedScale = Math.max(2000.0 / 1000.0, 75000.0 / 50000.0);
+    Assert.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
+    Assert.assertEquals(2000.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
+    Assert.assertEquals(75000.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
+  }
+
+  @Test
+  public void addJobGroupWithScaleCalculationBytesPerSecHigher() throws Exception {
+    autoScalarConfiguration.setMessagesPerSecPerWorker(2000L);
+    autoScalarConfiguration.setBytesPerSecPerWorker(10000L);
+
+    StoredJobGroup.Builder builder = StoredJobGroup.newBuilder();
+    builder.getJobGroupBuilder().setJobGroupId("/dst/src");
+    StoredJobGroup createdJobGroup = builder.build();
+    JobGroup jobGroupToCreate = createdJobGroup.getJobGroup();
+
+    ScaleStatus inputScaleStatus =
+        ScaleStatus.newBuilder()
+            .setTotalMessagesPerSec(1000.0)
+            .setTotalBytesPerSec(50000.0)
+            .build();
+
+    Mockito.when(jobGroupStore.get(Mockito.any())).thenThrow(new NoSuchElementException());
+    Mockito.when(jobGroupStore.create(Mockito.any(), Mockito.any()))
+        .thenReturn(VersionedProto.from(createdJobGroup, 0));
+
+    StreamObserver<AddJobGroupResponse> streamObserver = Mockito.mock(StreamObserver.class);
+    controllerAdminService.addJobGroup(
+        AddJobGroupRequest.newBuilder()
+            .setJobGroup(jobGroupToCreate)
+            .setScaleStatus(inputScaleStatus)
+            .setJobGroupState(JobState.JOB_STATE_RUNNING)
+            .build(),
+        streamObserver);
+
+    ArgumentCaptor<StoredJobGroup> createdJobGroupCaptor =
+        ArgumentCaptor.forClass(StoredJobGroup.class);
+    Mockito.verify(jobGroupStore).create(createdJobGroupCaptor.capture(), Mockito.any());
+
+    StoredJobGroup capturedJobGroup = createdJobGroupCaptor.getValue();
+    ScaleStatus resultScaleStatus = capturedJobGroup.getScaleStatus();
+
+    double expectedScale = Math.max(1000.0 / 2000.0, 50000.0 / 10000.0);
+    Assert.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
+    Assert.assertEquals(1000.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
+    Assert.assertEquals(50000.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
+  }
+
+  @Test
+  public void addJobGroupWithScaleCalculationEqualRates() throws Exception {
+    autoScalarConfiguration.setMessagesPerSecPerWorker(1000L);
+    autoScalarConfiguration.setBytesPerSecPerWorker(20000L);
+
+    StoredJobGroup.Builder builder = StoredJobGroup.newBuilder();
+    builder.getJobGroupBuilder().setJobGroupId("/dst/src");
+    StoredJobGroup createdJobGroup = builder.build();
+    JobGroup jobGroupToCreate = createdJobGroup.getJobGroup();
+
+    ScaleStatus inputScaleStatus =
+        ScaleStatus.newBuilder()
+            .setTotalMessagesPerSec(2000.0)
+            .setTotalBytesPerSec(40000.0)
+            .build();
+
+    Mockito.when(jobGroupStore.get(Mockito.any())).thenThrow(new NoSuchElementException());
+    Mockito.when(jobGroupStore.create(Mockito.any(), Mockito.any()))
+        .thenReturn(VersionedProto.from(createdJobGroup, 0));
+
+    StreamObserver<AddJobGroupResponse> streamObserver = Mockito.mock(StreamObserver.class);
+    controllerAdminService.addJobGroup(
+        AddJobGroupRequest.newBuilder()
+            .setJobGroup(jobGroupToCreate)
+            .setScaleStatus(inputScaleStatus)
+            .setJobGroupState(JobState.JOB_STATE_RUNNING)
+            .build(),
+        streamObserver);
+
+    ArgumentCaptor<StoredJobGroup> createdJobGroupCaptor =
+        ArgumentCaptor.forClass(StoredJobGroup.class);
+    Mockito.verify(jobGroupStore).create(createdJobGroupCaptor.capture(), Mockito.any());
+
+    StoredJobGroup capturedJobGroup = createdJobGroupCaptor.getValue();
+    ScaleStatus resultScaleStatus = capturedJobGroup.getScaleStatus();
+
+    double expectedScale = Math.max(2000.0 / 1000.0, 40000.0 / 20000.0);
+    Assert.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
+    Assert.assertEquals(2000.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
+    Assert.assertEquals(40000.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
+  }
+
+  @Test
+  public void addJobGroupWithScaleCalculationZeroValues() throws Exception {
+    autoScalarConfiguration.setMessagesPerSecPerWorker(1000L);
+    autoScalarConfiguration.setBytesPerSecPerWorker(20000L);
+
+    StoredJobGroup.Builder builder = StoredJobGroup.newBuilder();
+    builder.getJobGroupBuilder().setJobGroupId("/dst/src");
+    StoredJobGroup createdJobGroup = builder.build();
+    JobGroup jobGroupToCreate = createdJobGroup.getJobGroup();
+
+    ScaleStatus inputScaleStatus =
+        ScaleStatus.newBuilder().setTotalMessagesPerSec(0.0).setTotalBytesPerSec(0.0).build();
+
+    Mockito.when(jobGroupStore.get(Mockito.any())).thenThrow(new NoSuchElementException());
+    Mockito.when(jobGroupStore.create(Mockito.any(), Mockito.any()))
+        .thenReturn(VersionedProto.from(createdJobGroup, 0));
+
+    StreamObserver<AddJobGroupResponse> streamObserver = Mockito.mock(StreamObserver.class);
+    controllerAdminService.addJobGroup(
+        AddJobGroupRequest.newBuilder()
+            .setJobGroup(jobGroupToCreate)
+            .setScaleStatus(inputScaleStatus)
+            .setJobGroupState(JobState.JOB_STATE_RUNNING)
+            .build(),
+        streamObserver);
+
+    ArgumentCaptor<StoredJobGroup> createdJobGroupCaptor =
+        ArgumentCaptor.forClass(StoredJobGroup.class);
+    Mockito.verify(jobGroupStore).create(createdJobGroupCaptor.capture(), Mockito.any());
+
+    StoredJobGroup capturedJobGroup = createdJobGroupCaptor.getValue();
+    ScaleStatus resultScaleStatus = capturedJobGroup.getScaleStatus();
+
+    double expectedScale = Math.max(0.0 / 1000.0, 0.0 / 20000.0);
+    Assert.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
+    Assert.assertEquals(0.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
+    Assert.assertEquals(0.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
   }
 }

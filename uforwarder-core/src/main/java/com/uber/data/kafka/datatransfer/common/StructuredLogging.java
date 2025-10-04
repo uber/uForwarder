@@ -41,8 +41,8 @@ public class StructuredLogging extends StructuredFields {
   private static final String METRIC_NAME = "metric_name";
   private static final String INTERVAL_MS = "interval_ms";
   private static final String ATTEMPT = "attempt";
-  private static final String FROM_MESSAGES_PER_SEC = "from_messages_per_sec";
-  private static final String TO_MESSAGES_PER_SEC = "to_messages_per_sec";
+  private static final String MESSAGES_PER_SEC = "messages_per_sec";
+  private static final String BYTES_PER_SEC = "bytes_per_sec";
   private static final String WORKER_ID_STR = "worker_id_str";
   private static final String RESOURCE = "resource";
   private static final String ID = "id";
@@ -107,12 +107,12 @@ public class StructuredLogging extends StructuredFields {
     return StructuredArguments.keyValue(ATTEMPT, attempt);
   }
 
-  public static StructuredArgument fromMessagesPerSec(double rate) {
-    return StructuredArguments.keyValue(FROM_MESSAGES_PER_SEC, rate);
+  public static StructuredArgument messagesPerSec(double rate) {
+    return StructuredArguments.keyValue(MESSAGES_PER_SEC, rate);
   }
 
-  public static StructuredArgument toMessagesPerSec(double rate) {
-    return StructuredArguments.keyValue(TO_MESSAGES_PER_SEC, rate);
+  public static StructuredArgument bytesPerSec(double rate) {
+    return StructuredArguments.keyValue(BYTES_PER_SEC, rate);
   }
 
   public static StructuredArgument workerId(long id) {
