@@ -7,6 +7,7 @@ import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.KafkaUtils;
+import com.uber.data.kafka.datatransfer.worker.common.CpuUsageMeter;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
@@ -74,6 +75,7 @@ public class AbstractKafkaFetcherThreadTest2 extends FievelTestBase {
                 .setKafkaConsumerTask(
                     KafkaConsumerTask.newBuilder().setConsumerGroup(GROUP).setTopic(TOPIC).build())
                 .build(),
+            Mockito.mock(CpuUsageMeter.class),
             scope);
     checkpointManager = new KafkaCheckpointManager(scope);
     throughputTracker = new ThroughputTracker();

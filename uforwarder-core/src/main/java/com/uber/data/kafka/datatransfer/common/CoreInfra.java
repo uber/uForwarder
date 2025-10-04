@@ -6,6 +6,8 @@ import com.uber.m3.tally.NoopScope;
 import com.uber.m3.tally.Scope;
 import io.opentracing.Tracer;
 import io.opentracing.noop.NoopTracerFactory;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import java.util.Map;
 
 /**
@@ -26,6 +28,7 @@ public class CoreInfra {
   private final DynamicConfiguration dynamicConfiguration;
   private final Placement placement;
   private final Node node;
+  private final ThreadMXBean threadMXBean;
 
   /** Instantiates a new Core infra. */
   private CoreInfra(Builder builder) {
@@ -35,6 +38,7 @@ public class CoreInfra {
     this.dynamicConfiguration = builder.dynamicConfiguration;
     this.placement = builder.placement;
     this.node = builder.node;
+    this.threadMXBean = builder.threadMXBean;
   }
 
   /**
@@ -126,6 +130,15 @@ public class CoreInfra {
   }
 
   /**
+   * Gets the ThreadMXBean
+   *
+   * @return
+   */
+  public ThreadMXBean getThreadMXBean() {
+    return threadMXBean;
+  }
+
+  /**
    * Builder builder.
    *
    * @return the builder
@@ -142,6 +155,7 @@ public class CoreInfra {
     private DynamicConfiguration dynamicConfiguration = DynamicConfiguration.DEFAULT;
     private Placement placement = Placement.DEFAULT;
     private Node node = Node.getDefaultInstance();
+    private ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
 
     /**
      * Sets scope.
@@ -206,6 +220,17 @@ public class CoreInfra {
      */
     public Builder withNode(Node node) {
       this.node = node;
+      return this;
+    }
+
+    /**
+     * Sets ThreadMXBean
+     *
+     * @param threadMXBean
+     * @return
+     */
+    public Builder withThreadMXBean(ThreadMXBean threadMXBean) {
+      this.threadMXBean = threadMXBean;
       return this;
     }
 

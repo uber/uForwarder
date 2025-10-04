@@ -7,6 +7,7 @@ import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobStatus;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.MiscConfig;
+import com.uber.data.kafka.datatransfer.worker.common.CpuUsageMeter;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
@@ -40,6 +41,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
   private Gauge gauge;
 
   private PipelineHealthManager pipelineHealthManager;
+  private CpuUsageMeter cpuUsageMeter;
 
   @Before
   public void setUp() {
@@ -63,6 +65,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
                 return pipelineHealthManager;
               }
             });
+    cpuUsageMeter = Mockito.mock(CpuUsageMeter.class);
     scope = Mockito.mock(Scope.class);
     Counter counter = Mockito.mock(Counter.class);
     gauge = Mockito.mock(Gauge.class);
@@ -86,6 +89,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
                 .setMiscConfig(
                     MiscConfig.newBuilder().setOwnerServiceName(CONSUMER_SERVICE_NAME).build())
                 .build(),
+            cpuUsageMeter,
             scope);
   }
 
@@ -391,15 +395,17 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     pipelineStateManager.run(job).toCompletableFuture().get();
     pipelineStateManager.publishMetrics();
     ArgumentCaptor<Double> valueCaptor = ArgumentCaptor.forClass(Double.class);
-    Mockito.verify(gauge, Mockito.times(3)).update(valueCaptor.capture());
+    Mockito.verify(gauge, Mockito.times(4)).update(valueCaptor.capture());
     Assert.assertArrayEquals(
         new Double[] {
           job.getFlowControl().getMessagesPerSec(),
           job.getFlowControl().getBytesPerSec(),
-          job.getFlowControl().getMaxInflightMessages()
+          job.getFlowControl().getMaxInflightMessages(),
+          0.0,
         },
         valueCaptor.getAllValues().toArray(new Double[] {}));
     Mockito.verify(pipelineHealthManager, Mockito.times(1)).publishMetrics();
+    Mockito.verify(cpuUsageMeter, Mockito.times(1)).getUsage();
   }
 
   @Test

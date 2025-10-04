@@ -5,6 +5,8 @@ import com.uber.data.kafka.datatransfer.common.context.ContextManager;
 import com.uber.m3.tally.Scope;
 import io.opentracing.Tracer;
 import io.opentracing.noop.NoopTracerFactory;
+import java.lang.management.ManagementFactory;
+import java.lang.management.ThreadMXBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -37,13 +39,24 @@ public class CoreInfraAutoConfiguration {
   }
 
   @Bean
+  @ConditionalOnMissingBean(ThreadMXBean.class)
+  public ThreadMXBean defaultThreadMXBean() {
+    ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+    if (threadMXBean.isThreadCpuTimeSupported()) {
+      threadMXBean.setThreadCpuTimeEnabled(true);
+    }
+    return threadMXBean;
+  }
+
+  @Bean
   public CoreInfra coreInfra(
       Scope scope,
       Tracer tracer,
       ContextManager contextManager,
       DynamicConfiguration dynamicConfiguration,
       Placement placement,
-      Node node) {
+      Node node,
+      ThreadMXBean threadMXBean) {
     return CoreInfra.builder()
         .withScope(scope)
         .withTracer(tracer)
@@ -51,6 +64,7 @@ public class CoreInfraAutoConfiguration {
         .withDynamicConfiguration(dynamicConfiguration)
         .withPlacement(placement)
         .withNode(node)
+        .withThreadMXBean(threadMXBean)
         .build();
   }
 }
