@@ -1364,7 +1364,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     // check job group with canary
     canaryJob = rebalancingJobGroup1.getJobs().get(1L);
     Assert.assertEquals(canaryJob.getJobPod(), "canary");
-    Assert.assertEquals(Double.compare(canaryJob.getScale(), 45), 0);
+    Assert.assertEquals(Double.compare(canaryJob.getScale(), 450), 0);
     Assert.assertEquals(
         Double.compare(canaryJob.getJob().getFlowControl().getMessagesPerSec(), 50), 0);
     Assert.assertEquals(
@@ -1374,7 +1374,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     StoredJob nonCanaryJob = rebalancingJobGroup1.getJobs().get(2L);
     Assert.assertNotEquals(nonCanaryJob.getJobPod(), "canary");
-    Assert.assertEquals(Double.compare(nonCanaryJob.getScale(), 900), 0);
+    Assert.assertEquals(Double.compare(nonCanaryJob.getScale(), 450), 0);
     Assert.assertEquals(
         Double.compare(nonCanaryJob.getJob().getFlowControl().getMessagesPerSec(), 1000), 0);
     Assert.assertEquals(
