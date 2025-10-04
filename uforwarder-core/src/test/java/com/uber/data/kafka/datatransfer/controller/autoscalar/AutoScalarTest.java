@@ -1,8 +1,6 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
 import com.google.common.collect.ImmutableMap;
-import com.google.protobuf.MessageOrBuilder;
-import com.uber.data.kafka.datatransfer.AutoScalarSnapshot;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobGroup;
@@ -10,6 +8,7 @@ import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTaskGroup;
 import com.uber.data.kafka.datatransfer.MiscConfig;
+import com.uber.data.kafka.datatransfer.ScaleStoreSnapshot;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
@@ -612,12 +611,12 @@ public class AutoScalarTest extends FievelTestBase {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     testTicker.add(Duration.ofSeconds(5));
     jobWorkloadMonitor.consume(job, Workload.of(4000, 10000, 0));
-    MessageOrBuilder snapshot = autoScalar.snapshot();
+    ScaleStoreSnapshot snapshot = (ScaleStoreSnapshot) autoScalar.snapshot();
     Assert.assertNotNull(snapshot);
-    Assert.assertTrue(snapshot instanceof AutoScalarSnapshot);
-    Assert.assertEquals(1, ((AutoScalarSnapshot) snapshot).getJobGroupScalarList().size());
+    Assert.assertEquals(1, snapshot.getJobGroupSnapshotList().size());
     Assert.assertEquals(
         JobGroupKey.of(job).getGroup(),
-        ((AutoScalarSnapshot) snapshot).getJobGroupScalarList().get(0).getConsumerGroup());
+        snapshot.getJobGroupSnapshotList().get(0).getConsumerGroup());
+    Assert.assertEquals(testTicker.read(), snapshot.getTimestampNanos());
   }
 }

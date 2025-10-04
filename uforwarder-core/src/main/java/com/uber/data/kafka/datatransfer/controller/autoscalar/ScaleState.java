@@ -171,6 +171,7 @@ abstract class ScaleState {
                   .map(ScaleComputer::snapshot)
                   .collect(Collectors.toList()))
           .addScaleComputerSnapshots(hibernatingComputer.snapshot())
+          .setScale(getScale())
           .build();
     }
 
@@ -234,6 +235,7 @@ abstract class ScaleState {
     public ScaleStateSnapshot snapshot() {
       return ScaleStateSnapshot.newBuilder()
           .addScaleComputerSnapshots(bootstrapComputer.snapshot())
+          .setScale(getScale())
           .build();
     }
 
@@ -319,7 +321,7 @@ abstract class ScaleState {
           .setWindowedComputerSnapshot(
               WindowedComputerSnapshot.newBuilder()
                   .setWindowSnapshot(scaleWindow.snapshot())
-                  .setCurrentScale(scale)
+                  .setBaseScale(scale)
                   .setPercentile(windowPercentile)
                   .setPercentileScale(scaleWindow.getByPercentile(windowPercentile))
                   .setLowerBoundary(scale * minOutputFactor)

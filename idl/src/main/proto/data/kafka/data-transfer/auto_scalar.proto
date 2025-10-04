@@ -12,11 +12,12 @@ option java_multiple_files = true;
 option java_outer_classname = "AutoScalarProto";
 option java_package = "com.uber.data.kafka.datatransfer";
 
-message AutoScalarSnapshot {
-  repeated JobGroupScalarSnapshot job_group_scalar = 1;
+message ScaleStoreSnapshot {
+  repeated JobGroupScaleStatusSnapshot job_group_snapshot = 1;
+  int64 timestamp_nanos = 2;
 }
 
-message JobGroupScalarSnapshot {
+message JobGroupScaleStatusSnapshot {
   // cluster to read from.
   string cluster = 1;
   // topic to read from.
@@ -30,6 +31,7 @@ message JobGroupScalarSnapshot {
 message ScaleStateSnapshot {
   // scale computers for up/down/hibernate/bootstrap
   repeated ScaleComputerSnapshot scale_computer_snapshots = 1;
+  double scale = 2;
 }
 
 message ScaleComputerSnapshot {
@@ -43,7 +45,7 @@ message WindowedComputerSnapshot {
   double upper_boundary = 2;
   double percentile = 3;
   double percentile_scale = 4;
-  double current_scale = 5;
+  double base_scale = 5;
   WindowSnapshot window_snapshot = 6;
 }
 
