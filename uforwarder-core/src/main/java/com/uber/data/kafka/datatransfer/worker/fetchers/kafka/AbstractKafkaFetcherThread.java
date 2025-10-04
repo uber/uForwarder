@@ -48,6 +48,7 @@ import org.apache.kafka.clients.consumer.Consumer;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.errors.TopicAuthorizationException;
@@ -960,8 +961,28 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
                       .build())
               .timer(MetricNames.KAFKA_POLL_LATENCY)
               .start();
-      records = kafkaConsumer.poll(java.time.Duration.ofMillis(pollTimeoutMs));
-      kafkaPollTimer.stop();
+      try {
+        records = kafkaConsumer.poll(java.time.Duration.ofMillis(pollTimeoutMs));
+      } catch (KafkaException e) {
+        scope
+            .tagged(
+                StructuredTags.builder()
+                    .setKafkaCluster(
+                        pipelineStateManager.getJobTemplate().getKafkaConsumerTask().getCluster())
+                    .setKafkaGroup(
+                        pipelineStateManager
+                            .getJobTemplate()
+                            .getKafkaConsumerTask()
+                            .getConsumerGroup())
+                    .setKafkaTopic(
+                        pipelineStateManager.getJobTemplate().getKafkaConsumerTask().getTopic())
+                    .build())
+            .counter(MetricNames.KAFKA_POLL_EXCEPTION)
+            .inc(1);
+        throw e;
+      } finally {
+        kafkaPollTimer.stop();
+      }
       LOGGER.debug(
           "kafka.poll.success", StructuredLogging.count(records == null ? 0 : records.count()));
     } else {
@@ -1331,6 +1352,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
     static final String CLOSE_SUCCESS = "fetcher.kafka.close.success";
     static final String CLOSE_FAILURE = "fetcher.kafka.close.failure";
     static final String KAFKA_POLL_LATENCY = "fetcher.kafka.poll.latency";
+    static final String KAFKA_POLL_EXCEPTION = "fetcher.kafka.poll.exception";
     static final String OFFSET_FETCH_LATENCY = "fetcher.kafka.offset.fetch.latency";
     static final String OFFSET_FETCH_EXCEPTION = "fetcher.kafka.offset.fetch.exception";
     static final String OFFSET_COMMIT_LATENCY = "fetcher.kafka.offset.commit.latency";
