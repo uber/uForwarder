@@ -30,6 +30,7 @@ import com.uber.data.kafka.datatransfer.worker.controller.ControllerAutoConfigur
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcherFactory;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcherFactoryAutoConfiguration;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineFactory;
+import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManagerAutoConfiguration;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineMetricPublisher;
@@ -123,14 +124,21 @@ public class UForwarderWorkerFactory {
       KafkaFetcherFactory kafkaFetcherFactory,
       ProcessorFactory processorFactory,
       GrpcDispatcherFactory grpcDispatcherFactory,
-      KafkaDispatcherFactory<byte[], byte[]> kafkaDispatcherFactory) {
+      KafkaDispatcherFactory<byte[], byte[]> kafkaDispatcherFactory,
+      PipelineLoadManager pipelineLoadManager) {
     return new PipelineFactoryImpl(
         serviceName,
         coreInfra,
         kafkaFetcherFactory,
         processorFactory,
         grpcDispatcherFactory,
-        kafkaDispatcherFactory);
+        kafkaDispatcherFactory,
+        pipelineLoadManager);
+  }
+
+  @Bean
+  public PipelineLoadManager pipelineLoadManager(CoreInfra coreInfra) {
+    return new PipelineLoadManager(coreInfra);
   }
 
   @Bean

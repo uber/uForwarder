@@ -15,7 +15,9 @@ import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcher
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcherFactory;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcher;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
+import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadManager;
 import com.uber.fievel.testing.base.FievelTestBase;
+import java.lang.management.ThreadMXBean;
 import java.util.concurrent.ThreadFactory;
 import org.junit.After;
 import org.junit.Assert;
@@ -46,6 +48,8 @@ public class PipelineFactoryImplTest extends FievelTestBase {
   private ProcessorImpl processor;
   private GrpcDispatcher grpcDispatcher;
   private MockedConstruction<KafkaPipelineStateManager> kafkaPipelineStateManagerMockedConstruction;
+  private PipelineLoadManager pipelineLoadManager;
+  private ThreadRegister threadRegister;
 
   @Before
   public void setUp() throws Exception {
@@ -82,6 +86,12 @@ public class PipelineFactoryImplTest extends FievelTestBase {
     Mockito.doReturn(processor)
         .when(processorFactory)
         .create(Mockito.any(Job.class), Mockito.anyString(), Mockito.any(ThreadFactory.class));
+    pipelineLoadManager = Mockito.mock(PipelineLoadManager.class);
+    PipelineLoadManager.LoadTracker loadTracker =
+        Mockito.mock(PipelineLoadManager.LoadTracker.class);
+    threadRegister = new ThreadRegister(Mockito.mock(ThreadMXBean.class));
+    Mockito.doReturn(threadRegister).when(loadTracker).getThreadRegister();
+    Mockito.doReturn(loadTracker).when(pipelineLoadManager).createTracker(Mockito.anyString());
     pipelineFactory =
         new PipelineFactoryImpl(
             SERVICE_NAME,
@@ -89,7 +99,8 @@ public class PipelineFactoryImplTest extends FievelTestBase {
             kafkaFetcherFactory,
             processorFactory,
             grpcDispatcherFactory,
-            kafkaDispatcherFactory);
+            kafkaDispatcherFactory,
+            pipelineLoadManager);
     job =
         Job.newBuilder()
             .setJobId(1)

@@ -9,6 +9,7 @@ import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
+import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadTracker;
 import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
@@ -85,7 +86,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
                 .setKafkaConsumerTask(
                     KafkaConsumerTask.newBuilder().setConsumerGroup(GROUP).setTopic(TOPIC).build())
                 .build(),
-            () -> 0.0,
+            PipelineLoadTracker.NOOP,
             scope);
   }
 

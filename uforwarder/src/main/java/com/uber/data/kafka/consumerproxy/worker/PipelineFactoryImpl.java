@@ -11,13 +11,13 @@ import com.uber.data.kafka.consumerproxy.worker.processor.ProcessorImpl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
-import com.uber.data.kafka.datatransfer.worker.common.ThreadRegister;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcher;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcherFactory;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcher;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.Pipeline;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineFactory;
+import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadManager;
 import java.util.Optional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,6 +44,7 @@ public class PipelineFactoryImpl implements PipelineFactory {
   private final ProcessorFactory processorFactory;
   private final GrpcDispatcherFactory grpcDispatcherFactory;
   private final KafkaDispatcherFactory<byte[], byte[]> kafkaDispatcherFactory;
+  private final PipelineLoadManager pipelineLoadManager;
 
   PipelineFactoryImpl(
       String serviceName,
@@ -51,13 +52,15 @@ public class PipelineFactoryImpl implements PipelineFactory {
       KafkaFetcherFactory kafkaFetcherFactory,
       ProcessorFactory processorFactory,
       GrpcDispatcherFactory grpcDispatcherFactory,
-      KafkaDispatcherFactory<byte[], byte[]> kafkaDispatcherFactory) {
+      KafkaDispatcherFactory<byte[], byte[]> kafkaDispatcherFactory,
+      PipelineLoadManager pipelineLoadManager) {
     this.serviceName = serviceName;
     this.infra = infra;
     this.kafkaFetcherFactory = kafkaFetcherFactory;
     this.processorFactory = processorFactory;
     this.grpcDispatcherFactory = grpcDispatcherFactory;
     this.kafkaDispatcherFactory = kafkaDispatcherFactory;
+    this.pipelineLoadManager = pipelineLoadManager;
   }
 
   @Override
@@ -67,25 +70,30 @@ public class PipelineFactoryImpl implements PipelineFactory {
     Optional<DispatcherImpl> dispatcher = Optional.empty();
     Optional<GrpcDispatcher> grpcDispatcher = Optional.empty();
     Optional<PipelineStateManager> kafkaPipelineStateManager = Optional.empty();
-    ThreadRegister threadRegister = new ThreadRegister(infra.getThreadMXBean());
     try {
+      PipelineLoadManager.LoadTracker loadState = pipelineLoadManager.createTracker(pipelineId);
       kafkaPipelineStateManager =
-          Optional.of(new KafkaPipelineStateManager(job, threadRegister::getUsage, infra.scope()));
+          Optional.of(new KafkaPipelineStateManager(job, loadState, infra.scope()));
       boolean isSecure = job.hasSecurityConfig() && job.getSecurityConfig().getIsSecure();
       fetcher =
           Optional.of(
               kafkaFetcherFactory.create(
-                  job, getThreadName(job, CONSUMER, serviceName), threadRegister, infra));
+                  job,
+                  getThreadName(job, CONSUMER, serviceName),
+                  loadState.getThreadRegister(),
+                  infra));
       String processorId = getThreadName(job, PROCESSOR, serviceName);
       final String dispatcherId = getThreadName(job, DISPATCHER, serviceName);
       processor =
-          Optional.of(processorFactory.create(job, processorId, threadRegister.asThreadFactory()));
+          Optional.of(
+              processorFactory.create(
+                  job, processorId, loadState.getThreadRegister().asThreadFactory()));
       grpcDispatcher =
           Optional.of(
               grpcDispatcherFactory.create(
                   serviceName,
                   dispatcherId,
-                  threadRegister.asThreadFactory(),
+                  loadState.getThreadRegister().asThreadFactory(),
                   job.getRpcDispatcherTask().getUri(),
                   job.getRpcDispatcherTask().getProcedure()));
       final String clientId = getThreadName(job, PRODUCER, serviceName);
