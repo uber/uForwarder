@@ -1,14 +1,13 @@
 package com.uber.data.kafka.consumerproxy.client.grpc;
 
-import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.Metadata;
 import java.util.function.Supplier;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class MetadataAdapterTest extends FievelTestBase {
+public class MetadataAdapterTest {
   private static final String TEST_TOPIC = "test-topic";
   private static final String TEST_GROUP = "test-group";
   private static final String TEST_PARTITION = "3";
@@ -21,7 +20,7 @@ public class MetadataAdapterTest extends FievelTestBase {
   private MetadataAdapter metadataAdapter;
   private Metadata metadata;
 
-  @Before
+  @BeforeEach
   public void setup() {
     metadata = Mockito.mock(Metadata.class);
     Mockito.when(metadata.get(Metadata.Key.of("kafka-topic", Metadata.ASCII_STRING_MARSHALLER)))
@@ -49,42 +48,42 @@ public class MetadataAdapterTest extends FievelTestBase {
   @Test
   public void testGetTopic() {
     String topic = metadataAdapter.getTopic();
-    Assert.assertEquals(TEST_TOPIC, topic);
+    Assertions.assertEquals(TEST_TOPIC, topic);
   }
 
   @Test
   public void testGetGroup() {
     String group = metadataAdapter.getConsumerGroup();
-    Assert.assertEquals(TEST_GROUP, group);
+    Assertions.assertEquals(TEST_GROUP, group);
   }
 
   @Test
   public void testGetPartition() {
     int partition = metadataAdapter.getPartition();
-    Assert.assertEquals(3, partition);
+    Assertions.assertEquals(3, partition);
   }
 
   @Test
   public void testGetOffset() {
     long offset = metadataAdapter.getOffset();
-    Assert.assertEquals(1001, offset);
+    Assertions.assertEquals(1001, offset);
   }
 
   @Test
   public void testGetRetryCount() {
     long retryCount = metadataAdapter.getRetryCount();
-    Assert.assertEquals(4, retryCount);
+    Assertions.assertEquals(4, retryCount);
   }
 
   @Test
   public void testGetTraceInfo() {
     String value = metadataAdapter.getTracingInfo();
-    Assert.assertEquals(TEST_TRACING_ID, value);
+    Assertions.assertEquals(TEST_TRACING_ID, value);
   }
 
   @Test
   public void testGetCustomHeader() {
     String value = metadataAdapter.getHeader("my-header");
-    Assert.assertEquals(TEST_CUSTOM_HEADER, value);
+    Assertions.assertEquals(TEST_CUSTOM_HEADER, value);
   }
 }
