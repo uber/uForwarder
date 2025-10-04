@@ -14,6 +14,7 @@ import com.uber.data.kafka.datatransfer.GetJobGroupResponse;
 import com.uber.data.kafka.datatransfer.JobGroup;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.MasterAdminServiceGrpc;
+import com.uber.data.kafka.datatransfer.ScaleStatus;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
 import com.uber.data.kafka.datatransfer.StoredWorker;
@@ -125,14 +126,19 @@ public final class ControllerAdminService
                 StoredJobGroup.Builder newJobGroupBuilder =
                     StoredJobGroup.newBuilder().setJobGroup(jobGroup);
                 if (req.hasScaleStatus()) {
-                  newJobGroupBuilder.setScaleStatus(req.getScaleStatus());
+                  newJobGroupBuilder.setScaleStatus(
+                      getNormalizedScaleStatusFromReq(req.getJobGroup(), req.getScaleStatus()));
                 }
                 storedJobGroup =
                     jobGroupStore.create(newJobGroupBuilder.build(), JobUtils::withJobGroupId);
-                StoredJobGroup runningJobGroup =
+                StoredJobGroup.Builder runningJobGroupBuilder =
                     StoredJobGroup.newBuilder(storedJobGroup.model())
-                        .setState(req.getJobGroupState())
-                        .build();
+                        .setState(req.getJobGroupState());
+                if (req.hasScaleStatus()) {
+                  runningJobGroupBuilder.setScaleStatus(
+                      getNormalizedScaleStatusFromReq(req.getJobGroup(), req.getScaleStatus()));
+                }
+                StoredJobGroup runningJobGroup = runningJobGroupBuilder.build();
                 jobGroupStore.put(
                     storedJobGroup.model().getJobGroup().getJobGroupId(),
                     VersionedProto.from(runningJobGroup, storedJobGroup.version()));
@@ -144,6 +150,22 @@ public final class ControllerAdminService
         request,
         responseObserver,
         "masteradminservice.addjobgroup");
+  }
+
+  private ScaleStatus getNormalizedScaleStatusFromReq(JobGroup jobGroup, ScaleStatus scaleStatus) {
+    double scale =
+        Math.max(
+            scaleStatus.getTotalMessagesPerSec()
+                / autoScalarConfiguration.getMessagesPerSecPerWorker(),
+            scaleStatus.getTotalBytesPerSec() / autoScalarConfiguration.getBytesPerSecPerWorker());
+    ScaleStatus scaleStatusWithScale = ScaleStatus.newBuilder(scaleStatus).setScale(scale).build();
+    logger.info(
+        "getting scale status from request",
+        StructuredLogging.jobGroupId(jobGroup.getJobGroupId()),
+        StructuredLogging.messagesPerSec(scaleStatus.getTotalMessagesPerSec()),
+        StructuredLogging.bytesPerSec(scaleStatus.getTotalBytesPerSec()),
+        StructuredLogging.workloadScale(scaleStatus.getScale()));
+    return scaleStatusWithScale;
   }
 
   @Override
