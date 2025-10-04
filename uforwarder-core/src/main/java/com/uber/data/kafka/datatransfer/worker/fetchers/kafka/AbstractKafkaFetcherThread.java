@@ -998,7 +998,12 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
   @VisibleForTesting
   void updateActualRunningJobStatus() {
     Preconditions.checkNotNull(pipelineStateManager, "pipeline config manager required");
+    Preconditions.checkNotNull(
+        pipelineStateManager.getLoadTracker(), "pipeline load tracker required");
     ImmutableList.Builder<JobStatus> builder = new ImmutableList.Builder<>();
+    double cpuUsage = pipelineStateManager.getLoadTracker().getLoad().getCpuUsage();
+    int nJobs = currentRunningJobMap.size();
+    double cpuUsagePerJob = nJobs == 0 ? 0 : cpuUsage / nJobs;
     currentRunningJobMap.forEach(
         (jobId, job) -> {
           JobStatus.Builder jobStatusBuilder = JobStatus.newBuilder();
@@ -1019,6 +1024,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
                   .setBytesPerSec(throughput.bytesPerSec)
                   .setTotalMessagesInflight(inflightMessageStats.numberOfMessages.get())
                   .setTotalBytesInflight(inflightMessageStats.totalBytes.get())
+                  .setCpuUsage(cpuUsagePerJob)
                   .build();
           jobStatusBuilder.setKafkaConsumerTaskStatus(kafkaConsumerTaskStatus);
           builder.add(jobStatusBuilder.build());

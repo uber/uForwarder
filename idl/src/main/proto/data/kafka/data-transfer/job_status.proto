@@ -46,6 +46,8 @@ message KafkaConsumerTaskStatus {
   int64 total_messages_inflight = 7;
   // number of bytes of messages inflight to be processed
   int64 total_bytes_inflight = 8;
+  // computed cpu usage, in terms of percentage per core
+  double cpu_usage = 9;
 }
 
 // KafkaDispatcherTaskStatus represents the state of the dispatcher task.

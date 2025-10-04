@@ -87,6 +87,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
     mockConsumer = Mockito.mock(KafkaConsumer.class);
     processor = Mockito.mock(Sink.class);
     pipelineLoadTracker = Mockito.mock(PipelineLoadTracker.class);
+    Mockito.when(pipelineLoadTracker.getLoad()).thenReturn(PipelineLoadTracker.PipelineLoad.ZERO);
     Mockito.when(processor.isRunning()).thenReturn(true);
     pipelineStateManager =
         new KafkaPipelineStateManager(

@@ -5,6 +5,7 @@ import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobStatus;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineHealthIssue;
+import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadTracker;
 import com.uber.fievel.testing.base.FievelTestBase;
 import org.junit.Assert;
 import org.junit.Before;
@@ -64,5 +65,10 @@ public class PipelineStateManagerTest extends FievelTestBase {
   public void testReportIssue() {
     pipelineStateManager.reportIssue(
         Mockito.mock(Job.class), Mockito.mock(PipelineHealthIssue.class));
+  }
+
+  @Test
+  public void testGetLoadTracker() {
+    Assert.assertEquals(PipelineLoadTracker.NOOP, pipelineStateManager.getLoadTracker());
   }
 }
