@@ -84,6 +84,7 @@ public class PipelineFactoryImpl implements PipelineFactory {
               grpcDispatcherFactory.create(
                   serviceName,
                   dispatcherId,
+                  threadRegister.asThreadFactory(),
                   job.getRpcDispatcherTask().getUri(),
                   job.getRpcDispatcherTask().getProcedure()));
       final String clientId = getThreadName(job, PRODUCER, serviceName);
