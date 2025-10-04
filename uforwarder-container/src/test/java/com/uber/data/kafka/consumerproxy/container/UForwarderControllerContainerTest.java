@@ -1,18 +1,17 @@
 package com.uber.data.kafka.consumerproxy.container;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.testcontainers.utility.DockerImageName;
 
-public class UForwarderControllerContainerTest extends FievelTestBase {
+public class UForwarderControllerContainerTest {
   private UForwarderControllerContainer controllerContainer;
 
-  @Before
+  @BeforeEach
   public void setup() {
     controllerContainer = new UForwarderControllerContainer(DockerImageName.parse("uforwarder"));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         "uforwarder-controller", controllerContainer.getEnvMap().get("UFORWARDER_PROFILE"));
   }
 
@@ -20,20 +19,21 @@ public class UForwarderControllerContainerTest extends FievelTestBase {
   public void testSetupZkConnect() {
     String zkConnect = "127.0.0.1:2181";
     controllerContainer.withZookeeperConnect(zkConnect);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         zkConnect, controllerContainer.getEnvMap().get("UFORWARDER_ZOOKEEPER_CONNECT"));
   }
 
   @Test
   public void testSetupMemoryLimit() {
     controllerContainer.withMaxMemoryMB(1024);
-    Assert.assertEquals("1024", controllerContainer.getEnvMap().get("UFORWARDER_MEMORY_LIMIT_MB"));
+    Assertions.assertEquals(
+        "1024", controllerContainer.getEnvMap().get("UFORWARDER_MEMORY_LIMIT_MB"));
   }
 
   @Test
   public void testwithKafkaBootstrapString() {
     controllerContainer.withKafkaBootstrapString("localhost:9001");
-    Assert.assertEquals(
+    Assertions.assertEquals(
         "localhost:9001", controllerContainer.getEnvMap().get("UFORWARDER_KAFKA_CONNECT"));
   }
 }

@@ -1,6 +1,7 @@
 package com.uber.data.kafka.instrumentation;
 
-import com.uber.fievel.testing.base.FievelTestBase;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.uber.m3.tally.Scope;
 import io.grpc.ClientCall;
 import io.grpc.stub.StreamObserver;
@@ -13,21 +14,21 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class InstrumentTest extends FievelTestBase {
+public class InstrumentTest {
   private static final Logger logger = LoggerFactory.getLogger(InstrumentTest.class);
   private Tracer tracer;
   private AtomicLong callCount;
   private Scope scope;
   private Instrument instrument;
 
-  @Before
+  @BeforeEach
   public void setup() {
     callCount = new AtomicLong();
     scope = Mockito.mock(Scope.class);
@@ -94,32 +95,32 @@ public class InstrumentTest extends FievelTestBase {
   @Test
   public void testWithExceptionWithResultChecker() throws Exception {
     instrument.withException(logger, scope, null, () -> true, r -> r, "name", "tagKey", "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
   public void testWithExceptionWithoutTracer() throws Exception {
     instrument.withException(logger, scope, () -> true, "name", "tagKey", "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
   public void testWithExceptionWithoutTracerWithResultChecker() throws Exception {
     instrument.withException(logger, scope, () -> true, r -> r, "name", "tagKey", "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
   public void testReturnVoidWithException() throws Exception {
     instrument.returnVoidWithException(
         logger, scope, tracer, () -> {}, "name", "tagKey", "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
   public void testReturnVoidCatchWithoutTracerThrowableSuccess() throws Exception {
     instrument.returnVoidCatchThrowable(logger, scope, () -> {}, "name", "tagKey", "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
@@ -133,7 +134,7 @@ public class InstrumentTest extends FievelTestBase {
         "name",
         "tagKey",
         "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
@@ -147,14 +148,14 @@ public class InstrumentTest extends FievelTestBase {
         "name",
         "tagKey",
         "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
   public void testReturnVoidCatchThrowableSuccess() throws Exception {
     instrument.returnVoidCatchThrowable(
         logger, scope, tracer, () -> {}, "name", "tagKey", "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
@@ -169,7 +170,7 @@ public class InstrumentTest extends FievelTestBase {
         "name",
         "tagKey",
         "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
@@ -184,90 +185,106 @@ public class InstrumentTest extends FievelTestBase {
         "name",
         "tagKey",
         "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
   public void testReturnVoidWithExceptionWithoutTracer() throws Exception {
     instrument.returnVoidWithException(logger, scope, () -> {}, "name", "tagKey", "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
   public void testWithRuntimeException() {
     instrument.withRuntimeException(logger, scope, tracer, () -> 1, "name", "tagKey", "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
   public void testWithRuntimeExceptionWithoutTracer() {
     instrument.withRuntimeException(logger, scope, () -> 1, "name", "tagKey", "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testWithRuntimeExceptionThrowsCheckedException() {
-    instrument.withRuntimeException(
-        logger,
-        scope,
-        tracer,
+    assertThrows(
+        RuntimeException.class,
         () -> {
-          throw new IOException();
-        },
-        "name",
-        "tagKey",
-        "tagValue");
-    Assert.assertEquals(1, callCount.get());
+          instrument.withRuntimeException(
+              logger,
+              scope,
+              tracer,
+              () -> {
+                throw new IOException();
+              },
+              "name",
+              "tagKey",
+              "tagValue");
+          Assertions.assertEquals(1, callCount.get());
+        });
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testWithRuntimeExceptionThrowsRuntimeException() {
-    instrument.withRuntimeException(
-        logger,
-        scope,
-        tracer,
+    assertThrows(
+        RuntimeException.class,
         () -> {
-          throw new RuntimeException();
-        },
-        "name",
-        "tagKey",
-        "tagValue");
-    Assert.assertEquals(1, callCount.get());
+          instrument.withRuntimeException(
+              logger,
+              scope,
+              tracer,
+              () -> {
+                throw new RuntimeException();
+              },
+              "name",
+              "tagKey",
+              "tagValue");
+          Assertions.assertEquals(1, callCount.get());
+        });
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testWithRuntimeExceptionWithoutTracerThrowsRuntimeException() {
-    instrument.withRuntimeException(
-        logger,
-        scope,
+    assertThrows(
+        RuntimeException.class,
         () -> {
-          throw new RuntimeException();
-        },
-        "name",
-        "tagKey",
-        "tagValue");
-    Assert.assertEquals(1, callCount.get());
+          instrument.withRuntimeException(
+              logger,
+              scope,
+              () -> {
+                throw new RuntimeException();
+              },
+              "name",
+              "tagKey",
+              "tagValue");
+          Assertions.assertEquals(1, callCount.get());
+        });
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testWithRuntimeExceptionWithoutTracerThrowsCheckedException() {
-    instrument.withRuntimeException(
-        logger,
-        scope,
+    assertThrows(
+        RuntimeException.class,
         () -> {
-          throw new IOException();
-        },
-        "name",
-        "tagKey",
-        "tagValue");
-    Assert.assertEquals(1, callCount.get());
+          instrument.withRuntimeException(
+              logger,
+              scope,
+              () -> {
+                throw new IOException();
+              },
+              "name",
+              "tagKey",
+              "tagValue");
+          Assertions.assertEquals(1, callCount.get());
+        });
   }
 
   @Test
   public void withExceptionalCompletion() {
     instrument.withExceptionalCompletion(
         logger, scope, () -> CompletableFuture.completedFuture(true), "name", "tagKey", "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 
   @Test
@@ -282,6 +299,6 @@ public class InstrumentTest extends FievelTestBase {
         "name",
         "tagKey",
         "tagValue");
-    Assert.assertEquals(1, callCount.get());
+    Assertions.assertEquals(1, callCount.get());
   }
 }
