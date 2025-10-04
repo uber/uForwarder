@@ -114,13 +114,15 @@ public class LatencyTracker implements Configurable {
    * @param concurrencyLimit
    * @return
    */
-  private static long getMaxLatency(double messagesPerSec, int concurrencyLimit) {
+  @VisibleForTesting
+  protected static long getMaxLatency(double messagesPerSec, int concurrencyLimit) {
     if (DoubleMath.fuzzyEquals(messagesPerSec, 0.0, EPSILON)) {
       return Long.MAX_VALUE;
     }
 
-    long maxLatencyInSeconds = (long) (concurrencyLimit / (messagesPerSec));
-    return TimeUnit.SECONDS.toNanos(maxLatencyInSeconds);
+    double maxLatencyInSeconds = concurrencyLimit / messagesPerSec;
+    // use multiplication to preserve precision
+    return (long) (maxLatencyInSeconds * TimeUnit.SECONDS.toNanos(1));
   }
 
   /** The type Sample. */

@@ -99,6 +99,8 @@ uber_proto_java_library(
         "com.uber.data.kafka.datatransfer.WorkerProto",
         "com.uber.data.kafka.datatransfer.PartitionOffsetRange",
         "com.uber.data.kafka.datatransfer.PartitionOffsetRanges",
+        "com.uber.data.kafka.datatransfer.GetClusterScaleStatusRequest",
+        "com.uber.data.kafka.datatransfer.GetClusterScaleStatusResponse",
     ],
     strip_import_prefix = "/idl/code.uber.internal/",
     visibility = [
