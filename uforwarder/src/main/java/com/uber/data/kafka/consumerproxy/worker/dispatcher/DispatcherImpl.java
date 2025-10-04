@@ -25,17 +25,23 @@ import io.grpc.Status;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicReference;
 import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, DispatcherResponse> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DispatcherImpl.class);
+  // maximum ratio of maximum latency to median latency, if the ratio is high, processor will more
+  // likely blocked by ack tracking
+  private static final int MAX_TO_MEDIAN_LATENCY_LIMIT = 10;
+  // request latency histogram window length in seconds
   private final CoreInfra infra;
   private final GrpcDispatcher grpcDispatcher;
   private final KafkaDispatcher<byte[], byte[]> dlqProducer;
   private final Optional<KafkaDispatcher<byte[], byte[]>> resqProducer;
   private final AtomicBoolean isRunning;
+  private final LatencyTracker latencyTracker;
   @Nullable private volatile PipelineStateManager pipelineStateManager;
 
   // We currently only allow a single grpc dispatcher, we may need to add more gRPC dispatchers
@@ -45,12 +51,14 @@ public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, Dis
       CoreInfra infra,
       GrpcDispatcher grpcDispatcher,
       KafkaDispatcher<byte[], byte[]> dlqProducer,
-      Optional<KafkaDispatcher<byte[], byte[]>> resqProducer) {
+      Optional<KafkaDispatcher<byte[], byte[]>> resqProducer,
+      LatencyTracker latencyTracker) {
     this.infra = infra;
     this.isRunning = new AtomicBoolean(false);
     this.grpcDispatcher = grpcDispatcher;
     this.dlqProducer = dlqProducer;
     this.resqProducer = resqProducer;
+    this.latencyTracker = latencyTracker;
   }
 
   @Override
@@ -150,9 +158,14 @@ public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, Dis
         .inc(1);
     switch (message.getType()) {
       case GRPC:
+        LatencyTracker.LatencySpan span = latencyTracker.startSpan();
         return grpcDispatcher
             .submit(ItemAndJob.of(message.getGrpcMessage(), job))
-            .whenComplete((resp, ex) -> reportHealthIssues(job, resp))
+            .whenComplete(
+                (resp, ex) -> {
+                  span.complete();
+                  reportHealthIssues(job, resp);
+                })
             // wrap KafkaMessageAction from gRPC response in a Dispatcher response
             // exceptional completions are treated as in-memory retry by the processor,
             // which resends the message to the gRPC endpoint.
@@ -226,19 +239,26 @@ public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, Dis
       return;
     }
     Status.Code statusCode = resp.status().getCode();
-    KafkaPipelineIssue issue = null;
+    final AtomicReference<KafkaPipelineIssue> issue = new AtomicReference<>();
 
     if (statusCode == UNAVAILABLE
         || statusCode == UNKNOWN
         || statusCode == UNIMPLEMENTED
         || statusCode == INTERNAL) {
-      issue = KafkaPipelineIssue.INVALID_RESPONSE_RECEIVED;
+      issue.set(KafkaPipelineIssue.INVALID_RESPONSE_RECEIVED);
     } else if (statusCode == PERMISSION_DENIED || statusCode == UNAUTHENTICATED) {
-      issue = KafkaPipelineIssue.PERMISSION_DENIED;
+      issue.set(KafkaPipelineIssue.PERMISSION_DENIED);
+    } else {
+      Optional<LatencyTracker.Sample> sample = latencyTracker.getSample();
+      if (!sample.isEmpty()
+          && sample.get().getMax() > MAX_TO_MEDIAN_LATENCY_LIMIT * sample.get().getMedian()) {
+        issue.set(KafkaPipelineIssue.RPC_LATENCY_UNSTABLE);
+      }
     }
-    if (issue != null) {
+
+    if (issue.get() != null) {
       Preconditions.checkNotNull(pipelineStateManager, "pipeline config manager required");
-      pipelineStateManager.reportIssue(job, issue.getPipelineHealthIssue());
+      pipelineStateManager.reportIssue(job, issue.get().getPipelineHealthIssue());
     }
   }
 
