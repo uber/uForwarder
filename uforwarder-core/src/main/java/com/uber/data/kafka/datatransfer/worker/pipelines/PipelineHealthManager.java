@@ -8,7 +8,9 @@ import com.uber.data.kafka.datatransfer.worker.common.MetricSource;
 import com.uber.m3.tally.NoopScope;
 import com.uber.m3.tally.Scope;
 import java.time.Duration;
+import java.util.Collections;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import org.apache.kafka.common.TopicPartition;
 
@@ -55,15 +57,15 @@ public class PipelineHealthManager implements MetricSource {
   }
 
   @VisibleForTesting
-  protected int getPipelineHealthStateValue(Job job) {
+  protected Set<PipelineHealthIssue> getPipelineHealthIssues(Job job) {
     TopicPartition tp =
         new TopicPartition(
             job.getKafkaConsumerTask().getTopic(), job.getKafkaConsumerTask().getPartition());
     PipelineHealthState state = stateMap.get(tp);
     if (state != null) {
-      return state.getStateValue();
+      return state.getIssues();
     } else {
-      return 0;
+      return Collections.emptySet();
     }
   }
 
@@ -90,16 +92,21 @@ public class PipelineHealthManager implements MetricSource {
   public void publishMetrics() {
     stateMap.forEach(
         (tp, state) -> {
+          Set<PipelineHealthIssue> issues = state.getIssues();
           StructuredTags structuredTags =
               StructuredTags.builder()
                   .setKafkaCluster(jobTemplate.getKafkaConsumerTask().getCluster())
                   .setKafkaGroup(jobTemplate.getKafkaConsumerTask().getConsumerGroup())
                   .setKafkaTopic(jobTemplate.getKafkaConsumerTask().getTopic())
                   .setKafkaPartition(tp.partition());
-          scope
-              .tagged(structuredTags.build())
-              .gauge(MetricNames.JOB_HEALTH_STATE)
-              .update(state.getStateValue());
+          Scope jobScope = scope.tagged(structuredTags.build());
+          issues.forEach(
+              issue -> {
+                jobScope
+                    .tagged(StructuredTags.builder().setError(issue.getName()).build())
+                    .gauge(MetricNames.JOB_HEALTH_STATE)
+                    .update(1);
+              });
         });
   }
 

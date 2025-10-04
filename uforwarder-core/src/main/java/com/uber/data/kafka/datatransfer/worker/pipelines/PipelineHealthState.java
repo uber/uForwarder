@@ -2,9 +2,11 @@ package com.uber.data.kafka.datatransfer.worker.pipelines;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
+import com.google.common.collect.ImmutableSet;
 import java.time.Duration;
 import java.util.Arrays;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 /** The type Pipeline heath state. */
 class PipelineHealthState {
@@ -43,22 +45,22 @@ class PipelineHealthState {
   }
 
   /**
-   * Gets state value. Value is a bit set of all issues
+   * Gets all issues
    *
-   * @return the state value
+   * @return set of issues
    */
-  int getStateValue() {
+  Set<PipelineHealthIssue> getIssues() {
     long newId = newId();
     int index = (int) (newId % windows.length);
-    int value = 0;
+    ImmutableSet.Builder<PipelineHealthIssue> builder = ImmutableSet.builder();
     for (int i = 0; i < windows.length; ++i) {
       MutableHealthStateWindow thisWindow = windows[(index - i + windows.length) % windows.length];
       if (thisWindow.id() == newId - i) {
         // include value when window id is adjacent to current window
-        value |= thisWindow.getValue();
+        builder.addAll(thisWindow.getIssues());
       }
     }
-    return value;
+    return builder.build();
   }
 
   private long newId() {
@@ -68,12 +70,12 @@ class PipelineHealthState {
   /** The type Mutable health state window. */
   @VisibleForTesting
   protected class MutableHealthStateWindow {
-    private AtomicInteger value;
+    private final Set<PipelineHealthIssue> issues;
     private final long id;
 
     protected MutableHealthStateWindow() {
       this.id = newId();
-      this.value = new AtomicInteger();
+      this.issues = ConcurrentHashMap.newKeySet();
     }
 
     /**
@@ -82,12 +84,7 @@ class PipelineHealthState {
      * @param issue the issue
      */
     protected void recordIssue(PipelineHealthIssue issue) {
-      while (true) {
-        int oldValue = value.get();
-        if (value.compareAndSet(oldValue, oldValue | issue.getValue())) {
-          break;
-        }
-      }
+      issues.add(issue);
     }
 
     long id() {
@@ -95,12 +92,12 @@ class PipelineHealthState {
     }
 
     /**
-     * Gets state value The value is a bit set of the issues
+     * Gets issues
      *
-     * @return the value
+     * @return the issue set
      */
-    int getValue() {
-      return value.get();
+    Set<PipelineHealthIssue> getIssues() {
+      return issues;
     }
   }
 }

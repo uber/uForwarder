@@ -405,7 +405,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
   @Test
   public void testReportIssue() {
     Job job = createConsumerJob(0, TOPIC, 0, GROUP, 2000, 1000, 1);
-    pipelineStateManager.reportIssue(job, new PipelineHealthIssue(0));
+    pipelineStateManager.reportIssue(job, new PipelineHealthIssue("test-issue"));
   }
 
   private Job createConsumerJob(

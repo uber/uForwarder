@@ -7,14 +7,14 @@ import org.junit.Test;
 public class PipelineHealthIssueTest extends FievelTestBase {
   @Test
   public void testGetValue() {
-    PipelineHealthIssue issue1 = new PipelineHealthIssue(4);
-    Assert.assertEquals(16, issue1.getValue());
+    PipelineHealthIssue issue1 = new PipelineHealthIssue("test-issue-1");
+    Assert.assertEquals("test-issue-1", issue1.getName());
   }
 
   @Test
   public void testEquals() {
-    PipelineHealthIssue issue1 = new PipelineHealthIssue(4);
-    PipelineHealthIssue issue2 = new PipelineHealthIssue(4);
+    PipelineHealthIssue issue1 = new PipelineHealthIssue("test-issue");
+    PipelineHealthIssue issue2 = new PipelineHealthIssue("test-issue");
     Assert.assertEquals(issue1, issue2);
     Assert.assertEquals(issue1.hashCode(), issue2.hashCode());
   }
