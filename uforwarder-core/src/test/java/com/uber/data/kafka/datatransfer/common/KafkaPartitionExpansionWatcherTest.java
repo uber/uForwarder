@@ -221,8 +221,8 @@ public class KafkaPartitionExpansionWatcherTest extends FievelTestBase {
     }
 
     // new partitioninfo with leader
-    Node node1 = new Node(0, "node-0", 9092, "canary-broker::rack1");
-    Node node2 = new Node(1, "node-1", 9092, "default::rack2");
+    Node node1 = new Node(0, "node-0", 9092, "rack1", "canary-broker");
+    Node node2 = new Node(1, "node-1", 9092, "rack2", "default");
 
     TopicDescription topicDescription =
         new TopicDescription(
