@@ -51,7 +51,8 @@ public class AutoScalarConfigurationTest extends FievelTestBase {
         ScaleConverterMode.THROUGHPUT, autoScalarConfiguration.getShadowScaleConverterMode().get());
     Assert.assertEquals(
         Duration.ofMinutes(10), autoScalarConfiguration.getReactiveScaleWindowDuration());
-    Assert.assertTrue(autoScalarConfiguration.isReactiveScaleWindowEnabled());
+    Assert.assertEquals(0.1, autoScalarConfiguration.getReactiveScaleWindowRate(), 0.00001);
+    Assert.assertEquals(0.5, autoScalarConfiguration.getDownScaleWindowMinRatio(), 0.0001);
   }
 
   @Test
@@ -160,12 +161,5 @@ public class AutoScalarConfigurationTest extends FievelTestBase {
     Assert.assertFalse(autoScalarConfiguration.isHibernatingEnabled());
     autoScalarConfiguration.setHibernatingEnabled(true);
     Assert.assertTrue(autoScalarConfiguration.isHibernatingEnabled());
-  }
-
-  @Test
-  public void testReactiveScaleWindowEnabled() {
-    Assert.assertFalse(autoScalarConfiguration.isReactiveScaleWindowEnabled());
-    autoScalarConfiguration.setReactiveScaleWindowEnabled(true);
-    Assert.assertTrue(autoScalarConfiguration.isReactiveScaleWindowEnabled());
   }
 }

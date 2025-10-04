@@ -22,6 +22,8 @@ public class AutoScalarConfiguration {
   private static final long DEFAULT_BYTES_PER_SECOND_PER_WORKER = 16 * 1024 * 1024; // 16MB/s
   private static final double DEFAULT_CPU_USAGE_PER_WORKER = 3.0; // 3 CPU cores
   private static final Duration DEFAULT_REACTIVE_WINDOW_SCALE_DURATION = Duration.ofMinutes(5);
+  private static final double DEFAULT_REACTIVE_WINDOW_SCALE_RATE = 0.2;
+  private static final double DEFAULT_DOWN_SCALE_WINDOW_MIN_RATIO = 1.0;
 
   // scale window duration for up scale
   private Duration upScaleWindowDuration = DEFAULT_UP_SCALE_WINDOW_DURATION;
@@ -74,9 +76,6 @@ public class AutoScalarConfiguration {
   // enable hibernating by scaling work load down to zero
   private boolean hibernatingEnabled = false;
 
-  // enable reactive scale window
-  private boolean reactiveScaleWindowEnabled = false;
-
   // work load to scale configuration
   private ScaleConverterMode scaleConverterMode = ScaleConverterMode.THROUGHPUT;
 
@@ -85,6 +84,13 @@ public class AutoScalarConfiguration {
       Optional.of(ScaleConverterMode.CPU);
 
   private Duration reactiveScaleWindowDuration = DEFAULT_REACTIVE_WINDOW_SCALE_DURATION;
+
+  // indicates maximum step size relatively to current scale window
+  private double reactiveScaleWindowRate = DEFAULT_REACTIVE_WINDOW_SCALE_RATE;
+
+  // indicates minimum down scale window relatively to down scale window, set to 1.0 to disable
+  // reactive down scale window
+  private double downScaleWindowMinRatio = DEFAULT_DOWN_SCALE_WINDOW_MIN_RATIO;
 
   /**
    * Gets up scale window duration.
@@ -401,23 +407,20 @@ public class AutoScalarConfiguration {
     this.hibernatingEnabled = hibernatingEnabled;
   }
 
-  /**
-   * Is reactive scale window feature enabled the feature adjust scale window according to load
-   * level
-   *
-   * @return reactiveScaleWindowEnabled
-   */
-  public boolean isReactiveScaleWindowEnabled() {
-    return reactiveScaleWindowEnabled;
+  public double getReactiveScaleWindowRate() {
+    return reactiveScaleWindowRate;
   }
 
-  /**
-   * Sets reactive scale window feature flag
-   *
-   * @param reactiveScaleWindowEnabled
-   */
-  public void setReactiveScaleWindowEnabled(boolean reactiveScaleWindowEnabled) {
-    this.reactiveScaleWindowEnabled = reactiveScaleWindowEnabled;
+  public void setReactiveScaleWindowRate(double reactiveScaleWindowRate) {
+    this.reactiveScaleWindowRate = reactiveScaleWindowRate;
+  }
+
+  public double getDownScaleWindowMinRatio() {
+    return downScaleWindowMinRatio;
+  }
+
+  public void setDownScaleWindowMinRatio(double downScaleWindowMinRatio) {
+    this.downScaleWindowMinRatio = downScaleWindowMinRatio;
   }
 
   /**

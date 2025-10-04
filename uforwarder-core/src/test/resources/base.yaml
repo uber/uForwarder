@@ -70,7 +70,8 @@ master:
     scaleConverterMode: CPU
     shadowScaleConverterMode: THROUGHPUT
     reactiveScaleWindowDuration: 10m
-    reactiveScaleWindowEnabled: true
+    reactiveScaleWindowRate: 0.1
+    downScaleWindowMinRatio: 0.5
 # These are configurations for the worker.
 worker:
   controller:
