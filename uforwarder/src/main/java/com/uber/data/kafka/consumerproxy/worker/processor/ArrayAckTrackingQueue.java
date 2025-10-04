@@ -19,6 +19,7 @@ import org.slf4j.LoggerFactory;
  */
 final class ArrayAckTrackingQueue extends AbstractAckTrackingQueue {
   private static final Logger LOGGER = LoggerFactory.getLogger(ArrayAckTrackingQueue.class);
+
   /** the queue to store all elements */
   final OffsetStatus[] items;
 

@@ -204,9 +204,7 @@ public class ZKStore<K, V extends Message> implements Store<K, V> {
    */
   @Override
   public Map<K, Versioned<V>> getAll(Function<V, Boolean> selector) throws Exception {
-    return getAllCache()
-        .values()
-        .stream()
+    return getAllCache().values().stream()
         .filter(z -> selector.apply(z.model()))
         .collect(Collectors.toMap(k -> keyFn.apply(k.model()), v -> v));
   }
@@ -218,11 +216,7 @@ public class ZKStore<K, V extends Message> implements Store<K, V> {
    * @return all the cached elements.
    */
   private Map<ZPath, Versioned<V>> getAllCache() {
-    return client
-        .cache()
-        .currentChildren(ZPath.root)
-        .entrySet()
-        .stream()
+    return client.cache().currentChildren(ZPath.root).entrySet().stream()
         .collect(
             Collectors.toMap(
                 Map.Entry::getKey,

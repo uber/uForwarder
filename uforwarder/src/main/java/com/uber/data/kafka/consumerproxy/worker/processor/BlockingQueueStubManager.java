@@ -50,6 +50,7 @@ public class BlockingQueueStubManager extends StubManager {
   private static final int COST_TOKEN_RESQ = 2;
   private static final BiConsumer<BlockingQueue.BlockingReason, CancelResult> NOOP_LISTENER =
       (k, v) -> {};
+
   /**
    * rules are evaluated in ascending order
    *

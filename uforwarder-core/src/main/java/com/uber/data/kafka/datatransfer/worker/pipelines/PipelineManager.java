@@ -204,7 +204,9 @@ public final class PipelineManager implements Controllable, MetricSource {
             });
   }
 
-  /** @implNote do not synchronize getAll b/c weakly consistent getAll for heartbeat is OK. */
+  /**
+   * @implNote do not synchronize getAll b/c weakly consistent getAll for heartbeat is OK.
+   */
   @Override
   public Collection<JobStatus> getJobStatus() {
     ImmutableList.Builder<JobStatus> aggregatedJobStatusBuilder = ImmutableList.builder();
@@ -245,9 +247,7 @@ public final class PipelineManager implements Controllable, MetricSource {
   @Scheduled(fixedDelayString = "${worker.pipeline.manager.metricsInterval}")
   public void logAndMetrics() {
     // emit metric for number of actual job status in each job state.
-    runningPipelineMap
-        .values()
-        .stream()
+    runningPipelineMap.values().stream()
         .flatMap(p -> p.getJobStatus().stream())
         .map(js -> js.getState())
         .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()))
@@ -297,9 +297,8 @@ public final class PipelineManager implements Controllable, MetricSource {
    *     heartbeats) the assignment should stabilize.
    */
   @Scheduled(
-    fixedDelayString = "${worker.pipeline.manager.gcInterval}",
-    initialDelayString = "${worker.pipeline.manager.gcInitialDelay:0}"
-  )
+      fixedDelayString = "${worker.pipeline.manager.gcInterval}",
+      initialDelayString = "${worker.pipeline.manager.gcInitialDelay:0}")
   public void gcPipelines() {
     int removedCount = 0;
     int closedCount = 0;

@@ -30,6 +30,7 @@ public interface Store<K, V extends Message> extends SmartLifecycle, ReadStore<K
    *     opt to use this to load state on start.
    */
   CompletableFuture<Map<K, Versioned<V>>> initialized() throws Exception;
+
   /**
    * create a new item in the store.
    *

@@ -61,17 +61,23 @@ public final class MetadataAdapter {
     return readString(CONSUMER_GROUP);
   }
 
-  /** @return the Kafka partition associated with this request or -1 if one was not found. */
+  /**
+   * @return the Kafka partition associated with this request or -1 if one was not found.
+   */
   public int getPartition() {
     return readInt(PARTITION);
   }
 
-  /** @return the Kafka offset associated with this request or -1 if one was not found. */
+  /**
+   * @return the Kafka offset associated with this request or -1 if one was not found.
+   */
   public long getOffset() {
     return readLong(OFFSET);
   }
 
-  /** @return the Kafka retry count associated with this request or -1 if one was not found. */
+  /**
+   * @return the Kafka retry count associated with this request or -1 if one was not found.
+   */
   public long getRetryCount() {
     return readLong(RETRY_COUNT);
   }

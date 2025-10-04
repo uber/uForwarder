@@ -246,9 +246,7 @@ public class StructuredLogging extends StructuredFields {
       Map<TopicPartition, Long> topicPartitionOffsetMap) {
     return StructuredArguments.keyValue(
         "topicPartitionOffset",
-        topicPartitionOffsetMap
-            .entrySet()
-            .stream()
+        topicPartitionOffsetMap.entrySet().stream()
             .map(e -> String.format("%s:%d", e.getKey().toString(), e.getValue()))
             .toArray(String[]::new));
   }

@@ -9,12 +9,16 @@ import com.google.protobuf.util.Timestamps;
  * <p>This wraps google.protobuf.util.Timestamps.
  */
 public final class TimestampUtils {
-  /** @return current timestamp in millisecond level granularity. */
+  /**
+   * @return current timestamp in millisecond level granularity.
+   */
   public static Timestamp currentTimeMilliseconds() {
     return Timestamps.fromMillis(System.currentTimeMillis());
   }
 
-  /** @return timestamp as a string in RFC 3339 format */
+  /**
+   * @return timestamp as a string in RFC 3339 format
+   */
   public static String toString(Timestamp time) {
     return Timestamps.toString(time);
   }

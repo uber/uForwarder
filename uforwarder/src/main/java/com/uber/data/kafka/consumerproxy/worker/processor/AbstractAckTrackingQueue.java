@@ -293,17 +293,12 @@ public abstract class AbstractAckTrackingQueue implements AckTrackingQueue {
       this.lowestCancelableOffset = lowestCancelableOffset;
       this.highestAckedOffset = highestAckedOffset;
       this.attributeStats =
-          attributeRuntimeStatsMap
-              .entrySet()
-              .stream()
+          attributeRuntimeStatsMap.entrySet().stream()
               .collect(
                   Collectors.toMap(
                       Map.Entry::getKey,
                       entry ->
-                          entry
-                              .getValue()
-                              .entrySet()
-                              .stream()
+                          entry.getValue().entrySet().stream()
                               .collect(
                                   Collectors.toMap(
                                       Map.Entry::getKey,

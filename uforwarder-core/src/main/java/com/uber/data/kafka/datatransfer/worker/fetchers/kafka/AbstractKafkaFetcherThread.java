@@ -303,9 +303,7 @@ public abstract class AbstractKafkaFetcherThread<K, V> extends ShutdownableThrea
         // function.
         List<TopicPartition> pausedTopicPartitions = delayProcessManager.getAll();
         Collection<TopicPartition> topicPartitions =
-            allTopicPartitionJobMap
-                .keySet()
-                .stream()
+            allTopicPartitionJobMap.keySet().stream()
                 .filter(tp -> !pausedTopicPartitions.contains(tp))
                 .collect(Collectors.toSet());
         kafkaConsumer.resume(topicPartitions);

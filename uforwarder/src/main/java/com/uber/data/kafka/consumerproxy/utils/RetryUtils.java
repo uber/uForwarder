@@ -79,9 +79,7 @@ public class RetryUtils {
     if (!isTieredRetryConfigAvailable(job)) {
       return Optional.empty();
     }
-    return job.getRetryConfig()
-        .getRetryQueuesList()
-        .stream()
+    return job.getRetryConfig().getRetryQueuesList().stream()
         .filter(rq -> rq.getRetryQueueTopic().equals(retryTopicName))
         .findFirst();
   }

@@ -31,11 +31,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @Configuration
 @ConditionalOnProperty(
-  prefix = "master.manager",
-  name = "enabled",
-  havingValue = "true",
-  matchIfMissing = true
-)
+    prefix = "master.manager",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 @Import({StoreAutoConfiguration.class, RebalancerAutoConfiguration.class})
 @Profile("data-transfer-controller")
 @EnableScheduling

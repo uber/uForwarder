@@ -14,12 +14,11 @@ import org.springframework.test.context.TestPropertySource;
 @EnableConfigurationProperties
 @RunWith(UForwarderSpringJUnit4ClassRunner.class)
 @SpringBootTest(
-  classes = {
-    StoreConfiguration.class,
-    WorkerStoreConfiguration.WorkerStoreConfigurationOverride.class,
-    WorkerStoreConfiguration.class
-  }
-)
+    classes = {
+      StoreConfiguration.class,
+      WorkerStoreConfiguration.WorkerStoreConfigurationOverride.class,
+      WorkerStoreConfiguration.class
+    })
 @TestPropertySource(properties = {"spring.config.location=classpath:/base.yaml"})
 public class WorkerStoreConfigurationTest extends FievelTestBase {
   @Autowired WorkerStoreConfiguration workerStoreConfiguration;

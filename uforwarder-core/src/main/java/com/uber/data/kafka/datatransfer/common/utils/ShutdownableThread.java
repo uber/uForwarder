@@ -51,14 +51,18 @@ public abstract class ShutdownableThread extends Thread {
     return shutdownComplete.getCount() == 0;
   }
 
-  /** @return true if there has been an unexpected error and the thread shut down */
+  /**
+   * @return true if there has been an unexpected error and the thread shut down
+   */
   // mind that run() might set both when we're shutting down the broker
   // but the return value of this function at that point wouldn't matter
   public boolean isThreadFailed() {
     return isShutdownComplete() && !isShutdownInitiated();
   }
 
-  /** @return true if the thread hasn't initiated shutdown already */
+  /**
+   * @return true if the thread hasn't initiated shutdown already
+   */
   public boolean initiateShutdown() {
     synchronized (this) {
       if (isRunning()) {

@@ -356,7 +356,7 @@ public class ProcessorImpl
               r -> {
                 switch (r.getCode()) {
                   case SKIP:
-                    // fallthrough
+                  // fallthrough
                   case COMMIT:
                     // For SKIP and COMMIT response codes, mark ack in ack
                     // manager and
@@ -366,7 +366,7 @@ public class ProcessorImpl
                         DispatcherResponse.Code.COMMIT, ackManager.ack(processorMessage));
                   case RETRY:
                   case RESQ:
-                    // fallthrough
+                  // fallthrough
                   case DLQ:
                     // For RETRY and STASH actions, mark nack in ack manager.
                     // If nack returns false, we can skip producing to the retry
@@ -382,9 +382,9 @@ public class ProcessorImpl
                     processorMessage.increaseAttemptCount();
                     processorMessage.increaseRetryCount();
                     return new DispatcherResponseAndOffset(r.getCode(), -1);
-                    // fallthrough: ack manager failed to nack, so we
-                    // fallthrough to gRPC
-                    // in-memory retry.
+                  // fallthrough: ack manager failed to nack, so we
+                  // fallthrough to gRPC
+                  // in-memory retry.
                   default:
                     // Increase only attempt count. This will allow the message
                     // to be
@@ -658,7 +658,7 @@ public class ProcessorImpl
               }
               switch (r.getCode()) {
                 case SKIP:
-                  // fallthrough to false
+                // fallthrough to false
                 case COMMIT:
                   // SKIP, COMMIT should not be retried to gRPC.
                   return proceedToRetry(
@@ -668,7 +668,7 @@ public class ProcessorImpl
                   if (!job.getRpcDispatcherTask().getDlqTopic().isEmpty()) {
                     return false;
                   }
-                  // fallthrough to do next check
+                // fallthrough to do next check
                 case RETRY:
                   // if retry queue topic is configured, should not be retried to gRPC
                   if (RetryUtils.hasRetryTopic(job)) {
@@ -682,7 +682,7 @@ public class ProcessorImpl
                   if (RetryUtils.hasResqTopic(job)) {
                     return false;
                   }
-                  // fallthrough to true
+                // fallthrough to true
                 default:
                   // All other response codes should be retried to gRPC.
                   return proceedToRetry(
@@ -772,7 +772,7 @@ public class ProcessorImpl
                     break;
                   }
                   dispatchingScope.counter(MetricNames.MISSING_DLQ).inc(1);
-                  // fallthrough to use retry topic
+                // fallthrough to use retry topic
                 case RETRY:
 
                   // If there's retry queue and enabled, find the one matches the retry count
@@ -823,7 +823,7 @@ public class ProcessorImpl
                     break;
                   }
                   dispatchingScope.counter(MetricNames.MISSING_RESQ).inc(1);
-                  // fallthrough to true
+                // fallthrough to true
                 default:
                   // There is no resilience queue, so do not send to Kafka producer and propagate
                   // errors up.
@@ -859,14 +859,14 @@ public class ProcessorImpl
               }
               switch (result.getCode()) {
                 case RESQ:
-                  // fallthrough
+                // fallthrough
                 case RETRY:
-                  // fallthrough
+                // fallthrough
                 case DLQ:
                   // Treat RETRY and STASH as failures that should produce to KAFKA.
                   return true;
-                  // TODO(T4772403): what should the fetcher do if we propagate the result up?
-                  //  currently, the processor will eventually get stuck
+                // TODO(T4772403): what should the fetcher do if we propagate the result up?
+                //  currently, the processor will eventually get stuck
                 default:
                   return false;
               }
@@ -907,7 +907,7 @@ public class ProcessorImpl
               r -> {
                 switch (r.getCode()) {
                   case SKIP:
-                    // fallthrough
+                  // fallthrough
                   case COMMIT:
                     // SKIP and COMMIT response from Kafka Dispatcher represents successful produce
                     // so we can mark ack in ack manager.
@@ -963,7 +963,7 @@ public class ProcessorImpl
               }
               switch (r.getCode()) {
                 case SKIP:
-                  // fallthrough to false
+                // fallthrough to false
                 case COMMIT:
                   // SKIP, COMMIT is considered success for Kafka producing
                   retryerScope.counter(MetricNames.RETRYER_ACCEPT_RESULT).inc(1);
@@ -1018,9 +1018,7 @@ public class ProcessorImpl
         };
     Map<String, String> metricsTags = getMetricsTags(job);
     final String[] tags =
-        metricsTags
-            .entrySet()
-            .stream()
+        metricsTags.entrySet().stream()
             .flatMap(e -> Stream.of(e.getKey(), e.getValue()))
             .toArray(String[]::new);
 

@@ -93,6 +93,7 @@ public class ThroughputTracker {
 
     /** The Message rate. */
     Meter messageRate = new Meter(ticker);
+
     /** The Bytes rate. */
     Meter bytesRate = new Meter(ticker);
 

@@ -73,10 +73,7 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
         hibernatingJobRebalancer.computeWorkerId(Arrays.asList(rebalancingJobGroup), workerMap);
     Assert.assertTrue(usedWorkers.isEmpty());
     Assert.assertTrue(rebalancingJobGroup.isChanged());
-    rebalancingJobGroup
-        .getJobs()
-        .values()
-        .stream()
+    rebalancingJobGroup.getJobs().values().stream()
         .forEach(storedJob -> Assert.assertEquals(0, storedJob.getWorkerId()));
   }
 
@@ -89,10 +86,7 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
         hibernatingJobRebalancer.computeWorkerId(Arrays.asList(rebalancingJobGroup), workerMap);
     Assert.assertEquals(ImmutableSet.of(1L), usedWorkers);
     Assert.assertFalse(rebalancingJobGroup.isChanged());
-    rebalancingJobGroup
-        .getJobs()
-        .values()
-        .stream()
+    rebalancingJobGroup.getJobs().values().stream()
         .forEach(storedJob -> Assert.assertEquals(1, storedJob.getWorkerId()));
   }
 
@@ -105,10 +99,7 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
         hibernatingJobRebalancer.computeWorkerId(Arrays.asList(rebalancingJobGroup), workerMap);
     Assert.assertEquals(ImmutableSet.of(2L), usedWorkers);
     Assert.assertTrue(rebalancingJobGroup.isChanged());
-    rebalancingJobGroup
-        .getJobs()
-        .values()
-        .stream()
+    rebalancingJobGroup.getJobs().values().stream()
         .forEach(storedJob -> Assert.assertEquals(2, storedJob.getWorkerId()));
   }
 
@@ -148,10 +139,7 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
         hibernatingJobRebalancer.computeWorkerId(Arrays.asList(rebalancingJobGroup), workerMap);
     Assert.assertEquals(ImmutableSet.of(1L), usedWorkers);
     Assert.assertTrue(rebalancingJobGroup.isChanged());
-    rebalancingJobGroup
-        .getJobs()
-        .values()
-        .stream()
+    rebalancingJobGroup.getJobs().values().stream()
         .forEach(storedJob -> Assert.assertEquals(1, storedJob.getWorkerId()));
   }
 

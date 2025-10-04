@@ -25,12 +25,11 @@ import org.springframework.test.context.TestPropertySource;
 @EnableConfigurationProperties
 @RunWith(UForwarderSpringJUnit4ClassRunner.class)
 @SpringBootTest(
-  classes = {
-    CoreInfraAutoConfiguration.class,
-    ControllerAutoConfiguration.class,
-    ControllerAutoConfigurationTest.MockNodeAutoConfiguration.class
-  }
-)
+    classes = {
+      CoreInfraAutoConfiguration.class,
+      ControllerAutoConfiguration.class,
+      ControllerAutoConfigurationTest.MockNodeAutoConfiguration.class
+    })
 @ActiveProfiles(profiles = {"data-transfer-worker"})
 @TestPropertySource(properties = {"spring.config.location=classpath:/base.yaml"})
 public class ControllerAutoConfigurationTest extends FievelTestBase {

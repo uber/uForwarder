@@ -144,6 +144,7 @@ public class WindowedAggregator<T> {
   private class Bucket<T> {
     /** The Bucket id. */
     volatile long bucketId;
+
     /** The Value. */
     @Nullable volatile T value;
   }

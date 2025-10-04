@@ -243,9 +243,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
   }
 
   private static Double getMaxLoadOfWorker(Map<Long, StoredJob> jobMap) {
-    return jobMap
-        .values()
-        .stream()
+    return jobMap.values().stream()
         .collect(
             Collectors.groupingBy(
                 e -> e.getWorkerId(),
@@ -289,9 +287,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
           .computeIfAbsent(row.getJobGroupId(), o -> StoredJobGroup.newBuilder())
           .addJobs(row.getJob());
     }
-    return builderMap
-        .entrySet()
-        .stream()
+    return builderMap.entrySet().stream()
         .collect(
             Collectors.toMap(
                 Map.Entry::getKey,
@@ -386,8 +382,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     for (int i = 0; i < maxRound; ++i) {
       Map<Long, Long> jobToWorkerId =
           jobToWorkerId(
-              jobs.values()
-                  .stream()
+              jobs.values().stream()
                   .flatMap(s -> s.getJobs().values().stream())
                   .collect(Collectors.toList()));
       rebalanceFunction.accept(jobs, workers);
@@ -395,8 +390,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
           calcDiff(
               jobToWorkerId,
               jobToWorkerId(
-                  jobs.values()
-                      .stream()
+                  jobs.values().stream()
                       .flatMap(s -> s.getJobs().values().stream())
                       .collect(Collectors.toList())));
       Set<Long> usedWorkers = usedWorkers(jobs, workers);
@@ -445,8 +439,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
 
@@ -461,8 +454,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     Map<Long, Long> prevJobToWorkerId = jobToWorkerId;
     jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     Set<Long> deletedJobIds = deletedJob(prevJobToWorkerId, jobToWorkerId);
@@ -471,8 +463,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     // updated jobs and deleted job should have same URI
     Set<Long> updatedJobIds = updatedJob(prevJobToWorkerId, jobToWorkerId);
     List<StoredJob> updatedJobs =
-        jobs.entrySet()
-            .stream()
+        jobs.entrySet().stream()
             .flatMap(o -> o.getValue().getJobs().values().stream())
             .filter(o -> updatedJobIds.contains(o.getJob().getJobId()))
             .collect(Collectors.toList());
@@ -494,8 +485,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
 
@@ -505,8 +495,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     Map<Long, Long> prevJobToWorkerId = jobToWorkerId;
     jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     Assert.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
@@ -529,8 +518,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
 
@@ -540,8 +528,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     Map<Long, Long> prevJobToWorkerId = jobToWorkerId;
     jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     Assert.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
@@ -575,8 +562,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
 
@@ -584,8 +570,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     Map<Long, Long> prevJobToWorkerId = jobToWorkerId;
     jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     int diff = calcDiff(prevJobToWorkerId, jobToWorkerId);
@@ -883,10 +868,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     Assert.assertEquals(9, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
     Assert.assertEquals(
         1,
-        rebalancingJobGroup1
-            .getJobs()
-            .values()
-            .stream()
+        rebalancingJobGroup1.getJobs().values().stream()
             .map(StoredJob::getWorkerId)
             .collect(Collectors.toSet())
             .size());
@@ -909,10 +891,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
 
     Assert.assertEquals(
         2,
-        rebalancingJobGroup1
-            .getJobs()
-            .values()
-            .stream()
+        rebalancingJobGroup1.getJobs().values().stream()
             .map(StoredJob::getWorkerId)
             .collect(Collectors.toSet())
             .size());
@@ -934,10 +913,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
 
     Assert.assertEquals(
         2,
-        rebalancingJobGroup1
-            .getJobs()
-            .values()
-            .stream()
+        rebalancingJobGroup1.getJobs().values().stream()
             .map(StoredJob::getWorkerId)
             .collect(Collectors.toSet())
             .size());

@@ -140,9 +140,7 @@ class StubManager {
   }
 
   Map<Job, Map<Long, MessageStub>> getStubs() {
-    return topicPartitionStubMap
-        .values()
-        .stream()
+    return topicPartitionStubMap.values().stream()
         .collect(Collectors.toMap(StubMap::getJob, StubMap::getStubs));
   }
 
@@ -179,6 +177,7 @@ class StubManager {
 
   private class StubMap {
     private final Job job;
+
     /** mapping from message offset to stub */
     private Map<Long, MessageStub> stubs;
 

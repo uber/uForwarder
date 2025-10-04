@@ -88,9 +88,7 @@ public class HibernatingJobRebalancer {
     Map<RebalancingJobGroup, Long> result = new HashMap<>();
     // compute worker job groups
     Map<Long, List<RebalancingJobGroup>> workerJobGroupMap =
-        jobGroupToWorker
-            .entrySet()
-            .stream()
+        jobGroupToWorker.entrySet().stream()
             .collect(
                 Collectors.toMap(
                     entry -> entry.getValue(),
@@ -98,16 +96,13 @@ public class HibernatingJobRebalancer {
                     (list1, list2) ->
                         Stream.concat(list1.stream(), list2.stream())
                             .collect(Collectors.toList())));
-    workerIds
-        .stream()
+    workerIds.stream()
         .forEach(
             workerId -> workerJobGroupMap.computeIfAbsent(workerId, o -> Collections.EMPTY_LIST));
 
     // non-empty workers sorted by number of jobGroups in ascending order
     List<Map.Entry<Long, List<RebalancingJobGroup>>> workerJobGroupList =
-        workerJobGroupMap
-            .entrySet()
-            .stream()
+        workerJobGroupMap.entrySet().stream()
             .filter(entry -> entry.getKey() != WorkerUtils.UNSET_WORKER_ID)
             .sorted(Comparator.comparingInt(entry -> entry.getValue().size()))
             .collect(Collectors.toList());
@@ -115,9 +110,7 @@ public class HibernatingJobRebalancer {
     int nSpareWorkers = workerJobGroupList.size() - placementPlan.size();
     // free spare workers
     List<RebalancingJobGroup> freeJobGroups =
-        workerJobGroupList
-            .subList(0, nSpareWorkers)
-            .stream()
+        workerJobGroupList.subList(0, nSpareWorkers).stream()
             .map(entry -> entry.getValue())
             .flatMap(list -> list.stream())
             .collect(Collectors.toList());
@@ -154,8 +147,7 @@ public class HibernatingJobRebalancer {
     }
 
     // collect result
-    workerJobGroupList
-        .stream()
+    workerJobGroupList.stream()
         .forEach(
             entry -> entry.getValue().stream().forEach(group -> result.put(group, entry.getKey())));
 

@@ -45,24 +45,24 @@ public class DispatcherImpl implements Sink<DispatcherMessage, DispatcherRespons
     }
 
     switch (resp.status().getCode()) {
-        // COMMIT
+      // COMMIT
       case OK:
         // Handle OK responses uniformly as COMMIT.
         // Practically, onCompleted should be invoked on OK instead of onError.
         // gRPC Status OK -> Kafka COMMIT is part of the API contract.
         return new DispatcherResponse(DispatcherResponse.Code.COMMIT);
-        // SKIP
+      // SKIP
       case ALREADY_EXISTS:
         return new DispatcherResponse(DispatcherResponse.Code.SKIP);
-        // RETRY
+      // RETRY
       case RESOURCE_EXHAUSTED:
         // gRPC Status RESOURCE_EXHAUSTED -> Kafka RETRY is part of the API contract.
         return new DispatcherResponse(DispatcherResponse.Code.RETRY);
-        // DLQ
+      // DLQ
       case NOT_FOUND:
       case INVALID_ARGUMENT:
       case FAILED_PRECONDITION:
-        // gRPC Status FAILED_PRECONDITION -> Kafka DLQ is part of the API contract.
+      // gRPC Status FAILED_PRECONDITION -> Kafka DLQ is part of the API contract.
       case ABORTED:
       case OUT_OF_RANGE:
       case DATA_LOSS:
@@ -79,20 +79,20 @@ public class DispatcherImpl implements Sink<DispatcherMessage, DispatcherRespons
         }
       case DEADLINE_EXCEEDED:
         return new DispatcherResponse(DispatcherResponse.Code.BACKOFF);
-        // INVALID
+      // INVALID
       case UNKNOWN: // Log detailed response to debug for UNKNOWN code
         LOGGER.debug("Dispatcher response with code UNKNOWN: {}", resp);
         return new DispatcherResponse(DispatcherResponse.Code.INVALID);
-        // INVALID
+      // INVALID
       case CANCELLED:
       case UNIMPLEMENTED:
       case INTERNAL:
-        // gRPC status PERMISSION_DENIED -> returned when provided SPIFFE ids dont have
-        // authorization
-        // to consume
+      // gRPC status PERMISSION_DENIED -> returned when provided SPIFFE ids dont have
+      // authorization
+      // to consume
       case PERMISSION_DENIED:
-        // gRPC status UNAUTHETICATED -> returned when provided SPIFFE ids dont match with muttley
-        // uri
+      // gRPC status UNAUTHETICATED -> returned when provided SPIFFE ids dont match with muttley
+      // uri
       case UNAUTHENTICATED:
       default:
         return new DispatcherResponse(DispatcherResponse.Code.INVALID);

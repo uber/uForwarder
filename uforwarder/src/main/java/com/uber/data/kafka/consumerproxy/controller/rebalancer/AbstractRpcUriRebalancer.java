@@ -84,9 +84,7 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
 
     // split jobs groups into two groups: running job groups and hibernating job groups
     Map<Boolean, List<RebalancingJobGroup>> JobGroupsByType =
-        jobGroupMap
-            .values()
-            .stream()
+        jobGroupMap.values().stream()
             .collect(Collectors.groupingBy(jobGroup -> isHibernatingJobGroup(jobGroup)));
 
     Map<String, SortedSet<RebalancingWorker>> reservedAssignment =
@@ -99,15 +97,12 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
         .forEach(
             sortedSet ->
                 usedRunningWorkers.addAll(
-                    sortedSet
-                        .stream()
+                    sortedSet.stream()
                         .map(RebalancingWorker::getWorkerId)
                         .collect(Collectors.toList())));
 
     Map<Long, StoredWorker> spareWorkerMap =
-        workerMap
-            .entrySet()
-            .stream()
+        workerMap.entrySet().stream()
             .filter(entry -> !usedRunningWorkers.contains(entry.getKey()))
             .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
 
@@ -311,9 +306,7 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
     Set<Long> spareWorkerSet =
         Sets.difference(
             workerIds,
-            messagesPerSecByWorkerAndUri
-                .values()
-                .stream()
+            messagesPerSecByWorkerAndUri.values().stream()
                 .flatMap(e -> e.keySet().stream())
                 .collect(Collectors.toSet()));
     // sort by decreasing worker id so that we prefer placement onto newer workers to avoid
@@ -384,9 +377,7 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
     Set<Long> spareWorkerSet =
         Sets.difference(
             workerIds,
-            reservedAssignment
-                .values()
-                .stream()
+            reservedAssignment.values().stream()
                 .flatMap(Collection::stream)
                 .map(RebalancingWorker::getWorkerId)
                 .collect(Collectors.toSet()));

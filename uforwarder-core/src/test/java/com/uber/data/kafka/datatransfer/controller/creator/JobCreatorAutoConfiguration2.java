@@ -10,5 +10,6 @@ public class JobCreatorAutoConfiguration2 {
     return new SimpleJobCreator() {};
   }
 
-  static class SimpleJobCreator implements JobCreator {};
+  static class SimpleJobCreator implements JobCreator {}
+  ;
 }

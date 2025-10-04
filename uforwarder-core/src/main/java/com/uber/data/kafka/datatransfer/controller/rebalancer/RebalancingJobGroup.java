@@ -50,10 +50,7 @@ public final class RebalancingJobGroup {
         storedJobGroup.model(),
         storedJobGroup.version(),
         // this map is deliberately generated to be mutable.
-        storedJobGroup
-            .model()
-            .getJobsList()
-            .stream()
+        storedJobGroup.model().getJobsList().stream()
             .collect(Collectors.toConcurrentMap(k -> k.getJob().getJobId(), v -> v)),
         jobStatusMap);
   }
