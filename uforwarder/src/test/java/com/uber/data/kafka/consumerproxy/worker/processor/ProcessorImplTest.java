@@ -1,5 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import static org.awaitility.Awaitility.await;
+
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.uber.data.kafka.consumer.DLQMetadata;
@@ -10,7 +12,6 @@ import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcResponse;
 import com.uber.data.kafka.consumerproxy.worker.filter.Filter;
 import com.uber.data.kafka.consumerproxy.worker.filter.OriginalClusterFilter;
-import com.uber.data.kafka.consumerproxy.worker.limiter.AdaptiveInflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.InflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.LongFixedInflightLimiter;
 import com.uber.data.kafka.consumerproxy.worker.limiter.VegasAdaptiveInflightLimiter;
@@ -56,6 +57,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
+import org.mockito.invocation.Invocation;
 import org.mockito.stubbing.Answer;
 
 public class ProcessorImplTest extends ProcessorTestBase {
@@ -64,12 +66,12 @@ public class ProcessorImplTest extends ProcessorTestBase {
   private PipelineStateManager pipelineStateManager;
   private AckManager ackManager;
   private ProcessorImpl processor;
-  private AdaptiveInflightLimiter.Builder adaptiveInflightLimiterBuilder;
   private ArgumentCaptor<ItemAndJob<DispatcherMessage>> dispatcherMessageArgumentCaptor;
   private CoreInfra infra;
   private Gauge inflight;
   private Histogram endToEndLatency;
   private OutboundMessageLimiter.Builder outboundMessageLimiterBuilder;
+  private OutboundMessageLimiter outboundMessageLimiter;
   private UnprocessedMessageManager.Builder UnprocessedMessageManagerBuilder;
   private MessageAckStatusManager.Builder messageAckStatusManagerBuilder;
   private ProcessorConfiguration config;
@@ -100,7 +102,6 @@ public class ProcessorImplTest extends ProcessorTestBase {
         .thenReturn(endToEndLatency);
     Mockito.when(timer.start()).thenReturn(stopwatch);
     infra = CoreInfra.builder().withScope(scope).build();
-    adaptiveInflightLimiterBuilder = VegasAdaptiveInflightLimiter.newBuilder();
     executor = Executors.newSingleThreadScheduledExecutor();
     dispatcher = Mockito.mock(Sink.class);
     ackManager = Mockito.mock(AckManager.class);
@@ -125,7 +126,9 @@ public class ProcessorImplTest extends ProcessorTestBase {
                   return CompletableFuture.runAsync(runnable, executor);
                 });
     outboundMessageLimiterBuilder =
-        new SimpleOutboundMessageLimiter.Builder(infra, adaptiveInflightLimiterBuilder, false);
+        new SimpleOutboundMessageLimiter.Builder(
+            infra, VegasAdaptiveInflightLimiter.newBuilder(), false);
+    outboundMessageLimiter = Mockito.mock(OutboundMessageLimiter.class);
 
     config = new ProcessorConfiguration();
     config.setMaxInboundCacheCount(1);
@@ -2144,5 +2147,51 @@ public class ProcessorImplTest extends ProcessorTestBase {
         .reportIssue(job, KafkaPipelineIssue.MESSAGE_RATE_LIMITED.getPipelineHealthIssue());
     Mockito.verify(pipelineStateManager, Mockito.times(1))
         .reportIssue(job, KafkaPipelineIssue.BYTES_RATE_LIMITED.getPipelineHealthIssue());
+  }
+
+  @Test
+  public void testSubmitInflightLimited() throws Exception {
+    CompletableFuture inflightReslt = new CompletableFuture<>();
+    Mockito.when(outboundMessageLimiter.acquirePermitAsync(Mockito.any(ProcessorMessage.class)))
+        .thenReturn(inflightReslt);
+    Mockito.when(outboundMessageLimiter.contains(Mockito.any(Job.class))).thenReturn(true);
+
+    processor =
+        new ProcessorImpl(
+            ackManager,
+            executor,
+            outboundMessageLimiter,
+            job.getRpcDispatcherTask().getUri(),
+            10,
+            filter,
+            1,
+            1,
+            infra);
+    processor.setNextStage(dispatcher);
+    processor.setPipelineStateManager(pipelineStateManager);
+    processor.start();
+    processor.run(job).toCompletableFuture().get();
+
+    CompletableFuture<DispatcherResponse> dispatcherFuture = new CompletableFuture<>();
+    dispatcherFuture.complete(new DispatcherResponse(DispatcherResponse.Code.COMMIT));
+    Mockito.when(dispatcher.submit(Mockito.any())).thenReturn(dispatcherFuture);
+
+    CompletableFuture<Long> offsetFuture =
+        processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
+    // limited by limiter
+    await()
+        .until(
+            () -> {
+              for (Invocation invocation :
+                  Mockito.mockingDetails(outboundMessageLimiter).getInvocations()) {
+                if (invocation.getMethod().getName().equals("acquirePermitAsync")) {
+                  return true;
+                }
+              }
+              return false;
+            });
+    // grant permit to unblock
+    inflightReslt.complete((InflightLimiter.Permit) result -> true);
+    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
   }
 }
