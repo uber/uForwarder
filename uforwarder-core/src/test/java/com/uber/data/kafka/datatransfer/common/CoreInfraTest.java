@@ -17,7 +17,12 @@ public class CoreInfraTest extends FievelTestBase {
   }
 
   @Test
-  public void getThreadMXBean() {
+  public void testGetThreadMXBean() {
     Assert.assertNotNull(CoreInfra.NOOP.getThreadMXBean());
+  }
+
+  @Test
+  public void testGetOperatingSystemMXBean() {
+    Assert.assertNotNull(CoreInfra.NOOP.getOperatingSystemMXBean());
   }
 }

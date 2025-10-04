@@ -6,6 +6,7 @@ import com.uber.m3.tally.Scope;
 import io.opentracing.Tracer;
 import io.opentracing.noop.NoopTracerFactory;
 import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.ThreadMXBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
@@ -49,6 +50,12 @@ public class CoreInfraAutoConfiguration {
   }
 
   @Bean
+  @ConditionalOnMissingBean(OperatingSystemMXBean.class)
+  public OperatingSystemMXBean defaultOperatingSystemMXBean() {
+    return ManagementFactory.getOperatingSystemMXBean();
+  }
+
+  @Bean
   public CoreInfra coreInfra(
       Scope scope,
       Tracer tracer,
@@ -56,7 +63,8 @@ public class CoreInfraAutoConfiguration {
       DynamicConfiguration dynamicConfiguration,
       Placement placement,
       Node node,
-      ThreadMXBean threadMXBean) {
+      ThreadMXBean threadMXBean,
+      OperatingSystemMXBean operatingSystemMXBean) {
     return CoreInfra.builder()
         .withScope(scope)
         .withTracer(tracer)
@@ -65,6 +73,7 @@ public class CoreInfraAutoConfiguration {
         .withPlacement(placement)
         .withNode(node)
         .withThreadMXBean(threadMXBean)
+        .withOperatingSystemMXBean(operatingSystemMXBean)
         .build();
   }
 }
