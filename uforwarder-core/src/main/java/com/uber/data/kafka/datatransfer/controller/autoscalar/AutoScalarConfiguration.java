@@ -24,6 +24,7 @@ public class AutoScalarConfiguration {
   private static final Duration DEFAULT_REACTIVE_WINDOW_SCALE_DURATION = Duration.ofMinutes(5);
   private static final double DEFAULT_REACTIVE_WINDOW_SCALE_RATE = 0.2;
   private static final double DEFAULT_DOWN_SCALE_WINDOW_MIN_RATIO = 1.0;
+  private static final double DEFAULT_MAX_SCALE_WINDOW_DURATION_JITTER = 0.0;
 
   // scale window duration for up scale
   private Duration upScaleWindowDuration = DEFAULT_UP_SCALE_WINDOW_DURATION;
@@ -91,6 +92,8 @@ public class AutoScalarConfiguration {
   // indicates minimum down scale window relatively to down scale window, set to 1.0 to disable
   // reactive down scale window
   private double downScaleWindowMinRatio = DEFAULT_DOWN_SCALE_WINDOW_MIN_RATIO;
+
+  private double maxScaleWindowDurationJitter = DEFAULT_MAX_SCALE_WINDOW_DURATION_JITTER;
 
   /**
    * Gets up scale window duration.
@@ -407,6 +410,11 @@ public class AutoScalarConfiguration {
     this.hibernatingEnabled = hibernatingEnabled;
   }
 
+  /**
+   * Limits max change of scale window duration in percentage
+   *
+   * @return
+   */
   public double getReactiveScaleWindowRate() {
     return reactiveScaleWindowRate;
   }
@@ -415,11 +423,21 @@ public class AutoScalarConfiguration {
     this.reactiveScaleWindowRate = reactiveScaleWindowRate;
   }
 
+  /**
+   * Limits minimal value of down scale window duration in percentage
+   *
+   * @return
+   */
   public double getDownScaleWindowMinRatio() {
     return downScaleWindowMinRatio;
   }
 
   public void setDownScaleWindowMinRatio(double downScaleWindowMinRatio) {
+    Preconditions.checkArgument(
+        downScaleWindowMinRatio > 0.0, "downScaleWindowMinRatio must be > 0");
+    Preconditions.checkArgument(
+        downScaleWindowMinRatio <= 1.0, "downScaleWindowMinRatio must be <= 1.0");
+
     this.downScaleWindowMinRatio = downScaleWindowMinRatio;
   }
 
@@ -465,6 +483,24 @@ public class AutoScalarConfiguration {
 
   public void setReactiveScaleWindowDuration(Duration reactiveScaleWindowDuration) {
     this.reactiveScaleWindowDuration = reactiveScaleWindowDuration;
+  }
+
+  /**
+   * Controls randomization of scale window duration in percentage. Jitter can reduce bulk head
+   * effect of workload scaling
+   *
+   * @return
+   */
+  public double getMaxScaleWindowDurationJitter() {
+    return maxScaleWindowDurationJitter;
+  }
+
+  public void setMaxScaleWindowDurationJitter(double maxScaleWindowDurationJitter) {
+    Preconditions.checkArgument(
+        maxScaleWindowDurationJitter >= 0.0, "maxScaleWindowDurationJitter must be >= 0");
+    Preconditions.checkArgument(
+        maxScaleWindowDurationJitter < 1.0, "maxScaleWindowDurationJitter must be < 1.0");
+    this.maxScaleWindowDurationJitter = maxScaleWindowDurationJitter;
   }
 
   private static void validateRange(double value, double min, double max, String name) {

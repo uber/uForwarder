@@ -72,6 +72,7 @@ master:
     reactiveScaleWindowDuration: 10m
     reactiveScaleWindowRate: 0.1
     downScaleWindowMinRatio: 0.5
+    maxScaleWindowDurationJitter: 0.1
 # These are configurations for the worker.
 worker:
   controller:

@@ -7,6 +7,7 @@ import com.uber.data.kafka.datatransfer.ScaleStateSnapshot;
 import com.uber.data.kafka.datatransfer.WindowedComputerSnapshot;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import javax.annotation.concurrent.ThreadSafe;
 
@@ -144,7 +145,8 @@ abstract class ScaleState {
               builder.config.getUpScaleMaxFactor(),
               builder.config.getUpScaleMinFactor(),
               builder.config.getUpScaleMaxFactor(),
-              builder.config.getUpScalePercentile()));
+              builder.config.getUpScalePercentile(),
+              builder.config.getMaxScaleWindowDurationJitter()));
       // with small scale, stop further scale down
       if (scale > EPSILON) {
         listBuilder.add(
@@ -158,7 +160,8 @@ abstract class ScaleState {
                 ONE,
                 builder.config.getDownScaleMinFactor(),
                 builder.config.getDownScaleMaxFactor(),
-                builder.config.getDownScalePercentile()));
+                builder.config.getDownScalePercentile(),
+                builder.config.getMaxScaleWindowDurationJitter()));
       }
       upDownScaleComputers = listBuilder.build();
     }
@@ -187,7 +190,8 @@ abstract class ScaleState {
               ONE,
               Scalar.ZERO,
               Scalar.ZERO,
-              builder.config.getDownScalePercentile())
+              builder.config.getDownScalePercentile(),
+              builder.config.getMaxScaleWindowDurationJitter())
           : ScaleComputer.NOOP;
     }
 
@@ -228,7 +232,8 @@ abstract class ScaleState {
               ONE,
               EPSILON,
               ONE,
-              builder.config.getUpScalePercentile());
+              builder.config.getUpScalePercentile(),
+              builder.config.getMaxScaleWindowDurationJitter());
     }
 
     @Override
@@ -284,7 +289,8 @@ abstract class ScaleState {
         double maxInputFactor,
         double minOutputFactor,
         double maxOutputFactor,
-        double windowPercentile) {
+        double windowPercentile,
+        double maxWindowDurationJitter) {
       this.windowBuilder = windowBuilder;
       this.scale = scale;
       this.minInputFactor = minInputFactor;
@@ -292,11 +298,20 @@ abstract class ScaleState {
       this.minOutputFactor = minOutputFactor;
       this.maxOutputFactor = maxOutputFactor;
       this.windowPercentile = windowPercentile;
-      resetWindow();
+      resetWindow(
+          maxWindowDurationJitter > 0.0
+              ? ThreadLocalRandom.current().nextDouble(maxWindowDurationJitter)
+              : 0.0);
     }
 
-    private void resetWindow() {
-      scaleWindow = windowBuilder.build(scale * minInputFactor, scale * maxInputFactor);
+    /**
+     * reset window state with specific jitter to reduce bulk head effect jitter applies to window
+     * duration limit
+     *
+     * @param jitter
+     */
+    private void resetWindow(double jitter) {
+      scaleWindow = windowBuilder.build(scale * minInputFactor, scale * maxInputFactor, jitter);
     }
 
     @Override
@@ -309,7 +324,7 @@ abstract class ScaleState {
           return Optional.of(proposal);
         } else {
           // reset the tumbling window when proposal not accepted
-          resetWindow();
+          resetWindow(0.0);
         }
       }
       return Optional.empty();
