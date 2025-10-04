@@ -27,8 +27,7 @@ import org.springframework.test.context.TestPropertySource;
 @SpringBootTest(classes = {RpcAutoConfiguration.class})
 @ActiveProfiles(profiles = {"data-transfer-controller"})
 @TestPropertySource(
-  properties = {"spring.config.location=classpath:/base.yaml", "master.store.enabled=false"}
-)
+    properties = {"spring.config.location=classpath:/base.yaml", "master.store.enabled=false"})
 public class RpcAutoConfigurationTest extends FievelTestBase {
   @MockBean Scope scope;
   @MockBean CoreInfra coreInfra;

@@ -45,11 +45,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
  */
 @Configuration
 @ConditionalOnProperty(
-  prefix = "master.store",
-  name = "enabled",
-  havingValue = "true",
-  matchIfMissing = true
-)
+    prefix = "master.store",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 @EnableConfigurationProperties({
   JobStoreConfiguration.class,
   JobGroupStoreConfiguration.class,

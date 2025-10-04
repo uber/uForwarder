@@ -16,6 +16,7 @@ import org.testcontainers.containers.Network;
 /** Utilities for network related stuffs during unit tests */
 public class NetworkUtils {
   private static final Logger logger = LoggerFactory.getLogger(NetworkUtils.class);
+
   /**
    * Validates the port is in use
    *
@@ -77,12 +78,7 @@ public class NetworkUtils {
    */
   public static String getIpAddress(GenericContainer container, Network network) {
     Optional<ContainerNetwork> matchingNetwork =
-        container
-            .getContainerInfo()
-            .getNetworkSettings()
-            .getNetworks()
-            .values()
-            .stream()
+        container.getContainerInfo().getNetworkSettings().getNetworks().values().stream()
             .filter(n -> n.getNetworkID().equals(network.getId()))
             .findAny();
 

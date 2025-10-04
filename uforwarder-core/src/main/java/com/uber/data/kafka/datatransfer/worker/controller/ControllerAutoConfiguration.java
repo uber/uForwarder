@@ -16,11 +16,10 @@ import org.springframework.context.annotation.Profile;
 
 @Configuration
 @ConditionalOnProperty(
-  prefix = "worker.controller",
-  name = "enabled",
-  havingValue = "true",
-  matchIfMissing = true
-)
+    prefix = "worker.controller",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 @EnableConfigurationProperties({GrpcControllerConfiguration.class})
 @Profile("data-transfer-worker")
 public class ControllerAutoConfiguration {
@@ -39,22 +38,20 @@ public class ControllerAutoConfiguration {
 
   @Bean
   @ConditionalOnProperty(
-    prefix = "worker.controller",
-    name = "type",
-    havingValue = "default",
-    matchIfMissing = false
-  )
+      prefix = "worker.controller",
+      name = "type",
+      havingValue = "default",
+      matchIfMissing = false)
   public ManagedChannelFactory managedChannelFactory() {
     return ManagedChannelFactory.DEFAULT_INSTANCE;
   }
 
   @Bean
   @ConditionalOnProperty(
-    prefix = "worker.controller",
-    name = "type",
-    havingValue = "default",
-    matchIfMissing = false
-  )
+      prefix = "worker.controller",
+      name = "type",
+      havingValue = "default",
+      matchIfMissing = false)
   public HostResolver masterClientResolver(GrpcControllerConfiguration config) {
     return new StaticResolver(HostAndPort.fromString(config.getMasterHostPort()));
   }

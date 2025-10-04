@@ -25,16 +25,14 @@ import org.springframework.test.context.TestPropertySource;
 @EnableConfigurationProperties
 @RunWith(UForwarderSpringJUnit4ClassRunner.class)
 @SpringBootTest(
-  classes = {
-    MasterManagementAutoConfiguration.class,
-    StoreAutoConfiguration.class,
-    NodeAutoConfiguration.class,
-  }
-)
+    classes = {
+      MasterManagementAutoConfiguration.class,
+      StoreAutoConfiguration.class,
+      NodeAutoConfiguration.class,
+    })
 @ActiveProfiles(profiles = {"data-transfer-controller"})
 @TestPropertySource(
-  properties = {"spring.config.location=classpath:/base.yaml", "master.store.enabled=false"}
-)
+    properties = {"spring.config.location=classpath:/base.yaml", "master.store.enabled=false"})
 public class MasterManagementAutoConfigurationTest extends FievelTestBase {
   @MockBean LeaderSelector leaderSelector;
   @MockBean ReadStore<Long, StoredJob> jobStore;

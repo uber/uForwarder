@@ -91,9 +91,7 @@ public class JobManagerTest extends FievelTestBase {
     Map<Long, StoredWorker> workers = ImmutableMap.of(1L, buildWorker(1), 2L, buildWorker(2));
     Mockito.when(workerStore.getAll())
         .thenReturn(
-            workers
-                .entrySet()
-                .stream()
+            workers.entrySet().stream()
                 .collect(
                     Collectors.toMap(Map.Entry::getKey, e -> Versioned.from(e.getValue(), 0))));
     jobGroupStore = Mockito.mock(Store.class);

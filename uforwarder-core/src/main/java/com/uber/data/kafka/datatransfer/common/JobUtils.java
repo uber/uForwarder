@@ -31,6 +31,7 @@ import java.util.Collection;
 public final class JobUtils {
   /** UNSET_JOB_ID marks a job that has not yet been assigned a job id. */
   public static final long UNSET_JOB_ID = 0;
+
   /** UNSET_PARTITION marks a partition that is unset. */
   public static final int UNSET_PARTITION = -1;
 

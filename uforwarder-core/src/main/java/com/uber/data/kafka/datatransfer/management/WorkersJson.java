@@ -38,17 +38,13 @@ public class WorkersJson {
 
     // count jobs by worker_id
     Map<Long, Long> jobCountByWorkerId =
-        jobGroups
-            .values()
-            .stream()
+        jobGroups.values().stream()
             .flatMap(jg -> jg.model().getJobsList().stream())
             .map(j -> j.getWorkerId())
             .collect(Collectors.groupingBy(Function.identity(), Collectors.counting()));
 
     Map<Long, Double> totalLoadByWorkerId =
-        jobGroups
-            .values()
-            .stream()
+        jobGroups.values().stream()
             .flatMap(jg -> jg.model().getJobsList().stream())
             .collect(
                 Collectors.groupingBy(

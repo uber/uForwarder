@@ -19,16 +19,14 @@ import org.springframework.test.context.TestPropertySource;
 @EnableConfigurationProperties
 @RunWith(UForwarderSpringJUnit4ClassRunner.class)
 @SpringBootTest(
-  classes = {
-    KafkaDispatcherFactoryAutoConfiguration.class,
-  }
-)
+    classes = {
+      KafkaDispatcherFactoryAutoConfiguration.class,
+    })
 @TestPropertySource(
-  properties = {
-    "spring.config.location=classpath:/base.yaml",
-    "worker.dispatcher.kafka.enabled=true"
-  }
-)
+    properties = {
+      "spring.config.location=classpath:/base.yaml",
+      "worker.dispatcher.kafka.enabled=true"
+    })
 public class KafkaDispatcherFactoryAutoConfigurationTest extends FievelTestBase {
   @Autowired KafkaDispatcherConfiguration config;
   @Autowired KafkaDispatcherFactory factory;

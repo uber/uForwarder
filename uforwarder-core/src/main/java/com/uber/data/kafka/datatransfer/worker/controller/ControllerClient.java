@@ -54,7 +54,9 @@ public final class ControllerClient implements Closeable {
     return node;
   }
 
-  /** @return the gRPC channel that this master client is using to connect to the master. */
+  /**
+   * @return the gRPC channel that this master client is using to connect to the master.
+   */
   public ManagedChannel getChannel() {
     return channel;
   }
@@ -147,6 +149,7 @@ public final class ControllerClient implements Closeable {
       return new ControllerClient(
           Node.newBuilder().setHost(host).setPort(port).build(), channel, stub, infra);
     }
+
     /**
      * Reconnects to the provided node if there the node is different from the one the provided
      * client is connected to.

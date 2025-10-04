@@ -73,17 +73,23 @@ public final class ConsumerMetadata {
     return METADATA_MANAGER.getConsumerGroup();
   }
 
-  /** @return the Kafka partition associated with this request or -1 if one was not found. */
+  /**
+   * @return the Kafka partition associated with this request or -1 if one was not found.
+   */
   public static int getPartition() {
     return METADATA_MANAGER.getPartition();
   }
 
-  /** @return the Kafka offset associated with this request or -1 if one was not found. */
+  /**
+   * @return the Kafka offset associated with this request or -1 if one was not found.
+   */
   public static long getOffset() {
     return METADATA_MANAGER.getOffset();
   }
 
-  /** @return the Kafka retry count associated with this request or -1 if one was not found. */
+  /**
+   * @return the Kafka retry count associated with this request or -1 if one was not found.
+   */
   public static long getRetryCount() {
     return METADATA_MANAGER.getRetryCount();
   }

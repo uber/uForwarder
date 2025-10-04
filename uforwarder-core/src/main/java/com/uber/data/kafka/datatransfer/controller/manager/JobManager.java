@@ -69,6 +69,7 @@ public final class JobManager {
   private final ShadowRebalancerDelegate shadowRebalancerDelegate;
 
   private final LeaderSelector leaderSelector;
+
   /**
    * JobManager constructor is visible for testing only.
    *
@@ -101,10 +102,7 @@ public final class JobManager {
     boolean isFailure = false;
     try {
       Map<Long, JobSnapshot> jobs =
-          jobGroupStore
-              .getAll()
-              .values()
-              .stream()
+          jobGroupStore.getAll().values().stream()
               .map(g -> g.model().getJobsList())
               .flatMap(Collection::stream)
               .collect(
@@ -140,9 +138,7 @@ public final class JobManager {
 
   private static <K, V> Map<K, V> unversion(Map<K, Versioned<V>> versionedMap) {
     return Collections.unmodifiableMap(
-        versionedMap
-            .entrySet()
-            .stream()
+        versionedMap.entrySet().stream()
             .collect(Collectors.toMap(Map.Entry::getKey, v -> v.getValue().model())));
   }
 

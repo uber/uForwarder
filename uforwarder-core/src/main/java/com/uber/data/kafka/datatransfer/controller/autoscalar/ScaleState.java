@@ -13,6 +13,7 @@ abstract class ScaleState {
   private static final double EPSILON = 0.0000001;
   private static final double BOOTSTRAP_SCALE =
       1.0d; // max scale a hibernating job can bootstrap to
+
   /** The ScalarState Builder. */
   protected final Builder builder;
 

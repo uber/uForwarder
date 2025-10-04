@@ -56,9 +56,7 @@ public class AdminClient {
    */
   public ListOffsetsResult offsetsForTimes(Map<TopicPartition, Long> timestampsToSearch) {
     Map<TopicPartition, OffsetSpec> topicPartitionOffsets =
-        timestampsToSearch
-            .entrySet()
-            .stream()
+        timestampsToSearch.entrySet().stream()
             .collect(
                 Collectors.toMap(
                     entry -> entry.getKey(), entry -> OffsetSpec.forTimestamp(entry.getValue())));
@@ -119,8 +117,7 @@ public class AdminClient {
 
   private Map<TopicPartition, OffsetSpec> toOffsetSpecMap(
       Collection<TopicPartition> topicPartitions, OffsetSpec offsetSpec) {
-    return topicPartitions
-        .stream()
+    return topicPartitions.stream()
         .collect(Collectors.toMap(Function.identity(), entry -> offsetSpec));
   }
 

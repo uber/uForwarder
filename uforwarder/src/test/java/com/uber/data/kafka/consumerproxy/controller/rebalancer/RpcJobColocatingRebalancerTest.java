@@ -207,8 +207,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     // rerun the same initial jobs, it should not have diff
@@ -217,9 +216,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     runRebalanceToConverge(rebalancer::computeWorkerId, newJobs, workers, 4);
     Map<Long, Long> newJobToWorkerId =
         jobToWorkerId(
-            newJobs
-                .values()
-                .stream()
+            newJobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     Assert.assertEquals(0, calcDiff(newJobToWorkerId, jobToWorkerId));
@@ -248,8 +245,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
 
@@ -261,8 +257,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Map<Long, Long> prevJobToWorkerId = jobToWorkerId;
     jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     Set<Long> deletedJobIds = deletedJob(prevJobToWorkerId, jobToWorkerId);
@@ -293,8 +288,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
 
@@ -304,8 +298,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Map<Long, Long> prevJobToWorkerId = jobToWorkerId;
     jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     Assert.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
@@ -358,8 +351,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
 
@@ -367,8 +359,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Map<Long, Long> prevJobToWorkerId = jobToWorkerId;
     jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     Assert.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
@@ -410,8 +401,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     // Find 2 workers to be removed
     Set<Long> workersToBeRemoved =
-        jobs.values()
-            .stream()
+        jobs.values().stream()
             .map(e -> e.getJobs().values().stream().findFirst().get())
             .map(StoredJob::getWorkerId)
             .distinct()
@@ -420,13 +410,10 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     // collect the jobs which are running on the workers to be removed
     Set<Long> jobsWithRemovedWorkers =
-        jobs.values()
-            .stream()
+        jobs.values().stream()
             .filter(
                 e ->
-                    e.getJobs()
-                        .values()
-                        .stream()
+                    e.getJobs().values().stream()
                         .anyMatch(j -> workersToBeRemoved.contains(j.getWorkerId())))
             .flatMap(e -> e.getJobs().values().stream().map(j -> j.getJob().getJobId()))
             .collect(Collectors.toSet());
@@ -446,31 +433,22 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Set<Long> newWorkers = Sets.difference(result2.usedWorkers, result1.usedWorkers);
     Assert.assertTrue(
         "newly assigned workers are running",
-        workers
-            .values()
-            .stream()
+        workers.values().stream()
             .filter(w -> newWorkers.contains(w.getNode().getId()))
             .allMatch(w -> w.getState() == WorkerState.WORKER_STATE_WORKING));
 
     // jobs which were running on the workers to be removed should be updated
     Assert.assertTrue(
-        jobs.values()
-            .stream()
+        jobs.values().stream()
             .filter(
                 jobGroup ->
-                    jobGroup
-                        .getJobs()
-                        .values()
-                        .stream()
+                    jobGroup.getJobs().values().stream()
                         .anyMatch(j -> jobsWithRemovedWorkers.contains(j.getJob().getJobId())))
             .allMatch(RebalancingJobGroup::isChanged));
 
     // workers were changed
     Set<Long> workerIdOnJobsWithRemovedWorkers =
-        result2
-            .jobToWorkerId
-            .entrySet()
-            .stream()
+        result2.jobToWorkerId.entrySet().stream()
             .filter(e -> jobsWithRemovedWorkers.contains(e.getKey()))
             .map(Map.Entry::getValue)
             .collect(Collectors.toSet());
@@ -511,8 +489,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
 
@@ -520,8 +497,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Map<Long, Long> prevJobToWorkerId = jobToWorkerId;
     jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     int diff = calcDiff(prevJobToWorkerId, jobToWorkerId);
@@ -680,9 +656,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     Assert.assertTrue(
         "remaining workers all working",
-        workers
-            .values()
-            .stream()
+        workers.values().stream()
             .filter(w -> result2.usedWorkers.contains(w.getNode().getId()))
             .allMatch(w -> w.getState() == WorkerState.WORKER_STATE_WORKING));
     Assert.assertTrue(
@@ -840,9 +814,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     // test logic to not put worker in same partition: find job group in partition 0, put same
     // worker in virtual partition 1
     Map.Entry<String, Integer> e =
-        jobGroupToPartitionMap
-            .entrySet()
-            .stream()
+        jobGroupToPartitionMap.entrySet().stream()
             .filter(entry -> entry.getValue() == 0)
             .findFirst()
             .get();
@@ -912,28 +884,21 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     RpcJobColocatingRebalancer.RebalancingWorkerTable rebalancingWorkerTable =
         Iterables.getOnlyElement(rebalancer.getRebalancingTable().values());
     long workerInPartition0 =
-        rebalancingWorkerTable
-            .getAllWorkersForPartition(0)
-            .stream()
+        rebalancingWorkerTable.getAllWorkersForPartition(0).stream()
             .findFirst()
             .get()
             .getWorkerId();
     long workerInPartiton1 =
-        rebalancingWorkerTable
-            .getAllWorkersForPartition(1)
-            .stream()
+        rebalancingWorkerTable.getAllWorkersForPartition(1).stream()
             .findFirst()
             .get()
             .getWorkerId();
 
     RebalancingJobGroup jobGroupInPartition1 =
-        jobs.values()
-            .stream()
+        jobs.values().stream()
             .filter(
                 j ->
-                    j.getJobs()
-                        .values()
-                        .stream()
+                    j.getJobs().values().stream()
                         .anyMatch(j1 -> j1.getWorkerId() == workerInPartiton1))
             .findFirst()
             .get();
@@ -950,14 +915,10 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
         runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
     rebalancingWorkerTable = Iterables.getOnlyElement(rebalancer.getRebalancingTable().values());
     boolean isWorkerInPartition0 =
-        rebalancingWorkerTable
-            .getAllWorkersForPartition(0)
-            .stream()
+        rebalancingWorkerTable.getAllWorkersForPartition(0).stream()
             .anyMatch(w -> w.getWorkerId() == workerInPartition0);
     boolean isWorkerInPartition1 =
-        rebalancingWorkerTable
-            .getAllWorkersForPartition(1)
-            .stream()
+        rebalancingWorkerTable.getAllWorkersForPartition(1).stream()
             .anyMatch(w -> w.getWorkerId() == workerInPartition0);
 
     Assert.assertTrue(isWorkerInPartition0 ^ isWorkerInPartition1);
@@ -1425,9 +1386,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
       scale += row.getJob().getScale();
     }
     ScaleStatus scaleStatus = ScaleStatus.newBuilder().setScale(scale).build();
-    return builderMap
-        .entrySet()
-        .stream()
+    return builderMap.entrySet().stream()
         .collect(
             Collectors.toMap(
                 Map.Entry::getKey,
@@ -1450,10 +1409,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     List<Integer> overloadedWorkers = new ArrayList<>();
     Map<Long, Double> workerIdToWorkload = new HashMap<>();
     for (StoredJob job :
-        rebalanceSimResult
-            .jobGroupMap
-            .values()
-            .stream()
+        rebalanceSimResult.jobGroupMap.values().stream()
             .map(RebalancingJobGroup::getJobs)
             .flatMap(m -> m.values().stream())
             .collect(Collectors.toList())) {
@@ -1483,9 +1439,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     Map<Long, Long> workerToPartition = new HashMap<>();
     for (Long partition : partitions) {
       List<Long> workers =
-          rebalancingWorkerTable
-              .getAllWorkersForPartition(partition)
-              .stream()
+          rebalancingWorkerTable.getAllWorkersForPartition(partition).stream()
               .map(RebalancingWorkerWithSortedJobs::getWorkerId)
               .collect(Collectors.toList());
       workers.forEach(worker -> workerToPartition.put(worker, partition));
@@ -1546,8 +1500,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     result.usedWorkers = usedWorkersFunction.apply(jobs, workers);
     result.jobToWorkerId =
         jobToWorkerId(
-            jobs.values()
-                .stream()
+            jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     result.jobGroupMap = jobs;

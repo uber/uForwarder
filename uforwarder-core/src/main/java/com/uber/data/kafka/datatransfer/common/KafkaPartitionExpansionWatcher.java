@@ -118,12 +118,7 @@ public final class KafkaPartitionExpansionWatcher {
           infra.tracer(),
           () -> {
             Set<String> allAvailableTopics =
-                adminBuilder
-                    .build(entry.getKey())
-                    .listTopics()
-                    .listings()
-                    .get()
-                    .stream()
+                adminBuilder.build(entry.getKey()).listTopics().listings().get().stream()
                     .map(TopicListing::name)
                     .collect(Collectors.toSet());
             Sets.SetView<String> missingTopics =
@@ -176,9 +171,7 @@ public final class KafkaPartitionExpansionWatcher {
           // Verify that job_key is [0, expectedJobCount)
           // Removing any jobs that are not valid
           Map<Integer, StoredJob> currentJobs =
-              jobGroup
-                  .getJobsList()
-                  .stream()
+              jobGroup.getJobsList().stream()
                   .collect(Collectors.toMap(JobUtils::getJobKey, v -> v));
 
           Map<Integer, StoredJob> newJobs = new HashMap<>();

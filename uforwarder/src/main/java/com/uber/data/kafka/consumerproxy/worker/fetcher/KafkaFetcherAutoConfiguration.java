@@ -8,11 +8,10 @@ import org.springframework.context.annotation.Configuration;
 
 @Configuration
 @ConditionalOnProperty(
-  prefix = "worker.fetcher.kafka",
-  name = "enabled",
-  havingValue = "true",
-  matchIfMissing = false
-)
+    prefix = "worker.fetcher.kafka",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = false)
 @EnableConfigurationProperties(KafkaFetcherConfiguration.class)
 public class KafkaFetcherAutoConfiguration {
   @Bean

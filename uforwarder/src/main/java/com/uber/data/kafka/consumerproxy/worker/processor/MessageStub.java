@@ -210,6 +210,7 @@ public class MessageStub {
      * @return
      */
     boolean isCanceled();
+
     /**
      * reactor invoked exactly once when cancel
      *

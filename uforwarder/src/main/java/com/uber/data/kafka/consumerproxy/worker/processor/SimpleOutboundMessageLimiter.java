@@ -360,9 +360,7 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   }
 
   Collection<Job> jobs() {
-    return topicPartitionToScopeAndInflight
-        .values()
-        .stream()
+    return topicPartitionToScopeAndInflight.values().stream()
         .map(item -> item.job)
         .collect(Collectors.toSet());
   }

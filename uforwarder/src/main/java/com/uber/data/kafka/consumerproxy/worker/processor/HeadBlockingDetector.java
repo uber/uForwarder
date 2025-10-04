@@ -20,6 +20,7 @@ import java.util.Optional;
 public class HeadBlockingDetector {
   /** critical threshold of load factor */
   protected final double critical;
+
   /** minimal acked percentage to detect blocking */
   protected final double minAckPercent;
 

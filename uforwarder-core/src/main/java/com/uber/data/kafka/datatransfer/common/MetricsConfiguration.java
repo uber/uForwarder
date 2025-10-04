@@ -21,11 +21,10 @@ public class MetricsConfiguration {
   @Bean
   @Singleton
   @ConditionalOnProperty(
-    prefix = "metrics.rootScope",
-    name = "enabled",
-    havingValue = "true",
-    matchIfMissing = true
-  )
+      prefix = "metrics.rootScope",
+      name = "enabled",
+      havingValue = "true",
+      matchIfMissing = true)
   @ConditionalOnMissingBean
   public Scope rootScope(@Value("${tally.publish.interval.sec:5}") int tallyPublishIntervalSec) {
     if (INSTANCE == null) {

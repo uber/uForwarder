@@ -96,7 +96,9 @@ final class GrpcController implements Runnable, SmartLifecycle {
     state = state.nextState();
   }
 
-  /** @return a read-only copy of state that is useful for testing. */
+  /**
+   * @return a read-only copy of state that is useful for testing.
+   */
   @VisibleForTesting
   State getState() {
     return state;

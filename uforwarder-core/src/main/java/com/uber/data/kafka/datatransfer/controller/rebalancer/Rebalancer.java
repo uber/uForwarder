@@ -37,9 +37,7 @@ public interface Rebalancer {
           // only rebalance work if it is assigned to a stale worker.
           rebalancingJobGroup.updateJob(
               jobId,
-              jobEntry
-                  .getValue()
-                  .toBuilder()
+              jobEntry.getValue().toBuilder()
                   .setWorkerId(
                       workerIds.get(ThreadLocalRandom.current().nextInt(0, workers.size())))
                   .build());
@@ -76,9 +74,7 @@ public interface Rebalancer {
       for (Map.Entry<Long, StoredJob> jobEntry : rebalancingJobGroup.getJobs().entrySet()) {
         rebalancingJobGroup.updateJob(
             jobEntry.getKey(),
-            jobEntry
-                .getValue()
-                .toBuilder()
+            jobEntry.getValue().toBuilder()
                 .setJob(
                     // use the job util that merges a new job group with the old job.
                     Rebalancer.mergeJobGroupAndJob(

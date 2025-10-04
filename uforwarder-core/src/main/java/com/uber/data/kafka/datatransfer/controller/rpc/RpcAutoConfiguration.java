@@ -31,11 +31,10 @@ import org.springframework.context.annotation.Profile;
  */
 @Configuration
 @ConditionalOnProperty(
-  prefix = "datatransfer.master.rpc.autoconfiguration",
-  name = "enabled",
-  havingValue = "true",
-  matchIfMissing = true
-)
+    prefix = "datatransfer.master.rpc.autoconfiguration",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = true)
 @Import({StoreAutoConfiguration.class, AutoScalarAutoConfiguration.class})
 @Profile("data-transfer-controller")
 public class RpcAutoConfiguration {

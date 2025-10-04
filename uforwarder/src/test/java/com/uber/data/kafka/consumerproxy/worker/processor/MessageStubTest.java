@@ -33,8 +33,7 @@ public class MessageStubTest extends FievelTestBase {
     Assert.assertTrue(result);
     Assert.assertEquals(
         1,
-        stub.getDebugInfo()
-            .stream()
+        stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.ATTEMPT_CANCEL.toString()))
             .count());
     Assert.assertEquals(1, codeCount.get(DispatcherResponse.Code.DLQ).get());
@@ -70,8 +69,7 @@ public class MessageStubTest extends FievelTestBase {
     stub.cancel(DispatcherResponse.Code.RETRY);
     Assert.assertEquals(
         1,
-        stub.getDebugInfo()
-            .stream()
+        stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.PASSIVE_CANCEL.toString()))
             .count());
     CompletableFuture future = new CompletableFuture();
@@ -86,8 +84,7 @@ public class MessageStubTest extends FievelTestBase {
     stub.cancel(DispatcherResponse.Code.RETRY);
     Assert.assertEquals(
         1,
-        stub.getDebugInfo()
-            .stream()
+        stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.PASSIVE_CANCEL.toString()))
             .count());
     MessageStub.Attempt attempt = stub.newAttempt();
@@ -98,8 +95,7 @@ public class MessageStubTest extends FievelTestBase {
             .get();
     Assert.assertEquals(
         1,
-        stub.getDebugInfo()
-            .stream()
+        stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.ATTEMPT_CANCELED.toString()))
             .count());
     Assert.assertTrue(stub.getCurrentAttempt() == null);
@@ -117,15 +113,13 @@ public class MessageStubTest extends FievelTestBase {
     stub.cancel(DispatcherResponse.Code.RETRY);
     Assert.assertEquals(
         1,
-        stub.getDebugInfo()
-            .stream()
+        stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.ATTEMPT_CANCEL.toString()))
             .count());
     GrpcResponse response = attempt.complete(future).toCompletableFuture().get();
     Assert.assertEquals(
         1,
-        stub.getDebugInfo()
-            .stream()
+        stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.ATTEMPT_CANCELED.toString()))
             .count());
     Assert.assertTrue(stub.getCurrentAttempt() == null);
@@ -148,8 +142,7 @@ public class MessageStubTest extends FievelTestBase {
     Assert.assertEquals(Status.OK.getCode(), response.status().getCode());
     Assert.assertEquals(
         1,
-        stub.getDebugInfo()
-            .stream()
+        stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.CLOSED.toString()))
             .count());
   }
@@ -162,8 +155,7 @@ public class MessageStubTest extends FievelTestBase {
     Assert.assertTrue(stub.cancel(DispatcherResponse.Code.RETRY));
     Assert.assertEquals(
         1,
-        stub.getDebugInfo()
-            .stream()
+        stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.PERMIT_CANCEL.toString()))
             .count());
     Assert.assertTrue(future.isCancelled());
@@ -178,8 +170,7 @@ public class MessageStubTest extends FievelTestBase {
     CompletableFuture stubFuture = stub.withFuturePermit(future);
     Assert.assertEquals(
         1,
-        stub.getDebugInfo()
-            .stream()
+        stub.getDebugInfo().stream()
             .filter(
                 event -> event.contains(MessageStub.DebugStatus.PERMIT_PASSIVE_CANCELED.toString()))
             .count());
@@ -199,8 +190,7 @@ public class MessageStubTest extends FievelTestBase {
     stub.cancel(DispatcherResponse.Code.RETRY);
     Assert.assertEquals(
         1,
-        stub.getDebugInfo()
-            .stream()
+        stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.RETRY_CANCEL.toString()))
             .count());
     Assert.assertTrue(retryFuture.isCancelled());
@@ -236,8 +226,7 @@ public class MessageStubTest extends FievelTestBase {
     Assert.assertEquals(10, stub.getDebugInfo().size());
     Assert.assertEquals(
         10,
-        stub.getDebugInfo()
-            .stream()
+        stub.getDebugInfo().stream()
             .filter(event -> event.contains(MessageStub.DebugStatus.CLOSED.toString()))
             .count());
   }

@@ -45,6 +45,7 @@ public class GrpcManagedChannelPool extends ManagedChannel {
   private final Supplier<ManagedChannel> channelProvider;
   private final AtomicBoolean isUpdating;
   private final AtomicBoolean shutdown;
+
   /**
    * Creates a new GrpcManagedChannelPool for this callee, caller pair.
    *

@@ -43,8 +43,10 @@ public interface AckTrackingQueue extends MetricSource {
 
   /** CANNOT_ACK if the offset cannot be acked -- out of the tracking range. */
   long CANNOT_ACK = -1;
+
   /** DUPLICATED_ACK if the offset was acked before. */
   long DUPLICATED_ACK = -2;
+
   /** IN_MEMORY_ACK_ONLY if the caller should not commit to the server side. */
   long IN_MEMORY_ACK_ONLY = -3;
 
@@ -166,6 +168,7 @@ public interface AckTrackingQueue extends MetricSource {
      * @return
      */
     Stats stats();
+
     /**
      * Get head of line offset. -1 if queue is empty
      *

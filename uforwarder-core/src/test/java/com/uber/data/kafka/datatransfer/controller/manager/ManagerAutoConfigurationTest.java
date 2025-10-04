@@ -24,8 +24,7 @@ import org.springframework.test.context.TestPropertySource;
 @SpringBootTest(classes = {ManagerAutoConfiguration.class, WorkerStoreAutoConfiguration.class})
 @ActiveProfiles(profiles = {"data-transfer-controller"})
 @TestPropertySource(
-  properties = {"spring.config.location=classpath:/base.yaml", "master.store.enabled=false"}
-)
+    properties = {"spring.config.location=classpath:/base.yaml", "master.store.enabled=false"})
 public class ManagerAutoConfigurationTest extends FievelTestBase {
   @MockBean Scope scope;
   @MockBean Rebalancer rebalancer;

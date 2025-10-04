@@ -285,8 +285,7 @@ public final class ControllerWorkerService
         () -> {
           Timestamp timestamp = TimestampUtils.currentTimeMilliseconds();
           // Job status updates are done in parallel using Java parallel stream
-          jobStatusList
-              .parallelStream()
+          jobStatusList.parallelStream()
               .forEach(
                   jobStatus -> {
                     KafkaConsumerTask task = jobStatus.getJob().getKafkaConsumerTask();

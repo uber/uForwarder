@@ -309,9 +309,7 @@ class RebalancerCommon {
         rebalancingWorkerTable.getAllWorkersForPartition(partitionIdx);
     workers.sort(RebalancingWorkerWithSortedJobs::compareTo);
     numberOfWorkersToRemove = Math.min(workers.size(), numberOfWorkersToRemove);
-    return workers
-        .subList(0, numberOfWorkersToRemove)
-        .stream()
+    return workers.subList(0, numberOfWorkersToRemove).stream()
         .map(RebalancingWorkerWithSortedJobs::getWorkerId)
         .collect(Collectors.toList());
   }

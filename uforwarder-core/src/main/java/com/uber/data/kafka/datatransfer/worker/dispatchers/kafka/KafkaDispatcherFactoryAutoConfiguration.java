@@ -8,11 +8,10 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 
 @Configuration
 @ConditionalOnProperty(
-  prefix = "worker.dispatcher.kafka",
-  name = "enabled",
-  havingValue = "true",
-  matchIfMissing = false
-)
+    prefix = "worker.dispatcher.kafka",
+    name = "enabled",
+    havingValue = "true",
+    matchIfMissing = false)
 @EnableConfigurationProperties(KafkaDispatcherConfiguration.class)
 @EnableScheduling
 public class KafkaDispatcherFactoryAutoConfiguration<K, V> {

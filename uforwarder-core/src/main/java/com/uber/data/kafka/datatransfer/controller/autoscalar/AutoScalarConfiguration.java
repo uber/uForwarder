@@ -68,6 +68,7 @@ public class AutoScalarConfiguration {
 
   // enable hibernating by scaling work load down to zero
   private boolean hibernatingEnabled = false;
+
   /**
    * Gets up scale window duration.
    *

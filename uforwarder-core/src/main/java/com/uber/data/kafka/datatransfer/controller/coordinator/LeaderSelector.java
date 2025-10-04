@@ -205,9 +205,7 @@ public class LeaderSelector implements SmartLifecycle {
         infra.scope(),
         infra.tracer(),
         () ->
-            leaderLatch
-                .getParticipants()
-                .stream()
+            leaderLatch.getParticipants().stream()
                 .filter(p -> !p.isLeader())
                 .map(Participant::getId)
                 .collect(Collectors.toList()),

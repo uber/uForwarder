@@ -11,6 +11,7 @@ public class NodeConfigurationUtils {
   private static final String UNKNOWN_HOST = "unknown-host";
 
   private NodeConfigurationUtils() {}
+
   /**
    * Gets host name from system environment UFORWARDER_HOSTNAME first and fall back to
    * InetAddress.getLocalHost().getHostName() if it is mssing
