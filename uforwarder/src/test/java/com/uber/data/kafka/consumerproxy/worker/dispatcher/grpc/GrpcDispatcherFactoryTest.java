@@ -7,6 +7,7 @@ import com.uber.data.kafka.consumerproxy.config.GrpcDispatcherConfiguration;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.context.ContextManager;
 import com.uber.fievel.testing.base.FievelTestBase;
+import java.util.concurrent.ThreadFactory;
 import org.junit.Before;
 import org.junit.Test;
 import org.mockito.Mock;
@@ -18,6 +19,8 @@ public class GrpcDispatcherFactoryTest extends FievelTestBase {
   @Mock private GrpcDispatcherConfiguration config;
 
   @Mock private CoreInfra coreInfra;
+
+  @Mock private ThreadFactory threadFactory;
 
   @Before
   public void setUp() {
@@ -37,7 +40,8 @@ public class GrpcDispatcherFactoryTest extends FievelTestBase {
     String procedure = "test-procedure";
 
     // When
-    GrpcDispatcher dispatcher = grpcDispatcherFactory.create(caller, dispatcherId, uri, procedure);
+    GrpcDispatcher dispatcher =
+        grpcDispatcherFactory.create(caller, dispatcherId, threadFactory, uri, procedure);
 
     // Then
     assertNotNull("GrpcDispatcher should not be null", dispatcher);

@@ -5,6 +5,7 @@ import com.uber.data.kafka.consumerproxy.config.GrpcDispatcherConfiguration;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import java.util.Optional;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 /** The type Grpc dispatcher factory. */
 public class GrpcDispatcherFactory {
@@ -26,7 +27,8 @@ public class GrpcDispatcherFactory {
    * @return the grpc dispatcher
    * @throws Exception the exception
    */
-  public GrpcDispatcher create(String caller, String dispatcherId, String uri, String procedure)
+  public GrpcDispatcher create(
+      String caller, String dispatcherId, ThreadFactory threadFactory, String uri, String procedure)
       throws Exception {
     return new GrpcDispatcher(
         coreInfra,
@@ -39,6 +41,7 @@ public class GrpcDispatcherFactory {
                             config.getThreadPoolSize(),
                             new ThreadFactoryBuilder()
                                 .setNameFormat(dispatcherId + "-%d")
+                                .setThreadFactory(threadFactory)
                                 .build())))
             : Optional.empty(),
         config,
