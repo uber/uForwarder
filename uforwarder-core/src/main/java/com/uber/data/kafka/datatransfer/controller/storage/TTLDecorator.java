@@ -112,6 +112,25 @@ public final class TTLDecorator<K, V extends Message> implements Store<K, V>, Le
         "ttl.update");
   }
 
+  @VisibleForTesting
+  private Map<K, Versioned<V>> updateTTL(Map<K, Versioned<V>> items) {
+    return Instrumentation.instrument.withRuntimeException(
+        logger,
+        infra.scope(),
+        infra.tracer(),
+        () -> {
+          for (Map.Entry<K, Versioned<V>> item : items.entrySet()) {
+            K id = getIdFn.apply(item.getValue().model());
+            if (!ttlExpirationFutures.containsKey(id)) {
+              logger.info("updating TTL for item", StructuredLogging.id(item.getKey().toString()));
+              updateTTL(item.getValue());
+            }
+          }
+          return items;
+        },
+        "ttl.updateAll");
+  }
+
   @Override
   public void start() {
     impl.start();
@@ -150,12 +169,12 @@ public final class TTLDecorator<K, V extends Message> implements Store<K, V>, Le
 
   @Override
   public Map<K, Versioned<V>> getAll() throws Exception {
-    return impl.getAll();
+    return updateTTL(impl.getAll());
   }
 
   @Override
   public Map<K, Versioned<V>> getAll(Function<V, Boolean> selector) throws Exception {
-    return impl.getAll(selector);
+    return updateTTL(impl.getAll(selector));
   }
 
   @Override
