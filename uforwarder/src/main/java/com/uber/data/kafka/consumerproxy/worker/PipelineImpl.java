@@ -48,6 +48,7 @@ public final class PipelineImpl implements Pipeline {
     fetcher.setPipelineStateManager(configManager);
     processor.setNextStage(dispatcher);
     processor.setPipelineStateManager(configManager);
+    dispatcher.setPipelineStateManager(configManager);
     LOGGER.debug("setup pipeline", StructuredLogging.pipelineId(pipelineId));
   }
 
