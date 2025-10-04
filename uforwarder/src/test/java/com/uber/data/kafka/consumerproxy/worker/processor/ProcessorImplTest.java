@@ -47,6 +47,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import net.jodah.failsafe.function.CheckedSupplier;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.common.TopicPartition;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -74,6 +75,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
   private ProcessorConfiguration config;
   private Filter filter;
   private RateLimiter rateLimiter;
+  private MockedStatic<RateLimiter> staticContext;
 
   @Before
   public void setUp() throws Exception {
@@ -157,12 +159,17 @@ public class ProcessorImplTest extends ProcessorTestBase {
     dispatcherMessageArgumentCaptor = ArgumentCaptor.forClass(ItemAndJob.class);
   }
 
+  @After
+  public void tearDown() {
+    staticContext.close();
+  }
+
   @SuppressWarnings({"CheckReturnValue"})
   private void setupRateLimier(double returnValue) {
     rateLimiter = Mockito.mock(RateLimiter.class);
     Mockito.doReturn(0.0).when(rateLimiter).acquire();
     Mockito.doReturn(0.0).when(rateLimiter).acquire(Mockito.anyInt());
-    MockedStatic<RateLimiter> staticContext = Mockito.mockStatic(RateLimiter.class);
+    staticContext = Mockito.mockStatic(RateLimiter.class);
     staticContext.when(() -> RateLimiter.create(Mockito.anyDouble())).thenReturn(rateLimiter);
   }
 
