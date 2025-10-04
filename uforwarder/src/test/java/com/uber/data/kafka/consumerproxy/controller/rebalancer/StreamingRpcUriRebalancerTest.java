@@ -8,29 +8,25 @@ import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.AutoScalar;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.Rebalancer;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import java.util.Collections;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class StreamingRpcUriRebalancerTest extends FievelTestBase {
+public class StreamingRpcUriRebalancerTest {
   Rebalancer streamingRpcUriRebalancer;
   AutoScalar autoScalar;
   private HibernatingJobRebalancer hibernatingJobRebalancer;
 
-  @Before
+  @BeforeEach
   public void setup() {
     RebalancerConfiguration config = new RebalancerConfiguration();
     autoScalar = Mockito.mock(AutoScalar.class);
     hibernatingJobRebalancer = Mockito.mock(HibernatingJobRebalancer.class);
-    Mockito.doAnswer(
-            invocation -> {
-              return Collections.EMPTY_SET;
-            })
+    Mockito.doAnswer(invocation -> Collections.EMPTY_SET)
         .when(hibernatingJobRebalancer)
         .computeWorkerId(Mockito.anyList(), Mockito.anyMap());
     streamingRpcUriRebalancer =
@@ -44,7 +40,7 @@ public class StreamingRpcUriRebalancerTest extends FievelTestBase {
         buildRebalancingJobGroup(1L, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_UNIMPLEMENTED);
     streamingRpcUriRebalancer.computeJobState(
         ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobs().get(1L).getState());
   }
 
@@ -54,7 +50,7 @@ public class StreamingRpcUriRebalancerTest extends FievelTestBase {
         buildRebalancingJobGroup(1L, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_INVALID);
     streamingRpcUriRebalancer.computeJobState(
         ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobs().get(1L).getState());
   }
 
@@ -64,7 +60,7 @@ public class StreamingRpcUriRebalancerTest extends FievelTestBase {
         buildRebalancingJobGroup(1L, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_FAILED);
     streamingRpcUriRebalancer.computeJobState(
         ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobs().get(1L).getState());
   }
 
@@ -74,7 +70,7 @@ public class StreamingRpcUriRebalancerTest extends FievelTestBase {
         buildRebalancingJobGroup(1L, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_RUNNING);
     streamingRpcUriRebalancer.computeJobState(
         ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         JobState.JOB_STATE_RUNNING, rebalancingJobGroup.getJobs().get(1L).getState());
   }
 
@@ -84,7 +80,7 @@ public class StreamingRpcUriRebalancerTest extends FievelTestBase {
         buildRebalancingJobGroup(1L, JobState.JOB_STATE_RUNNING, JobState.JOB_STATE_CANCELED);
     streamingRpcUriRebalancer.computeJobState(
         ImmutableMap.of("jobGroup", rebalancingJobGroup), ImmutableMap.of());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         JobState.JOB_STATE_CANCELED, rebalancingJobGroup.getJobs().get(1L).getState());
   }
 

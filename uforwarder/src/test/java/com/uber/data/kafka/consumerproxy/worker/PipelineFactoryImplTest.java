@@ -1,5 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcDispatcher;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcDispatcherFactory;
 import com.uber.data.kafka.consumerproxy.worker.fetcher.KafkaFetcherFactory;
@@ -16,19 +18,17 @@ import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcher
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcher;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadManager;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.lang.management.ThreadMXBean;
 import java.util.concurrent.ThreadFactory;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 
-public class PipelineFactoryImplTest extends FievelTestBase {
+public class PipelineFactoryImplTest {
   private static final String SERVICE_NAME = "service-name";
   private static final String CLUSTER = "dca1a";
   private static final String GROUP = "group";
@@ -51,7 +51,7 @@ public class PipelineFactoryImplTest extends FievelTestBase {
   private PipelineLoadManager pipelineLoadManager;
   private ThreadRegister threadRegister;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     infra = CoreInfra.NOOP;
     kafkaFetcher = Mockito.mock(KafkaFetcher.class);
@@ -121,7 +121,7 @@ public class PipelineFactoryImplTest extends FievelTestBase {
             .build();
   }
 
-  @After
+  @AfterEach
   public void cleanup() {
     kafkaPipelineStateManagerMockedConstruction.close();
   }
@@ -129,7 +129,7 @@ public class PipelineFactoryImplTest extends FievelTestBase {
   @Test
   public void testGetPipelineId() {
     String pipelineID = pipelineFactory.getPipelineId(job);
-    Assert.assertEquals(GROUP + DELIMITER + CLUSTER + DELIMITER + TOPIC, pipelineID);
+    Assertions.assertEquals(GROUP + DELIMITER + CLUSTER + DELIMITER + TOPIC, pipelineID);
   }
 
   @Test
@@ -150,16 +150,20 @@ public class PipelineFactoryImplTest extends FievelTestBase {
     pipelineFactory.createPipeline(pipelineFactory.getPipelineId(job2), job2);
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testCreatePipelineWithException() throws Exception {
-    Mockito.when(
-            kafkaFetcherFactory.create(
-                ArgumentMatchers.any(),
-                ArgumentMatchers.anyString(),
-                ArgumentMatchers.any(ThreadRegister.class),
-                ArgumentMatchers.any()))
-        .thenThrow(new Exception());
-    pipelineFactory.createPipeline(pipelineFactory.getPipelineId(job), job);
+    assertThrows(
+        RuntimeException.class,
+        () -> {
+          Mockito.when(
+                  kafkaFetcherFactory.create(
+                      ArgumentMatchers.any(),
+                      ArgumentMatchers.anyString(),
+                      ArgumentMatchers.any(ThreadRegister.class),
+                      ArgumentMatchers.any()))
+              .thenThrow(new Exception());
+          pipelineFactory.createPipeline(pipelineFactory.getPipelineId(job), job);
+        });
   }
 
   @Test
@@ -175,10 +179,8 @@ public class PipelineFactoryImplTest extends FievelTestBase {
     Exception e =
         Assertions.assertThrows(
             Exception.class,
-            () -> {
-              pipelineFactory.createPipeline(pipelineFactory.getPipelineId(job), job);
-            });
-    Assert.assertEquals("java.lang.Exception: failed to create dispatcher", e.getMessage());
+            () -> pipelineFactory.createPipeline(pipelineFactory.getPipelineId(job), job));
+    Assertions.assertEquals("java.lang.Exception: failed to create dispatcher", e.getMessage());
     Mockito.verify(kafkaFetcher, Mockito.atLeastOnce()).stop();
     Mockito.verify(processor, Mockito.atLeastOnce()).stop();
     Mockito.verify(grpcDispatcher, Mockito.atLeastOnce()).stop();

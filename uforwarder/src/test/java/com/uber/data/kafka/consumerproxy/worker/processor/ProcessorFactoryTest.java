@@ -4,14 +4,13 @@ import com.uber.data.kafka.consumerproxy.config.ProcessorConfiguration;
 import com.uber.data.kafka.consumerproxy.worker.filter.Filter;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.concurrent.ThreadFactory;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class ProcessorFactoryTest extends FievelTestBase {
+public class ProcessorFactoryTest {
   private CoreInfra coreInfra;
   private ProcessorConfiguration config;
   private OutboundMessageLimiter.Builder outboundMessageLimiterBuilder;
@@ -22,7 +21,7 @@ public class ProcessorFactoryTest extends FievelTestBase {
   private Filter.Factory filterFactory;
   private ThreadFactory threadFactory;
 
-  @Before
+  @BeforeEach
   public void setUP() {
     coreInfra = CoreInfra.NOOP;
     config = new ProcessorConfiguration();
@@ -49,18 +48,18 @@ public class ProcessorFactoryTest extends FievelTestBase {
   public void testCreate() {
     ProcessorImpl processor =
         processorFactory.create(Job.newBuilder().build(), "processor-id", threadFactory);
-    Assert.assertNotNull(processor);
+    Assertions.assertNotNull(processor);
   }
 
   @Test
   public void testGetMaxInboundCacheCount() {
     int maxInboundCacheCount = processorFactory.getMaxInboundCacheCount();
-    Assert.assertEquals(config.getMaxInboundCacheCount(), maxInboundCacheCount);
+    Assertions.assertEquals(config.getMaxInboundCacheCount(), maxInboundCacheCount);
   }
 
   @Test
   public void testGetMaxAckCommitSkew() {
     int maxAckCommitSkew = processorFactory.getMaxAckCommitSkew();
-    Assert.assertEquals(config.getMaxAckCommitSkew(), maxAckCommitSkew);
+    Assertions.assertEquals(config.getMaxAckCommitSkew(), maxAckCommitSkew);
   }
 }

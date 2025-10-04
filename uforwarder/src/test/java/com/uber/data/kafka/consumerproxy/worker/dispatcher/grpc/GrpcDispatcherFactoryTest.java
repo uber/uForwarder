@@ -1,19 +1,20 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc;
 
-import static org.junit.Assert.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.when;
 
 import com.uber.data.kafka.consumerproxy.config.GrpcDispatcherConfiguration;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.context.ContextManager;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.concurrent.ThreadFactory;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mock;
 import org.mockito.MockitoAnnotations;
 
-public class GrpcDispatcherFactoryTest extends FievelTestBase {
+public class GrpcDispatcherFactoryTest {
+  private AutoCloseable mocks;
   private GrpcDispatcherFactory grpcDispatcherFactory;
 
   @Mock private GrpcDispatcherConfiguration config;
@@ -22,9 +23,9 @@ public class GrpcDispatcherFactoryTest extends FievelTestBase {
 
   @Mock private ThreadFactory threadFactory;
 
-  @Before
+  @BeforeEach
   public void setUp() {
-    MockitoAnnotations.initMocks(this);
+    mocks = MockitoAnnotations.openMocks(this);
     when(coreInfra.contextManager()).thenReturn(ContextManager.NOOP);
     when(config.getGrpcChannelPoolSize()).thenReturn(1);
     when(config.getThreadPoolSize()).thenReturn(1);
@@ -44,7 +45,7 @@ public class GrpcDispatcherFactoryTest extends FievelTestBase {
         grpcDispatcherFactory.create(caller, dispatcherId, threadFactory, uri, procedure);
 
     // Then
-    assertNotNull("GrpcDispatcher should not be null", dispatcher);
+    assertNotNull(dispatcher, "GrpcDispatcher should not be null");
   }
 
   @Test
@@ -53,6 +54,11 @@ public class GrpcDispatcherFactoryTest extends FievelTestBase {
     GrpcDispatcherConfiguration result = grpcDispatcherFactory.getConfig();
 
     // Then
-    assertNotNull("Config should not be null", result);
+    assertNotNull(result, "Config should not be null");
+  }
+
+  @AfterEach
+  void tearDown() throws Exception {
+    mocks.close();
   }
 }

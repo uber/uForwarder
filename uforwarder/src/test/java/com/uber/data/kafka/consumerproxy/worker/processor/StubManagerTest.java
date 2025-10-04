@@ -1,14 +1,16 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Scope;
 import java.util.Map;
 import java.util.Optional;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class StubManagerTest extends ProcessorTestBase {
@@ -16,7 +18,7 @@ public class StubManagerTest extends ProcessorTestBase {
   private Scope mockScope;
   private Counter mockInvalidPartitionCounter, mockInvalidOffsetCounter;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     mockScope = Mockito.mock(Scope.class);
     mockInvalidPartitionCounter = Mockito.mock(Counter.class);
@@ -54,10 +56,14 @@ public class StubManagerTest extends ProcessorTestBase {
     stubManager.receive(processorMessage);
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testReceiveInvalidPartition() {
-    stubManager.receive(processorMessage);
-    Mockito.verify(mockInvalidPartitionCounter).inc(1);
+    assertThrows(
+        IllegalStateException.class,
+        () -> {
+          stubManager.receive(processorMessage);
+          Mockito.verify(mockInvalidPartitionCounter).inc(1);
+        });
   }
 
   @Test
@@ -66,7 +72,7 @@ public class StubManagerTest extends ProcessorTestBase {
     stubManager.receive(processorMessage);
     stubManager.ack(processorMessage);
     Optional<MessageStub> stub = stubManager.getStub(processorMessage.getPhysicalMetadata());
-    Assert.assertFalse(stub.isPresent());
+    Assertions.assertFalse(stub.isPresent());
   }
 
   @Test
@@ -87,11 +93,11 @@ public class StubManagerTest extends ProcessorTestBase {
     stubManager.init(job);
     stubManager.receive(processorMessage);
     Map<Job, Map<Long, MessageStub>> result = stubManager.getStubs();
-    Assert.assertEquals(1, result.size());
-    Assert.assertEquals(1, result.get(job).size());
+    Assertions.assertEquals(1, result.size());
+    Assertions.assertEquals(1, result.get(job).size());
     stubManager.ack(processorMessage);
     result = stubManager.getStubs();
-    Assert.assertEquals(1, result.size());
-    Assert.assertEquals(0, result.get(job).size());
+    Assertions.assertEquals(1, result.size());
+    Assertions.assertEquals(0, result.get(job).size());
   }
 }

@@ -9,20 +9,19 @@ import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.ThreadRegister;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcher;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfiguration;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Stopwatch;
 import com.uber.m3.tally.Timer;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.AdditionalAnswers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class KafkaFetcherFactoryTest extends FievelTestBase {
+public class KafkaFetcherFactoryTest {
   private static final String ORIGINAL_TOPIC = "topic";
   private static final String RETRY_TOPIC_1 = "topic__group__1__retry";
   private static final String RETRY_TOPIC_2 = "topic__group__2__retry";
@@ -33,7 +32,7 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
   private CoreInfra infra;
   private ThreadRegister threadRegister;
 
-  @Before
+  @BeforeEach
   public void setup() {
     Scope scope = Mockito.mock(Scope.class);
     infra = CoreInfra.builder().withScope(scope).build();
@@ -64,7 +63,7 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
                     .setTopic(ORIGINAL_TOPIC)
                     .build())
             .build();
-    Assert.assertTrue(
+    Assertions.assertTrue(
         kafkaFetcherFactory.create(job1, THREAD_ID, threadRegister, infra) instanceof KafkaFetcher);
 
     // create a DlqTopicKafkaFetcher
@@ -73,7 +72,7 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
             .setRpcDispatcherTask(
                 RpcDispatcherTask.newBuilder().setDlqTopic(ORIGINAL_TOPIC).build())
             .build();
-    Assert.assertTrue(
+    Assertions.assertTrue(
         kafkaFetcherFactory.create(job2, THREAD_ID, threadRegister, infra) instanceof KafkaFetcher);
 
     // create a RetryTopicKafkaFetcher
@@ -82,13 +81,13 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
             .setRpcDispatcherTask(
                 RpcDispatcherTask.newBuilder().setRetryQueueTopic(RETRY_TOPIC_1).build())
             .build();
-    Assert.assertTrue(
+    Assertions.assertTrue(
         kafkaFetcherFactory.create(job3, THREAD_ID, threadRegister, infra) instanceof KafkaFetcher);
 
     Mockito.verify(threadRegister, Mockito.times(3)).register(Mockito.any());
   }
 
-  @Test()
+  @Test
   public void testCreateRetryQueueKafkaFetcher() throws Exception {
     Job job =
         Job.newBuilder()
@@ -110,12 +109,12 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
     KafkaFetcher<byte[], byte[]> retryFetcherInstance =
         retryKafkaFetcherFactory.create(job, THREAD_ID, threadRegister, infra);
 
-    Assert.assertTrue(retryFetcherInstance instanceof KafkaFetcher);
+    Assertions.assertTrue(retryFetcherInstance instanceof KafkaFetcher);
 
     Mockito.verify(threadRegister, Mockito.times(1)).register(Mockito.any());
   }
 
-  @Test()
+  @Test
   public void testCreateRetryQueueKafkaFetcherWithTRQConfig() throws Exception {
     Job job =
         Job.newBuilder()
@@ -146,7 +145,7 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
     KafkaFetcher<byte[], byte[]> retryFetcherInstance =
         retryKafkaFetcherFactory.create(job, THREAD_ID, threadRegister, infra);
 
-    Assert.assertTrue(retryFetcherInstance instanceof KafkaFetcher);
+    Assertions.assertTrue(retryFetcherInstance instanceof KafkaFetcher);
 
     Mockito.verify(threadRegister, Mockito.times(1)).register(Mockito.any());
   }

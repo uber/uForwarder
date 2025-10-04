@@ -9,22 +9,21 @@ import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class HibernatingJobRebalancerTest extends FievelTestBase {
+public class HibernatingJobRebalancerTest {
   private HibernatingJobRebalancer hibernatingJobRebalancer;
   private RebalancerConfiguration configuration;
 
-  @Before
+  @BeforeEach
   public void setup() {
     configuration = new RebalancerConfiguration();
     configuration.setHibernatingJobGroupPerWorker(2);
@@ -71,10 +70,10 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
     Map<Long, StoredWorker> workerMap = buildWorkerMap();
     Collection<Long> usedWorkers =
         hibernatingJobRebalancer.computeWorkerId(Arrays.asList(rebalancingJobGroup), workerMap);
-    Assert.assertTrue(usedWorkers.isEmpty());
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertTrue(usedWorkers.isEmpty());
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
     rebalancingJobGroup.getJobs().values().stream()
-        .forEach(storedJob -> Assert.assertEquals(0, storedJob.getWorkerId()));
+        .forEach(storedJob -> Assertions.assertEquals(0, storedJob.getWorkerId()));
   }
 
   @Test
@@ -84,10 +83,10 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     Collection<Long> usedWorkers =
         hibernatingJobRebalancer.computeWorkerId(Arrays.asList(rebalancingJobGroup), workerMap);
-    Assert.assertEquals(ImmutableSet.of(1L), usedWorkers);
-    Assert.assertFalse(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(1L), usedWorkers);
+    Assertions.assertFalse(rebalancingJobGroup.isChanged());
     rebalancingJobGroup.getJobs().values().stream()
-        .forEach(storedJob -> Assert.assertEquals(1, storedJob.getWorkerId()));
+        .forEach(storedJob -> Assertions.assertEquals(1, storedJob.getWorkerId()));
   }
 
   @Test
@@ -97,10 +96,10 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     Collection<Long> usedWorkers =
         hibernatingJobRebalancer.computeWorkerId(Arrays.asList(rebalancingJobGroup), workerMap);
-    Assert.assertEquals(ImmutableSet.of(2L), usedWorkers);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(2L), usedWorkers);
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
     rebalancingJobGroup.getJobs().values().stream()
-        .forEach(storedJob -> Assert.assertEquals(2, storedJob.getWorkerId()));
+        .forEach(storedJob -> Assertions.assertEquals(2, storedJob.getWorkerId()));
   }
 
   @Test
@@ -118,8 +117,8 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
     List<RebalancingJobGroup> groups = Arrays.asList(group1, group2, group3, group4, group5);
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     Collection<Long> usedWorkers = hibernatingJobRebalancer.computeWorkerId(groups, workerMap);
-    Assert.assertEquals(ImmutableSet.of(1L, 2L), usedWorkers);
-    groups.stream().forEach(group -> Assert.assertTrue(group.isChanged()));
+    Assertions.assertEquals(ImmutableSet.of(1L, 2L), usedWorkers);
+    groups.stream().forEach(group -> Assertions.assertTrue(group.isChanged()));
     Map<Long, Integer> jobsPerWorker = new HashMap<>();
     for (RebalancingJobGroup jobGroup : groups) {
       for (StoredJob job : jobGroup.getJobs().values()) {
@@ -127,7 +126,7 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
             job.getWorkerId(), (workerId, count) -> Integer.valueOf(count == null ? 1 : count + 1));
       }
     }
-    Assert.assertEquals(ImmutableMap.copyOf(jobsPerWorker), ImmutableMap.of(1L, 2, 2L, 3));
+    Assertions.assertEquals(ImmutableMap.copyOf(jobsPerWorker), ImmutableMap.of(1L, 2, 2L, 3));
   }
 
   @Test
@@ -137,10 +136,10 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     Collection<Long> usedWorkers =
         hibernatingJobRebalancer.computeWorkerId(Arrays.asList(rebalancingJobGroup), workerMap);
-    Assert.assertEquals(ImmutableSet.of(1L), usedWorkers);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(1L), usedWorkers);
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
     rebalancingJobGroup.getJobs().values().stream()
-        .forEach(storedJob -> Assert.assertEquals(1, storedJob.getWorkerId()));
+        .forEach(storedJob -> Assertions.assertEquals(1, storedJob.getWorkerId()));
   }
 
   @Test
@@ -154,8 +153,8 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
     List<RebalancingJobGroup> groups = Arrays.asList(group1, group2, group3);
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     Collection<Long> usedWorkers = hibernatingJobRebalancer.computeWorkerId(groups, workerMap);
-    Assert.assertEquals(ImmutableSet.of(1L, 2L), usedWorkers);
-    Assert.assertEquals(1, groups.stream().mapToInt(group -> group.isChanged() ? 1 : 0).sum());
+    Assertions.assertEquals(ImmutableSet.of(1L, 2L), usedWorkers);
+    Assertions.assertEquals(1, groups.stream().mapToInt(group -> group.isChanged() ? 1 : 0).sum());
     Map<Long, Integer> jobsPerWorker = new HashMap<>();
     for (RebalancingJobGroup jobGroup : groups) {
       for (StoredJob job : jobGroup.getJobs().values()) {
@@ -163,7 +162,7 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
             job.getWorkerId(), (workerId, count) -> Integer.valueOf(count == null ? 1 : count + 1));
       }
     }
-    Assert.assertEquals(ImmutableMap.copyOf(jobsPerWorker), ImmutableMap.of(1L, 2, 2L, 1));
+    Assertions.assertEquals(ImmutableMap.copyOf(jobsPerWorker), ImmutableMap.of(1L, 2, 2L, 1));
   }
 
   @Test
@@ -175,9 +174,9 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
     List<RebalancingJobGroup> groups = Arrays.asList(group1, group2);
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     Collection<Long> usedWorkers = hibernatingJobRebalancer.computeWorkerId(groups, workerMap);
-    Assert.assertEquals(ImmutableSet.of(2L), usedWorkers);
-    Assert.assertTrue(group1.isChanged());
-    Assert.assertFalse(group2.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(2L), usedWorkers);
+    Assertions.assertTrue(group1.isChanged());
+    Assertions.assertFalse(group2.isChanged());
     Map<Long, Integer> jobsPerWorker = new HashMap<>();
     for (RebalancingJobGroup jobGroup : groups) {
       for (StoredJob job : jobGroup.getJobs().values()) {
@@ -185,6 +184,6 @@ public class HibernatingJobRebalancerTest extends FievelTestBase {
             job.getWorkerId(), (workerId, count) -> Integer.valueOf(count == null ? 1 : count + 1));
       }
     }
-    Assert.assertEquals(ImmutableMap.copyOf(jobsPerWorker), ImmutableMap.of(2L, 2));
+    Assertions.assertEquals(ImmutableMap.copyOf(jobsPerWorker), ImmutableMap.of(2L, 2));
   }
 }

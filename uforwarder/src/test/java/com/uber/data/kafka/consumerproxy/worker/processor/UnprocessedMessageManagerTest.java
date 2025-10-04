@@ -14,9 +14,10 @@ import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -45,7 +46,7 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
   private Scope mockScope;
   private ProcessorConfiguration config;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     mockScope = Mockito.mock(Scope.class);
     mockCountGauge = Mockito.mock(Gauge.class);
@@ -90,7 +91,7 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
   @Test
   public void testGetLimiter() {
     UnprocessedMessageManager.PartitionLimiter limiter = unprocessedMessageManager.getLimiter(tp3);
-    Assert.assertNull(limiter);
+    Assertions.assertNull(limiter);
   }
 
   @Test
@@ -103,15 +104,16 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     IllegalStateException exception = null;
     UnprocessedMessageManager.PartitionLimiter limiter = unprocessedMessageManager.getLimiter(tp1);
     unprocessedMessageManager.cancel(tp1);
-    Assert.assertEquals(0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
-    Assert.assertTrue(limiter.isClosed());
+    Assertions.assertEquals(
+        0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertTrue(limiter.isClosed());
 
     try {
       unprocessedMessageManager.receive(pm1);
     } catch (IllegalStateException e) {
       exception = e;
     }
-    Assert.assertNotNull(exception);
+    Assertions.assertNotNull(exception);
 
     // cancel tp1 again
     unprocessedMessageManager.cancel(tp1);
@@ -124,20 +126,23 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     } catch (IllegalStateException e) {
       exception = e;
     }
-    Assert.assertNotNull(exception);
+    Assertions.assertNotNull(exception);
   }
 
   @Test
   public void testJobShareLimit() throws InterruptedException {
-    Assert.assertEquals(6, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(
+        6, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
     unprocessedMessageManager.getLimiter(tp1).acquire(pm1);
     unprocessedMessageManager.getLimiter(tp2).acquire(pm2);
-    Assert.assertEquals(4, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(
+        4, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
   }
 
   @Test
   public void testCancelUnblockReceive() throws Exception {
-    Assert.assertEquals(6, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(
+        6, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
     UnprocessedMessageManager.PartitionLimiter limiter1 = unprocessedMessageManager.getLimiter(tp1);
     List<ProcessorMessage> pms = new ArrayList<>();
     for (int i = 0; i < 3; ++i) {
@@ -164,18 +169,20 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     } catch (TimeoutException e) {
     }
 
-    Assert.assertFalse(acquiredFuture.isDone());
+    Assertions.assertFalse(acquiredFuture.isDone());
     // cancel partition  2 reduce limit by 2 but inflight by 3
     unprocessedMessageManager.cancel(tp2);
     acquiredFuture.get();
-    Assert.assertNull(error.get());
-    Assert.assertEquals(0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
-    Assert.assertEquals(4, unprocessedMessageManager.countLimiter.getMetrics().getInflight());
+    Assertions.assertNull(error.get());
+    Assertions.assertEquals(
+        0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(4, unprocessedMessageManager.countLimiter.getMetrics().getInflight());
     for (ProcessorMessage pm : pms) {
       unprocessedMessageManager.remove(pm);
     }
-    Assert.assertEquals(4, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
-    Assert.assertEquals(0, unprocessedMessageManager.countLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(
+        4, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(0, unprocessedMessageManager.countLimiter.getMetrics().getInflight());
   }
 
   @Test
@@ -206,7 +213,7 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     }
     unprocessedMessageManager.cancel(tp1);
     acquiredFuture.get();
-    Assert.assertNull(error.get());
+    Assertions.assertNull(error.get());
   }
 
   @Test
@@ -219,7 +226,8 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
       pms.add(pm1);
       unprocessedMessageManager.receive(pm1);
     }
-    Assert.assertEquals(0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(
+        0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
     AtomicReference<Throwable> error = new AtomicReference(null);
     CompletableFuture<Void> acquiredFuture =
         CompletableFuture.runAsync(
@@ -238,7 +246,8 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     }
     unprocessedMessageManager.init(job2);
     acquiredFuture.get();
-    Assert.assertEquals(1, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(
+        1, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
   }
 
   @Test
@@ -246,11 +255,11 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     unprocessedMessageManager.cancel(tp2);
     unprocessedMessageManager.cancel(tp4);
     unprocessedMessageManager.receive(pm1);
-    Assert.assertEquals(0, sharedByteSizeLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(0, sharedByteSizeLimiter.getMetrics().getInflight());
     unprocessedMessageManager.receive(pm1);
-    Assert.assertEquals(5, sharedByteSizeLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(5, sharedByteSizeLimiter.getMetrics().getInflight());
     unprocessedMessageManager.cancel(tp1);
-    Assert.assertEquals(0, sharedByteSizeLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(0, sharedByteSizeLimiter.getMetrics().getInflight());
   }
 
   @Test
@@ -260,45 +269,52 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     UnprocessedMessageManager.PartitionLimiter limiter1 = unprocessedMessageManager.getLimiter(tp1);
     UnprocessedMessageManager.PartitionLimiter limiter2 = unprocessedMessageManager.getLimiter(tp2);
     unprocessedMessageManager.cancelAll();
-    Assert.assertEquals(0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
-    Assert.assertTrue(limiter1.isClosed());
-    Assert.assertTrue(limiter2.isClosed());
+    Assertions.assertEquals(
+        0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertTrue(limiter1.isClosed());
+    Assertions.assertTrue(limiter2.isClosed());
 
     try {
       unprocessedMessageManager.receive(pm1);
     } catch (IllegalStateException e) {
       exception = e;
     }
-    Assert.assertNotNull(exception);
+    Assertions.assertNotNull(exception);
 
     unprocessedMessageManager.remove(pm1);
   }
 
   @Test
   public void testReceive() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         6, unprocessedMessageManager.topicPartitionLimiterMap.get(tp1).countLimit());
     unprocessedMessageManager.cancel(tp2);
     unprocessedMessageManager.cancel(tp4);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         2, unprocessedMessageManager.topicPartitionLimiterMap.get(tp1).countLimit());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0, unprocessedMessageManager.countLimiter.getMetrics().getBlockingQueueSize());
-    Assert.assertEquals(2, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
-    Assert.assertEquals(0, sharedByteSizeLimiter.getMetrics().getInflight());
-    Assert.assertEquals(0, unprocessedMessageManager.byteSizeLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(
+        2, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(0, sharedByteSizeLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(
+        0, unprocessedMessageManager.byteSizeLimiter.getMetrics().getInflight());
     unprocessedMessageManager.receive(pm1);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0, unprocessedMessageManager.countLimiter.getMetrics().getBlockingQueueSize());
-    Assert.assertEquals(1, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
-    Assert.assertEquals(0, sharedByteSizeLimiter.getMetrics().getInflight());
-    Assert.assertEquals(5, unprocessedMessageManager.byteSizeLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(
+        1, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(0, sharedByteSizeLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(
+        5, unprocessedMessageManager.byteSizeLimiter.getMetrics().getInflight());
     unprocessedMessageManager.receive(pm1);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0, unprocessedMessageManager.countLimiter.getMetrics().getBlockingQueueSize());
-    Assert.assertEquals(0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
-    Assert.assertEquals(5, sharedByteSizeLimiter.getMetrics().getInflight());
-    Assert.assertEquals(5, unprocessedMessageManager.byteSizeLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(
+        0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(5, sharedByteSizeLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(
+        5, unprocessedMessageManager.byteSizeLimiter.getMetrics().getInflight());
 
     IllegalStateException exception = null;
     try {
@@ -306,7 +322,7 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     } catch (IllegalStateException e) {
       exception = e;
     }
-    Assert.assertNotNull(exception);
+    Assertions.assertNotNull(exception);
   }
 
   @Test
@@ -317,11 +333,12 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     } catch (IllegalStateException e) {
       exception = e;
     }
-    Assert.assertNull(exception);
+    Assertions.assertNull(exception);
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 1000)
+  @Test
+  @Timeout(value = 1000, unit = TimeUnit.MILLISECONDS)
   public void testReceiveMore() {
     unprocessedMessageManager.cancel(tp2);
     unprocessedMessageManager.cancel(tp4);
@@ -344,9 +361,11 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
       }
     } while (!tried.get());
 
-    Assert.assertEquals(0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
-    Assert.assertEquals(5, sharedByteSizeLimiter.getMetrics().getInflight());
-    Assert.assertEquals(5, unprocessedMessageManager.byteSizeLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(
+        0, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(5, sharedByteSizeLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(
+        5, unprocessedMessageManager.byteSizeLimiter.getMetrics().getInflight());
 
     // the getQueueLength will eventually return 1
     while (unprocessedMessageManager.countLimiter.getMetrics().getBlockingQueueSize() != 1) {
@@ -356,22 +375,23 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
         e.printStackTrace();
       }
     }
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1, unprocessedMessageManager.countLimiter.getMetrics().getBlockingQueueSize());
   }
 
   @Test
   public void testRemove() {
     unprocessedMessageManager.remove(pm1);
-    Assert.assertEquals(6, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(
+        6, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
 
     unprocessedMessageManager.remove(pm3);
   }
 
   @Test
   public void testDetectBlockingAndMarkCancel() {
-    Assert.assertFalse(unprocessedMessageManager.detectBlockingMessage(tp1).isPresent());
-    Assert.assertFalse(unprocessedMessageManager.markCanceled(physicalKafkaMetadata1));
+    Assertions.assertFalse(unprocessedMessageManager.detectBlockingMessage(tp1).isPresent());
+    Assertions.assertFalse(unprocessedMessageManager.markCanceled(physicalKafkaMetadata1));
   }
 
   @Test
@@ -381,11 +401,13 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
         new UnprocessedMessageManager(job1, config, sharedByteSizeLimiter, mockScope);
     unprocessedMessageManager.init(job1);
     unprocessedMessageManager.init(job2);
-    Assert.assertEquals(3, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
+    Assertions.assertEquals(
+        3, unprocessedMessageManager.countLimiter.getMetrics().availablePermits());
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 30000)
+  @Test
+  @Timeout(value = 30000, unit = TimeUnit.MILLISECONDS)
   public void testReceiveAndRemove() {
     AtomicBoolean reached = new AtomicBoolean(false);
     unprocessedMessageManager.cancel(tp2);
@@ -402,7 +424,7 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     CompletableFuture.runAsync(() -> unprocessedMessageManager.remove(pm1));
 
     received.join();
-    Assert.assertTrue(reached.get());
+    Assertions.assertTrue(reached.get());
   }
 
   @Test
@@ -416,8 +438,8 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     unprocessedMessageManager.publishMetrics();
     Mockito.verify(mockCountGauge).update(countCaptor.capture());
     Mockito.verify(mockBytesGauge).update(bytesCaptor.capture());
-    Assert.assertEquals(2, countCaptor.getValue(), 0.001);
-    Assert.assertEquals(10, bytesCaptor.getValue(), 0.001);
+    Assertions.assertEquals(2, countCaptor.getValue(), 0.001);
+    Assertions.assertEquals(10, bytesCaptor.getValue(), 0.001);
   }
 
   @Test
@@ -431,8 +453,8 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
     unprocessedMessageManager.publishMetrics();
     Mockito.verify(mockCountGauge).update(countCaptor.capture());
     Mockito.verify(mockBytesGauge).update(bytesCaptor.capture());
-    Assert.assertEquals(0, countCaptor.getValue(), 0.001);
-    Assert.assertEquals(0, bytesCaptor.getValue(), 0.001);
+    Assertions.assertEquals(0, countCaptor.getValue(), 0.001);
+    Assertions.assertEquals(0, bytesCaptor.getValue(), 0.001);
   }
 
   @Test
@@ -462,11 +484,7 @@ public class UnprocessedMessageManagerTest extends ProcessorTestBase {
   public void testReceiveAndInterrupt() {
     unprocessedMessageManager.receive(pm1);
     unprocessedMessageManager.receive(pm1);
-    Thread thread =
-        new Thread(
-            () -> {
-              unprocessedMessageManager.receive(pm1);
-            });
+    Thread thread = new Thread(() -> unprocessedMessageManager.receive(pm1));
     thread.start();
 
     new Thread(

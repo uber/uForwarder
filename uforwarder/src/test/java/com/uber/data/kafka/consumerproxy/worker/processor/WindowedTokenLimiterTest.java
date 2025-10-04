@@ -1,17 +1,16 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
 import com.google.common.base.Ticker;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.concurrent.TimeUnit;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class WindowedTokenLimiterTest extends FievelTestBase {
+public class WindowedTokenLimiterTest {
   private WindowedTokenLimiter tokenLimiter;
   private TestTicker ticker;
 
-  @Before
+  @BeforeEach
   public void setup() {
     ticker = new TestTicker();
     tokenLimiter =
@@ -25,20 +24,20 @@ public class WindowedTokenLimiterTest extends FievelTestBase {
   @Test
   public void testAcquire() {
     boolean permitted = tokenLimiter.tryAcquire(1);
-    Assert.assertFalse(permitted);
+    Assertions.assertFalse(permitted);
     tokenLimiter.credit(1);
 
     ticker.add(TimeUnit.MILLISECONDS.toNanos(10));
 
     permitted = tokenLimiter.tryAcquire(1);
-    Assert.assertTrue(permitted);
+    Assertions.assertTrue(permitted);
   }
 
   @Test
   public void testGetTokens() {
     for (int i = 0; i < 100; ++i) {
       tokenLimiter.credit(1);
-      Assert.assertEquals(i < 50 ? i + 1 : 50, tokenLimiter.getMetrics().getNumTokens());
+      Assertions.assertEquals(i < 50 ? i + 1 : 50, tokenLimiter.getMetrics().getNumTokens());
       ticker.add(TimeUnit.MILLISECONDS.toNanos(1));
     }
   }
@@ -49,7 +48,7 @@ public class WindowedTokenLimiterTest extends FievelTestBase {
 
     ticker.add(TimeUnit.MILLISECONDS.toNanos(100));
     boolean permitted = tokenLimiter.tryAcquire(1);
-    Assert.assertFalse(permitted);
+    Assertions.assertFalse(permitted);
   }
 
   private static class TestTicker extends Ticker {

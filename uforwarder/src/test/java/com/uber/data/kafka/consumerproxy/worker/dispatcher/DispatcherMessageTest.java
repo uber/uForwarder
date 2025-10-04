@@ -1,19 +1,20 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcRequest;
 import com.uber.data.kafka.consumerproxy.worker.processor.MessageStub;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
-import com.uber.fievel.testing.base.FievelTestBase;
 import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.header.Headers;
 import org.apache.kafka.common.header.internals.RecordHeaders;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class DispatcherMessageTest extends FievelTestBase {
+public class DispatcherMessageTest {
   private static final String MUTTLEY_ROUTING_KEY = "muttley://routing-key";
   private static final String KEY = "key";
   private static final String VALUE = "value";
@@ -39,7 +40,7 @@ public class DispatcherMessageTest extends FievelTestBase {
   private Job job;
   private MessageStub mockStub;
 
-  @Before
+  @BeforeEach
   public void setup() {
     job =
         Job.newBuilder()
@@ -113,22 +114,23 @@ public class DispatcherMessageTest extends FievelTestBase {
 
   @Test
   public void testGetKafkaProducerRecord() {
-    Assert.assertEquals(TOPIC, kafkaDispatcherMessage.getProducerRecord().topic());
-    Assert.assertArrayEquals(KEY.getBytes(), kafkaDispatcherMessage.getProducerRecord().key());
-    Assert.assertArrayEquals(VALUE.getBytes(), kafkaDispatcherMessage.getProducerRecord().value());
-    Assert.assertArrayEquals(
+    Assertions.assertEquals(TOPIC, kafkaDispatcherMessage.getProducerRecord().topic());
+    Assertions.assertArrayEquals(KEY.getBytes(), kafkaDispatcherMessage.getProducerRecord().key());
+    Assertions.assertArrayEquals(
+        VALUE.getBytes(), kafkaDispatcherMessage.getProducerRecord().value());
+    Assertions.assertArrayEquals(
         HEADERS.lastHeader("key").value(),
         kafkaDispatcherMessage.getProducerRecord().headers().lastHeader("key").value());
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testGetKafkaProducerRecordWrongType() {
-    grpcDispatcherMessage.getProducerRecord();
+    assertThrows(IllegalStateException.class, () -> grpcDispatcherMessage.getProducerRecord());
   }
 
   @Test
   public void testGetGrpcMessage() {
-    Assert.assertEquals(grpcRequest, grpcDispatcherMessage.getGrpcMessage());
+    Assertions.assertEquals(grpcRequest, grpcDispatcherMessage.getGrpcMessage());
   }
 
   @Test
@@ -149,7 +151,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             PHYSICAL_PARTITION,
             PHYSICAL_OFFSET,
             HEADERS);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         expected,
         new DispatcherMessage(
                 DispatcherMessage.Type.GRPC,
@@ -172,21 +174,21 @@ public class DispatcherMessageTest extends FievelTestBase {
             .getGrpcMessage());
   }
 
-  @Test(expected = IllegalStateException.class)
+  @Test
   public void testGetGrpcMessageWrongType() {
-    kafkaDispatcherMessage.getGrpcMessage();
+    assertThrows(IllegalStateException.class, () -> kafkaDispatcherMessage.getGrpcMessage());
   }
 
   @Test
   public void testGetType() {
-    Assert.assertEquals(DispatcherMessage.Type.GRPC, grpcDispatcherMessage.getType());
-    Assert.assertEquals(DispatcherMessage.Type.KAFKA, kafkaDispatcherMessage.getType());
+    Assertions.assertEquals(DispatcherMessage.Type.GRPC, grpcDispatcherMessage.getType());
+    Assertions.assertEquals(DispatcherMessage.Type.KAFKA, kafkaDispatcherMessage.getType());
   }
 
   @Test
   public void testEquals() {
-    Assert.assertEquals(grpcDispatcherMessage, grpcDispatcherMessage);
-    Assert.assertEquals(
+    Assertions.assertEquals(grpcDispatcherMessage, grpcDispatcherMessage);
+    Assertions.assertEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -207,12 +209,12 @@ public class DispatcherMessageTest extends FievelTestBase {
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT));
 
-    Assert.assertNotEquals(grpcDispatcherMessage, null);
-    Assert.assertNotEquals(null, grpcDispatcherMessage);
-    Assert.assertNotEquals(grpcDispatcherMessage, new Object());
-    Assert.assertNotEquals(new Object(), grpcDispatcherMessage);
+    Assertions.assertNotEquals(grpcDispatcherMessage, null);
+    Assertions.assertNotEquals(null, grpcDispatcherMessage);
+    Assertions.assertNotEquals(grpcDispatcherMessage, new Object());
+    Assertions.assertNotEquals(new Object(), grpcDispatcherMessage);
     // validate that equality fails for difference in any single field.
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.KAFKA,
@@ -232,7 +234,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -252,7 +254,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -272,7 +274,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -292,7 +294,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -312,7 +314,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -332,7 +334,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -352,7 +354,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -372,7 +374,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -392,7 +394,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -412,7 +414,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT + 1,
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -432,7 +434,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT,
             DISPATCH_ATTEMPT + 1,
             TIMEOUT_COUNT));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -452,7 +454,7 @@ public class DispatcherMessageTest extends FievelTestBase {
             RETRY_COUNT,
             DISPATCH_ATTEMPT,
             TIMEOUT_COUNT + 1));
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         grpcDispatcherMessage,
         new DispatcherMessage(
             DispatcherMessage.Type.GRPC,
@@ -476,7 +478,7 @@ public class DispatcherMessageTest extends FievelTestBase {
 
   @Test
   public void testHashCode() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         grpcDispatcherMessage.hashCode(),
         new DispatcherMessage(
                 DispatcherMessage.Type.GRPC,
@@ -497,6 +499,6 @@ public class DispatcherMessageTest extends FievelTestBase {
                 DISPATCH_ATTEMPT,
                 TIMEOUT_COUNT)
             .hashCode());
-    Assert.assertNotEquals(grpcDispatcherMessage.hashCode(), kafkaDispatcherMessage.hashCode());
+    Assertions.assertNotEquals(grpcDispatcherMessage.hashCode(), kafkaDispatcherMessage.hashCode());
   }
 }

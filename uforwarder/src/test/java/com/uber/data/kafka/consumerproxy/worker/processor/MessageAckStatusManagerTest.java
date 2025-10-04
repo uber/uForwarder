@@ -10,9 +10,9 @@ import com.uber.m3.tally.Stopwatch;
 import com.uber.m3.tally.Timer;
 import java.util.Optional;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
@@ -29,7 +29,7 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
   private Scope scope;
   private ProcessorMessage pm1, pm2, pm3;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     physicalKafkaMetadata1 = new TopicPartitionOffset(TOPIC, 1, 0);
     physicalKafkaMetadata2 = new TopicPartitionOffset(TOPIC, 1, 1);
@@ -85,14 +85,14 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
     } catch (IllegalStateException e) {
       exception = e;
     }
-    Assert.assertNotNull(exception);
+    Assertions.assertNotNull(exception);
 
     // cancel job1 again
     messageAckStatusManager.cancel(job1);
 
     // cancel job2
     messageAckStatusManager.cancel(job2);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         AckTrackingQueue.CANNOT_ACK, messageAckStatusManager.ack(physicalKafkaMetadata2));
   }
 
@@ -100,7 +100,7 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
   public void testCancelAll() {
     IllegalStateException exception = null;
     messageAckStatusManager.cancelAll();
-    Assert.assertFalse(messageAckStatusManager.nack(physicalKafkaMetadata1));
+    Assertions.assertFalse(messageAckStatusManager.nack(physicalKafkaMetadata1));
   }
 
   @Test
@@ -113,7 +113,7 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
     } catch (IllegalStateException e) {
       exception = e;
     }
-    Assert.assertNotNull(exception);
+    Assertions.assertNotNull(exception);
   }
 
   @Test
@@ -127,13 +127,13 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
 
   @Test
   public void testAck() {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         AckTrackingQueue.CANNOT_ACK, messageAckStatusManager.ack(physicalKafkaMetadata1));
   }
 
   @Test
   public void testNack() {
-    Assert.assertFalse(messageAckStatusManager.nack(physicalKafkaMetadata1));
+    Assertions.assertFalse(messageAckStatusManager.nack(physicalKafkaMetadata1));
   }
 
   @Test
@@ -147,7 +147,7 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
             physicalKafkaMetadata1.getTopic(), physicalKafkaMetadata1.getPartition());
     Optional<BlockingQueue.BlockingMessage> blockingMessage =
         messageAckStatusManager.detectBlockingMessage(tp);
-    Assert.assertFalse(blockingMessage.isPresent());
+    Assertions.assertFalse(blockingMessage.isPresent());
     for (int i = 0; i < 100; ++i) {
       ProcessorMessage pm = newProcessMessage(new TopicPartitionOffset(TOPIC, 1, i));
       messageAckStatusManager.receive(pm);
@@ -156,9 +156,9 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
       messageAckStatusManager.ack(new TopicPartitionOffset(TOPIC, 1, i));
       blockingMessage = messageAckStatusManager.detectBlockingMessage(tp);
       if (i > 4) {
-        Assert.assertFalse(blockingMessage.isPresent());
+        Assertions.assertFalse(blockingMessage.isPresent());
       } else {
-        Assert.assertTrue(blockingMessage.isPresent());
+        Assertions.assertTrue(blockingMessage.isPresent());
       }
     }
   }
@@ -168,7 +168,7 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
     TopicPartition tp = new TopicPartition("random-topic", physicalKafkaMetadata1.getPartition());
     Optional<BlockingQueue.BlockingMessage> blockingMessage =
         messageAckStatusManager.detectBlockingMessage(tp);
-    Assert.assertFalse(blockingMessage.isPresent());
+    Assertions.assertFalse(blockingMessage.isPresent());
   }
 
   @Test
@@ -187,15 +187,16 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
             physicalKafkaMetadata1.getTopic(), physicalKafkaMetadata1.getPartition());
     Optional<BlockingQueue.BlockingMessage> blockingMessage =
         messageAckStatusManager.detectBlockingMessage(tp);
-    Assert.assertTrue(blockingMessage.isPresent());
-    Assert.assertTrue(messageAckStatusManager.markCanceled(blockingMessage.get().getMetaData()));
+    Assertions.assertTrue(blockingMessage.isPresent());
+    Assertions.assertTrue(
+        messageAckStatusManager.markCanceled(blockingMessage.get().getMetaData()));
     blockingMessage = messageAckStatusManager.detectBlockingMessage(tp);
-    Assert.assertFalse(blockingMessage.isPresent());
+    Assertions.assertFalse(blockingMessage.isPresent());
   }
 
   @Test
   public void testMarkCanceledUnAssigned() {
-    Assert.assertFalse(messageAckStatusManager.markCanceled(pm3.getPhysicalMetadata()));
+    Assertions.assertFalse(messageAckStatusManager.markCanceled(pm3.getPhysicalMetadata()));
   }
 
   @Test

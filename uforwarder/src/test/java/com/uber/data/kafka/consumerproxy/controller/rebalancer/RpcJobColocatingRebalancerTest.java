@@ -47,15 +47,12 @@ import java.util.function.Function;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Test;
-import org.junit.runner.RunWith;
-import org.junit.runners.Parameterized;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.Mockito;
 
-@RunWith(Parameterized.class)
 public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest {
-  @Parameterized.Parameters
   public static Collection<Object[]> data() {
     return Arrays.asList(
         new Object[][] {
@@ -104,7 +101,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
   // suppress ForbidClassloaderGetResourceInTests as moving to gradle repo
   @SuppressWarnings("ForbidClassloaderGetResourceInTests")
-  public RpcJobColocatingRebalancerTest(String jobDataPath, String workerDataPath)
+  public void initRpcJobColocatingRebalancerTest(String jobDataPath, String workerDataPath)
       throws Exception {
     // To load production data for test, download data from
     // https://system-phx.uberinternal.com/udg://kafka-consumer-proxy-master-phx/0:system/jobsJson
@@ -181,8 +178,11 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     doNothing().when(mockCounter).inc(anyLong());
   }
 
-  @Test
-  public void testProductionDataCoverageRate() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testProductionDataCoverageRate(String jobDataPath, String workerDataPath)
+      throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setMessagesPerSecPerWorker(4000);
     config.setWorkerToReduceRatio(0.9);
@@ -204,7 +204,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 4);
     Set<Long> usedWorkers = usedWorkers(jobs, workers);
     workers.keySet().removeAll(usedWorkers);
-    Assert.assertFalse(usedWorkers.contains(0L));
+    Assertions.assertFalse(usedWorkers.contains(0L));
 
     Map<Long, Long> jobToWorkerId =
         jobToWorkerId(
@@ -220,12 +220,14 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             newJobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
-    Assert.assertEquals(0, calcDiff(newJobToWorkerId, jobToWorkerId));
+    Assertions.assertEquals(0, calcDiff(newJobToWorkerId, jobToWorkerId));
   }
 
-  @Override
-  @Test
-  public void testJsonDataRemoveJobGroup() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testJsonDataRemoveJobGroup(String jobDataPath, String workerDataPath)
+      throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setMessagesPerSecPerWorker(4000);
     config.setWorkerToReduceRatio(0.9);
@@ -263,12 +265,13 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     Set<Long> deletedJobIds = deletedJob(prevJobToWorkerId, jobToWorkerId);
-    Assert.assertEquals(nJobs, deletedJobIds.size());
+    Assertions.assertEquals(nJobs, deletedJobIds.size());
   }
 
-  @Override
-  @Test
-  public void testJsonDataAddWorker() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testJsonDataAddWorker(String jobDataPath, String workerDataPath) throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
@@ -303,13 +306,16 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
-    Assert.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
+    Assertions.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
     Set<Long> jobIds = updatedJob(prevJobToWorkerId, jobToWorkerId);
-    Assert.assertEquals(0, jobIds.size());
+    Assertions.assertEquals(0, jobIds.size());
   }
 
-  @Test
-  public void testJsonDataWorkloadReduced() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testJsonDataWorkloadReduced(String jobDataPath, String workerDataPath)
+      throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
@@ -367,19 +373,20 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
-    Assert.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
+    Assertions.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
 
     usedWorkers = usedWorkers(jobs, workers);
     Set<Long> allAvailableWorkers = workers.keySet();
     allAvailableWorkers.removeAll(usedWorkers);
     if (newWorkerNumber < oldUsedWorkerCount - 1) {
-      Assert.assertTrue(allAvailableWorkers.size() > idleWorkerIds.size());
+      Assertions.assertTrue(allAvailableWorkers.size() > idleWorkerIds.size());
     }
   }
 
-  @Override
-  @Test
-  public void testJsonDataRemoveWorker() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testJsonDataRemoveWorker(String jobDataPath, String workerDataPath) throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
@@ -400,7 +407,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     RebalanceSimResult result1 =
         runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 4);
-    Assert.assertTrue(
+    Assertions.assertTrue(
         validateOverloadedWorkers(
             result1, config, Iterables.getOnlyElement(rebalancer.getRebalancingTable().values())));
 
@@ -422,28 +429,28 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
                         .anyMatch(j -> workersToBeRemoved.contains(j.getWorkerId())))
             .flatMap(e -> e.getJobs().values().stream().map(j -> j.getJob().getJobId()))
             .collect(Collectors.toSet());
-    Assert.assertEquals(2, workersToBeRemoved.size());
+    Assertions.assertEquals(2, workersToBeRemoved.size());
     workers.keySet().removeAll(workersToBeRemoved);
 
     RebalanceSimResult result2 =
         runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
-    Assert.assertTrue(
+    Assertions.assertTrue(
         validateOverloadedWorkers(
             result2, config, Iterables.getOnlyElement(rebalancer.getRebalancingTable().values())));
-    Assert.assertEquals(
-        "All older workers used except removed workers",
+    Assertions.assertEquals(
         Sets.difference(result1.usedWorkers, result2.usedWorkers),
-        Sets.newHashSet(workersToBeRemoved));
+        Sets.newHashSet(workersToBeRemoved),
+        "All older workers used except removed workers");
 
     Set<Long> newWorkers = Sets.difference(result2.usedWorkers, result1.usedWorkers);
-    Assert.assertTrue(
-        "newly assigned workers are running",
+    Assertions.assertTrue(
         workers.values().stream()
             .filter(w -> newWorkers.contains(w.getNode().getId()))
-            .allMatch(w -> w.getState() == WorkerState.WORKER_STATE_WORKING));
+            .allMatch(w -> w.getState() == WorkerState.WORKER_STATE_WORKING),
+        "newly assigned workers are running");
 
     // jobs which were running on the workers to be removed should be updated
-    Assert.assertTrue(
+    Assertions.assertTrue(
         jobs.values().stream()
             .filter(
                 jobGroup ->
@@ -457,11 +464,15 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             .filter(e -> jobsWithRemovedWorkers.contains(e.getKey()))
             .map(Map.Entry::getValue)
             .collect(Collectors.toSet());
-    Assert.assertTrue(Collections.disjoint(workerIdOnJobsWithRemovedWorkers, workersToBeRemoved));
+    Assertions.assertTrue(
+        Collections.disjoint(workerIdOnJobsWithRemovedWorkers, workersToBeRemoved));
   }
 
-  @Test
-  public void testJsonDataWorkloadIncreased() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testJsonDataWorkloadIncreased(String jobDataPath, String workerDataPath)
+      throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
@@ -486,7 +497,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
         workers, LongStream.rangeClosed(1, 60).boxed().mapToLong(Long::longValue).toArray());
     runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 2);
     Set<Long> usedWorkers = usedWorkers(jobs, workers);
-    Assert.assertTrue(usedWorkers.size() < workers.size());
+    Assertions.assertTrue(usedWorkers.size() < workers.size());
 
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup("newGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0, "a", 5000));
@@ -507,11 +518,14 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
                 .collect(Collectors.toList()));
     int diff = calcDiff(prevJobToWorkerId, jobToWorkerId);
     // at least one job got updated and other jobs can be updated due to load balance
-    Assert.assertTrue(diff >= 1);
+    Assertions.assertTrue(diff >= 1);
   }
 
-  @Test
-  public void testJsonDataWorkloadIncreasesThenDecreases() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testJsonDataWorkloadIncreasesThenDecreases(String jobDataPath, String workerDataPath)
+      throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
@@ -538,7 +552,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     RebalanceSimResult result1 =
         runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 4);
-    Assert.assertTrue(
+    Assertions.assertTrue(
         validateOverloadedWorkers(
             result1, config, Iterables.getOnlyElement(rebalancer.getRebalancingTable().values())));
 
@@ -549,7 +563,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     RebalanceSimResult result2 =
         runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
-    Assert.assertTrue(
+    Assertions.assertTrue(
         validateOverloadedWorkers(
             result2, config, Iterables.getOnlyElement(rebalancer.getRebalancingTable().values())));
 
@@ -557,7 +571,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     extraWorkload3.keySet().forEach(jobs::remove);
     RebalanceSimResult result3 =
         runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
-    Assert.assertTrue(
+    Assertions.assertTrue(
         validateOverloadedWorkers(
             result3, config, Iterables.getOnlyElement(rebalancer.getRebalancingTable().values())));
 
@@ -567,7 +581,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     RebalanceSimResult result4 =
         runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
-    Assert.assertTrue(
+    Assertions.assertTrue(
         validateOverloadedWorkers(
             result4, config, Iterables.getOnlyElement(rebalancer.getRebalancingTable().values())));
 
@@ -580,18 +594,20 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     int diff2 = calcDiff(result2.jobToWorkerId, result3.jobToWorkerId);
     int diff3 = calcDiff(result3.jobToWorkerId, result4.jobToWorkerId);
 
-    Assert.assertTrue("at least 6 jobs added for first diff", diff1 >= 6);
-    Assert.assertTrue("Multiple workers needed to be added", workerCount2 - workerCount1 > 1);
-    Assert.assertTrue(
-        "Two dedicated workers should have been removed between 2 and 3",
-        workerCount2 - workerCount3 >= 2);
-    Assert.assertTrue(
-        "Worker count should decrease by at least one", workerCount3 - workerCount4 >= 1);
-    Assert.assertTrue(diff2 > 0 && diff3 > 0);
+    Assertions.assertTrue(diff1 >= 6, "at least 6 jobs added for first diff");
+    Assertions.assertTrue(workerCount2 - workerCount1 > 1, "Multiple workers needed to be added");
+    Assertions.assertTrue(
+        workerCount2 - workerCount3 >= 2,
+        "Two dedicated workers should have been removed between 2 and 3");
+    Assertions.assertTrue(
+        workerCount3 - workerCount4 >= 1, "Worker count should decrease by at least one");
+    Assertions.assertTrue(diff2 > 0 && diff3 > 0);
   }
 
-  @Test
-  public void testOverloadCase() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testOverloadCase(String jobDataPath, String workerDataPath) throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setMessagesPerSecPerWorker(4000);
     config.setWorkerToReduceRatio(1);
@@ -612,7 +628,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     RebalanceSimResult result1 =
         runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 4);
-    Assert.assertTrue(
+    Assertions.assertTrue(
         validateOverloadedWorkers(
             result1, config, Iterables.getOnlyElement(rebalancer.getRebalancingTable().values())));
     List<Integer> overloadedWorkers1 = collectOverloadedWorkers(result1, config);
@@ -659,22 +675,25 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
         runRebalanceSim(
             rebalancer::computeWorkerId, this::usedWorkers, jobs, allAssignedWorkers, 2);
 
-    Assert.assertTrue(
-        "remaining workers all working",
+    Assertions.assertTrue(
         workers.values().stream()
             .filter(w -> result2.usedWorkers.contains(w.getNode().getId()))
-            .allMatch(w -> w.getState() == WorkerState.WORKER_STATE_WORKING));
-    Assert.assertTrue(
+            .allMatch(w -> w.getState() == WorkerState.WORKER_STATE_WORKING),
+        "remaining workers all working");
+    Assertions.assertTrue(
         result1.usedWorkers.size() - result2.usedWorkers.size() >= toRemoveWorkerCount);
-    Assert.assertTrue(
+    Assertions.assertTrue(
         validateOverloadedWorkers(
             result2, config, Iterables.getOnlyElement(rebalancer.getRebalancingTable().values())));
     List<Integer> overloadedWorkers2 = collectOverloadedWorkers(result2, config);
-    Assert.assertTrue(overloadedWorkers2.size() > overloadedWorkers1.size());
+    Assertions.assertTrue(overloadedWorkers2.size() > overloadedWorkers1.size());
   }
 
-  @Test
-  public void testInsertWorkersIntoRebalancingTableWithInsufficentWorker() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testInsertWorkersIntoRebalancingTableWithInsufficentWorker(
+      String jobDataPath, String workerDataPath) throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumberOfVirtualPartitions(8);
     JobPodPlacementProvider jobPodPlacementProvider =
@@ -712,18 +731,22 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
         config,
         jobGroupToPartitionMap);
     for (int i = 0; i < 6; i++) {
-      Assert.assertEquals(
+      Assertions.assertEquals(
           workersNeededPerPartition.get(i).intValue(),
           rebalancingWorkerTable.getAllWorkerIdsForPartition(i).size());
     }
 
-    Assert.assertEquals(5, rebalancingWorkerTable.getAllWorkerIdsForPartition(6).size());
-    Assert.assertEquals(5, rebalancingWorkerTable.getAllWorkerIdsForPartition(7).size());
-    Assert.assertEquals(0, rebalancingWorkerTable.getAllWorkerIdsForPartition(8).size());
+    Assertions.assertEquals(5, rebalancingWorkerTable.getAllWorkerIdsForPartition(6).size());
+    Assertions.assertEquals(5, rebalancingWorkerTable.getAllWorkerIdsForPartition(7).size());
+    Assertions.assertEquals(0, rebalancingWorkerTable.getAllWorkerIdsForPartition(8).size());
+    Assertions.assertEquals(0, rebalancingWorkerTable.getAllWorkerIdsForPartition(9).size());
   }
 
-  @Test
-  public void testInsertWorkersIntoRebalancingTableWithSufficientWorker() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testInsertWorkersIntoRebalancingTableWithSufficientWorker(
+      String jobDataPath, String workerDataPath) throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumberOfVirtualPartitions(8);
     JobPodPlacementProvider jobPodPlacementProvider =
@@ -760,17 +783,20 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
         config,
         jobGroupToPartitionMap);
     for (int i = 0; i < 2; i++) {
-      Assert.assertEquals(8, rebalancingWorkerTable.getAllWorkerIdsForPartition(i).size());
+      Assertions.assertEquals(8, rebalancingWorkerTable.getAllWorkerIdsForPartition(i).size());
     }
     for (int i = 2; i < 8; i++) {
-      Assert.assertEquals(
+      Assertions.assertEquals(
           workersNeededPerPartition.get(i).intValue(),
           rebalancingWorkerTable.getAllWorkerIdsForPartition(i).size());
     }
   }
 
-  @Test
-  public void testInsertWorkersIntoRebalancingTableRemovesFromRebalancingTable() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testInsertWorkersIntoRebalancingTableRemovesFromRebalancingTable(
+      String jobDataPath, String workerDataPath) throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumberOfVirtualPartitions(8);
     config.setWorkerToReduceRatio(1.0);
@@ -854,14 +880,17 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             Mockito.times(workersInEachPartition.stream().mapToInt(Integer::intValue).sum() + 1))
         .putIfAbsent(anyLong(), anyLong());
     for (int i = 0; i < 8; i++) {
-      Assert.assertEquals(
+      Assertions.assertEquals(
           workersNeededPerPartition.get(i).intValue(),
           spyRebalancingWorkerTable.getAllWorkerIdsForPartition(i).size());
     }
   }
 
-  @Test
-  public void testJsonDataHaveWorkerInDifferentPartititon() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testJsonDataHaveWorkerInDifferentPartititon(String jobDataPath, String workerDataPath)
+      throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
@@ -882,7 +911,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     RebalanceSimResult result1 =
         runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 4);
-    Assert.assertTrue(
+    Assertions.assertTrue(
         validateOverloadedWorkers(
             result1, config, Iterables.getOnlyElement(rebalancer.getRebalancingTable().values())));
 
@@ -926,14 +955,16 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
         rebalancingWorkerTable.getAllWorkersForPartition(1).stream()
             .anyMatch(w -> w.getWorkerId() == workerInPartition0);
 
-    Assert.assertTrue(isWorkerInPartition0 ^ isWorkerInPartition1);
-    Assert.assertTrue(validateOverloadedWorkers(result2, config, rebalancingWorkerTable));
-    Assert.assertTrue(calcDiff(result1.jobToWorkerId, result2.jobToWorkerId) > 0);
+    Assertions.assertTrue(isWorkerInPartition0 ^ isWorkerInPartition1);
+    Assertions.assertTrue(validateOverloadedWorkers(result2, config, rebalancingWorkerTable));
+    Assertions.assertTrue(calcDiff(result1.jobToWorkerId, result2.jobToWorkerId) > 0);
   }
 
-  @Test
-  public void testMoveJobsToIdleWorkersWhenWorkersAreOverloadedWithMultipleLargeJobs()
-      throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testMoveJobsToIdleWorkersWhenWorkersAreOverloadedWithMultipleLargeJobs(
+      String jobDataPath, String workerDataPath) throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
@@ -963,11 +994,14 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
             2);
     Set<Long> newIdleWorkerIds = new HashSet<>(workerOverloadedCaseWorkers.keySet());
     newIdleWorkerIds.removeAll(result1.usedWorkers);
-    Assert.assertTrue(idleWorkerIds.size() > newIdleWorkerIds.size());
+    Assertions.assertTrue(idleWorkerIds.size() > newIdleWorkerIds.size());
   }
 
-  @Test
-  public void testEnableMultiplePodPlacement() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testEnableMultiplePodPlacement(String jobDataPath, String workerDataPath)
+      throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
@@ -1035,14 +1069,14 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     RpcJobColocatingRebalancer.RebalancingWorkerTable pod1Table =
         rebalancer.getRebalancingTable().get("pod1");
     Set<Long> allPod1Workers = pod1Table.getAllWorkerIds();
-    Assert.assertFalse(allCanaryWorkers.isEmpty());
-    Assert.assertFalse(allPod1Workers.isEmpty());
-    Assert.assertEquals(1, canaryTable.getAllPartitions().size());
-    Assert.assertEquals(1, pod1Table.getAllPartitions().size());
+    Assertions.assertFalse(allCanaryWorkers.isEmpty());
+    Assertions.assertFalse(allPod1Workers.isEmpty());
+    Assertions.assertEquals(1, canaryTable.getAllPartitions().size());
+    Assertions.assertEquals(1, pod1Table.getAllPartitions().size());
 
     RpcJobColocatingRebalancer.RebalancingWorkerTable normalTable =
         rebalancer.getRebalancingTable().get("");
-    Assert.assertEquals(8, normalTable.getAllPartitions().size());
+    Assertions.assertEquals(8, normalTable.getAllPartitions().size());
 
     Map<Long, Long> jobToWorker = result.jobToWorkerId;
 
@@ -1053,19 +1087,19 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
       long workerId = entry.getValue();
 
       StoredJob job = allJobs.get(jobId);
-      Assert.assertNotNull(job);
+      Assertions.assertNotNull(job);
       boolean isCanaryJob = job.getJobPod().equals("canary");
       if (isCanaryJob) {
         numberOfCanaryJobs++;
       }
       StoredWorker worker = workers.get(workerId);
-      Assert.assertNotNull(worker);
+      Assertions.assertNotNull(worker);
       boolean isCanaryWorker =
           worker.getNode().getHost().startsWith("dca20")
               || worker.getNode().getHost().startsWith("phx5");
-      Assert.assertEquals(isCanaryWorker, isCanaryJob);
+      Assertions.assertEquals(isCanaryWorker, isCanaryJob);
       if (isCanaryWorker) {
-        Assert.assertTrue(allCanaryWorkers.contains(workerId));
+        Assertions.assertTrue(allCanaryWorkers.contains(workerId));
       }
 
       boolean isPod1Job = job.getJobPod().equals("pod1");
@@ -1075,13 +1109,13 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
       boolean isPod1Worker =
           worker.getNode().getHost().startsWith("dca24")
               || worker.getNode().getHost().startsWith("phx3");
-      Assert.assertEquals(isPod1Worker, isPod1Job);
+      Assertions.assertEquals(isPod1Worker, isPod1Job);
       if (isPod1Worker) {
-        Assert.assertTrue(allPod1Workers.contains(workerId));
+        Assertions.assertTrue(allPod1Workers.contains(workerId));
       }
     }
-    Assert.assertEquals(numberOfCanaryJobs, 20);
-    Assert.assertEquals(numberOfPod1Jobs, 25);
+    Assertions.assertEquals(numberOfCanaryJobs, 20);
+    Assertions.assertEquals(numberOfPod1Jobs, 25);
 
     jobPodProvider = job -> "";
     workerPodProvider = worker -> "";
@@ -1099,8 +1133,8 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     // now disable all pod placement, there will be no canary workers or pod1 workers
     result = runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
-    Assert.assertNull(rebalancer.getRebalancingTable().get("canary"));
-    Assert.assertNull(rebalancer.getRebalancingTable().get("pod1"));
+    Assertions.assertNull(rebalancer.getRebalancingTable().get("canary"));
+    Assertions.assertNull(rebalancer.getRebalancingTable().get("pod1"));
     jobToWorker = result.jobToWorkerId;
 
     for (Map.Entry<Long, Long> entry : jobToWorker.entrySet()) {
@@ -1108,14 +1142,17 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
       long workerId = entry.getValue();
 
       StoredJob job = allJobs.get(jobId);
-      Assert.assertNotNull(job);
+      Assertions.assertNotNull(job);
       StoredWorker worker = workers.get(workerId);
-      Assert.assertNotNull(worker);
+      Assertions.assertNotNull(worker);
     }
   }
 
-  @Test
-  public void testEnableMultiplePodPlacementWithNoWorkersInOnePod() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testEnableMultiplePodPlacementWithNoWorkersInOnePod(
+      String jobDataPath, String workerDataPath) throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
@@ -1178,16 +1215,16 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
         runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
     RpcJobColocatingRebalancer.RebalancingWorkerTable canaryTable =
         rebalancer.getRebalancingTable().get("canary");
-    Assert.assertNull(canaryTable);
+    Assertions.assertNull(canaryTable);
     RpcJobColocatingRebalancer.RebalancingWorkerTable pod1Table =
         rebalancer.getRebalancingTable().get("pod1");
     Set<Long> allPod1Workers = pod1Table.getAllWorkerIds();
-    Assert.assertFalse(allPod1Workers.isEmpty());
-    Assert.assertEquals(1, pod1Table.getAllPartitions().size());
+    Assertions.assertFalse(allPod1Workers.isEmpty());
+    Assertions.assertEquals(1, pod1Table.getAllPartitions().size());
 
     RpcJobColocatingRebalancer.RebalancingWorkerTable normalTable =
         rebalancer.getRebalancingTable().get("");
-    Assert.assertEquals(8, normalTable.getAllPartitions().size());
+    Assertions.assertEquals(8, normalTable.getAllPartitions().size());
 
     Map<Long, Long> jobToWorker = result.jobToWorkerId;
 
@@ -1200,13 +1237,13 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
       long workerId = entry.getValue();
 
       StoredJob job = allJobs.get(jobId);
-      Assert.assertNotNull(job);
+      Assertions.assertNotNull(job);
       boolean isCanaryJob = job.getJobPod().equals("canary");
       if (isCanaryJob) {
         numberOfCanaryJobs++;
       }
       StoredWorker worker = workers.get(workerId);
-      Assert.assertNotNull(worker);
+      Assertions.assertNotNull(worker);
 
       if (isCanaryJob) {
         if (worker.getNode().getHost().startsWith("dca24")
@@ -1225,18 +1262,18 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
           worker.getNode().getHost().startsWith("dca24")
               || worker.getNode().getHost().startsWith("phx3");
       if (isPod1Job) {
-        Assert.assertTrue(isPod1Worker);
+        Assertions.assertTrue(isPod1Worker);
       }
 
       if (isPod1Worker) {
-        Assert.assertTrue(allPod1Workers.contains(workerId));
+        Assertions.assertTrue(allPod1Workers.contains(workerId));
       }
     }
-    Assert.assertEquals(numberOfCanaryJobs, 50);
-    Assert.assertEquals(numberOfPod1Jobs, 100);
-    Assert.assertFalse(numberOfCanaryJobsOnDefaultWorker == 0);
-    Assert.assertFalse(numberOfCanaryJobsOnPod1Worker == 0);
-    Assert.assertEquals(50, numberOfCanaryJobsOnDefaultWorker + numberOfCanaryJobsOnPod1Worker);
+    Assertions.assertEquals(numberOfCanaryJobs, 50);
+    Assertions.assertEquals(numberOfPod1Jobs, 100);
+    Assertions.assertFalse(numberOfCanaryJobsOnDefaultWorker == 0);
+    Assertions.assertFalse(numberOfCanaryJobsOnPod1Worker == 0);
+    Assertions.assertEquals(50, numberOfCanaryJobsOnDefaultWorker + numberOfCanaryJobsOnPod1Worker);
 
     jobPodProvider = job -> "";
     workerPodProvider = worker -> "";
@@ -1254,8 +1291,8 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     // now disable all pod placement, there will be no canary workers or pod1 workers
     result = runRebalanceSim(rebalancer::computeWorkerId, this::usedWorkers, jobs, workers, 2);
-    Assert.assertNull(rebalancer.getRebalancingTable().get("canary"));
-    Assert.assertNull(rebalancer.getRebalancingTable().get("pod1"));
+    Assertions.assertNull(rebalancer.getRebalancingTable().get("canary"));
+    Assertions.assertNull(rebalancer.getRebalancingTable().get("pod1"));
     jobToWorker = result.jobToWorkerId;
 
     for (Map.Entry<Long, Long> entry : jobToWorker.entrySet()) {
@@ -1263,14 +1300,17 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
       long workerId = entry.getValue();
 
       StoredJob job = allJobs.get(jobId);
-      Assert.assertNotNull(job);
+      Assertions.assertNotNull(job);
       StoredWorker worker = workers.get(workerId);
-      Assert.assertNotNull(worker);
+      Assertions.assertNotNull(worker);
     }
   }
 
-  @Test
-  public void testComputeJobConfiguration() throws Exception {
+  @MethodSource("data")
+  @ParameterizedTest
+  public void testComputeJobConfiguration(String jobDataPath, String workerDataPath)
+      throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancingJobGroup rebalancingJobGroup1 =
         buildRebalancingJobGroup(
             "jobGroup1",
@@ -1329,35 +1369,35 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
     // check job group with canary
     canaryJob = rebalancingJobGroup1.getJobs().get(1L);
-    Assert.assertEquals(canaryJob.getJobPod(), "canary");
-    Assert.assertEquals(Double.compare(canaryJob.getScale(), 450), 0);
-    Assert.assertEquals(
+    Assertions.assertEquals(canaryJob.getJobPod(), "canary");
+    Assertions.assertEquals(Double.compare(canaryJob.getScale(), 450), 0);
+    Assertions.assertEquals(
         Double.compare(canaryJob.getJob().getFlowControl().getMessagesPerSec(), 50), 0);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         Double.compare(canaryJob.getJob().getFlowControl().getBytesPerSec(), 60), 0);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         Double.compare(canaryJob.getJob().getFlowControl().getMaxInflightMessages(), 75), 0);
 
     StoredJob nonCanaryJob = rebalancingJobGroup1.getJobs().get(2L);
-    Assert.assertNotEquals(nonCanaryJob.getJobPod(), "canary");
-    Assert.assertEquals(Double.compare(nonCanaryJob.getScale(), 450), 0);
-    Assert.assertEquals(
+    Assertions.assertNotEquals(nonCanaryJob.getJobPod(), "canary");
+    Assertions.assertEquals(Double.compare(nonCanaryJob.getScale(), 450), 0);
+    Assertions.assertEquals(
         Double.compare(nonCanaryJob.getJob().getFlowControl().getMessagesPerSec(), 1000), 0);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         Double.compare(nonCanaryJob.getJob().getFlowControl().getBytesPerSec(), 1200), 0);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         Double.compare(nonCanaryJob.getJob().getFlowControl().getMaxInflightMessages(), 1500), 0);
 
     // check job group without canary
     for (Map.Entry<Long, StoredJob> jobEntry : rebalancingJobGroup2.getJobs().entrySet()) {
       StoredJob normalJob = jobEntry.getValue();
-      Assert.assertEquals(normalJob.getJobPod(), "");
-      Assert.assertEquals(Double.compare(normalJob.getScale(), 450), 0);
-      Assert.assertEquals(
+      Assertions.assertEquals(normalJob.getJobPod(), "");
+      Assertions.assertEquals(Double.compare(normalJob.getScale(), 450), 0);
+      Assertions.assertEquals(
           Double.compare(normalJob.getJob().getFlowControl().getMessagesPerSec(), 500), 0);
-      Assert.assertEquals(
+      Assertions.assertEquals(
           Double.compare(normalJob.getJob().getFlowControl().getBytesPerSec(), 600), 0);
-      Assert.assertEquals(
+      Assertions.assertEquals(
           Double.compare(normalJob.getJob().getFlowControl().getMaxInflightMessages(), 750), 0);
     }
   }

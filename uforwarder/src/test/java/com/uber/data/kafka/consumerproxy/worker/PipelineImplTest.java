@@ -1,5 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.common.collect.ImmutableList;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherImpl;
 import com.uber.data.kafka.consumerproxy.worker.processor.ProcessorImpl;
@@ -7,16 +9,15 @@ import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobStatus;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcher;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class PipelineImplTest extends FievelTestBase {
+public class PipelineImplTest {
   private KafkaFetcher<byte[], byte[]> fetcher;
   private ProcessorImpl processor;
   private DispatcherImpl dispatcher;
@@ -24,7 +25,7 @@ public class PipelineImplTest extends FievelTestBase {
   private PipelineImpl pipeline;
   private String pipelineId;
 
-  @Before
+  @BeforeEach
   public void setup() {
     pipelineId = "mockPipelineId";
     fetcher = Mockito.mock(KafkaFetcher.class);
@@ -61,13 +62,13 @@ public class PipelineImplTest extends FievelTestBase {
     Mockito.doReturn(true).when(fetcher).isRunning();
     Mockito.doReturn(false).when(processor).isRunning();
     Mockito.doReturn(false).when(dispatcher).isRunning();
-    Assert.assertFalse(pipeline.isRunning());
+    Assertions.assertFalse(pipeline.isRunning());
 
     Mockito.doReturn(true).when(processor).isRunning();
-    Assert.assertFalse(pipeline.isRunning());
+    Assertions.assertFalse(pipeline.isRunning());
 
     Mockito.doReturn(true).when(dispatcher).isRunning();
-    Assert.assertTrue(pipeline.isRunning());
+    Assertions.assertTrue(pipeline.isRunning());
   }
 
   @Test
@@ -82,15 +83,21 @@ public class PipelineImplTest extends FievelTestBase {
     Mockito.verify(stateManager, Mockito.times(1)).run(Job.getDefaultInstance());
   }
 
-  @Test(expected = ExecutionException.class)
+  @Test
   public void testRunWithException() throws Exception {
-    CompletableFuture<Void> exceptionalCompletion = new CompletableFuture();
-    exceptionalCompletion.completeExceptionally(new RuntimeException());
-    Mockito.doReturn(CompletableFuture.completedFuture(null)).when(fetcher).signal();
-    Mockito.doReturn(exceptionalCompletion).when(stateManager).run(Mockito.any());
-    Mockito.doReturn(CompletableFuture.completedFuture(null)).when(processor).run(Mockito.any());
+    assertThrows(
+        ExecutionException.class,
+        () -> {
+          CompletableFuture<Void> exceptionalCompletion = new CompletableFuture();
+          exceptionalCompletion.completeExceptionally(new RuntimeException());
+          Mockito.doReturn(CompletableFuture.completedFuture(null)).when(fetcher).signal();
+          Mockito.doReturn(exceptionalCompletion).when(stateManager).run(Mockito.any());
+          Mockito.doReturn(CompletableFuture.completedFuture(null))
+              .when(processor)
+              .run(Mockito.any());
 
-    pipeline.run(Job.getDefaultInstance()).toCompletableFuture().get();
+          pipeline.run(Job.getDefaultInstance()).toCompletableFuture().get();
+        });
   }
 
   @Test
@@ -107,17 +114,23 @@ public class PipelineImplTest extends FievelTestBase {
     Mockito.verify(stateManager, Mockito.times(1)).update(Job.getDefaultInstance());
   }
 
-  @Test(expected = ExecutionException.class)
+  @Test
   public void testUpdateWithException() throws Exception {
-    CompletableFuture<Void> exceptionalCompletion = new CompletableFuture();
-    exceptionalCompletion.completeExceptionally(new RuntimeException());
-    Mockito.doReturn(exceptionalCompletion).when(fetcher).signal();
-    Mockito.doReturn(CompletableFuture.completedFuture(null))
-        .when(stateManager)
-        .update(Mockito.any());
-    Mockito.doReturn(CompletableFuture.completedFuture(null)).when(processor).update(Mockito.any());
+    assertThrows(
+        ExecutionException.class,
+        () -> {
+          CompletableFuture<Void> exceptionalCompletion = new CompletableFuture();
+          exceptionalCompletion.completeExceptionally(new RuntimeException());
+          Mockito.doReturn(exceptionalCompletion).when(fetcher).signal();
+          Mockito.doReturn(CompletableFuture.completedFuture(null))
+              .when(stateManager)
+              .update(Mockito.any());
+          Mockito.doReturn(CompletableFuture.completedFuture(null))
+              .when(processor)
+              .update(Mockito.any());
 
-    pipeline.update(Job.getDefaultInstance()).toCompletableFuture().get();
+          pipeline.update(Job.getDefaultInstance()).toCompletableFuture().get();
+        });
   }
 
   @Test
@@ -134,17 +147,23 @@ public class PipelineImplTest extends FievelTestBase {
     Mockito.verify(stateManager, Mockito.times(1)).cancel(Job.getDefaultInstance());
   }
 
-  @Test(expected = ExecutionException.class)
+  @Test
   public void testCancelWithException() throws Exception {
-    CompletableFuture<Void> exceptionalCompletion = new CompletableFuture();
-    exceptionalCompletion.completeExceptionally(new RuntimeException());
-    Mockito.doReturn(exceptionalCompletion).when(fetcher).signal();
-    Mockito.doReturn(CompletableFuture.completedFuture(null))
-        .when(stateManager)
-        .cancel(Mockito.any());
-    Mockito.doReturn(CompletableFuture.completedFuture(null)).when(processor).cancel(Mockito.any());
+    assertThrows(
+        ExecutionException.class,
+        () -> {
+          CompletableFuture<Void> exceptionalCompletion = new CompletableFuture();
+          exceptionalCompletion.completeExceptionally(new RuntimeException());
+          Mockito.doReturn(exceptionalCompletion).when(fetcher).signal();
+          Mockito.doReturn(CompletableFuture.completedFuture(null))
+              .when(stateManager)
+              .cancel(Mockito.any());
+          Mockito.doReturn(CompletableFuture.completedFuture(null))
+              .when(processor)
+              .cancel(Mockito.any());
 
-    pipeline.cancel(Job.getDefaultInstance()).toCompletableFuture().get();
+          pipeline.cancel(Job.getDefaultInstance()).toCompletableFuture().get();
+        });
   }
 
   @Test
@@ -159,29 +178,33 @@ public class PipelineImplTest extends FievelTestBase {
     Mockito.verify(stateManager, Mockito.times(1)).cancelAll();
   }
 
-  @Test(expected = ExecutionException.class)
+  @Test
   public void testCancelAllWithException() throws Exception {
-    CompletableFuture<Void> exceptionalCompletion = new CompletableFuture();
-    exceptionalCompletion.completeExceptionally(new RuntimeException());
-    Mockito.doReturn(exceptionalCompletion).when(fetcher).signal();
-    Mockito.doReturn(CompletableFuture.completedFuture(null)).when(stateManager).cancelAll();
-    Mockito.doReturn(CompletableFuture.completedFuture(null)).when(processor).cancelAll();
+    assertThrows(
+        ExecutionException.class,
+        () -> {
+          CompletableFuture<Void> exceptionalCompletion = new CompletableFuture();
+          exceptionalCompletion.completeExceptionally(new RuntimeException());
+          Mockito.doReturn(exceptionalCompletion).when(fetcher).signal();
+          Mockito.doReturn(CompletableFuture.completedFuture(null)).when(stateManager).cancelAll();
+          Mockito.doReturn(CompletableFuture.completedFuture(null)).when(processor).cancelAll();
 
-    pipeline.cancelAll().toCompletableFuture().get();
+          pipeline.cancelAll().toCompletableFuture().get();
+        });
   }
 
   @Test
   public void testGetJobStatus() {
     List<JobStatus> expected = ImmutableList.of(JobStatus.getDefaultInstance());
     Mockito.doReturn(expected).when(stateManager).getJobStatus();
-    Assert.assertEquals(expected, pipeline.getJobStatus());
+    Assertions.assertEquals(expected, pipeline.getJobStatus());
   }
 
   @Test
   public void testGetJobs() {
     List<Job> expected = ImmutableList.of(Job.getDefaultInstance());
     Mockito.doReturn(expected).when(stateManager).getJobs();
-    Assert.assertEquals(expected, pipeline.getJobs());
+    Assertions.assertEquals(expected, pipeline.getJobs());
   }
 
   @Test
@@ -194,6 +217,6 @@ public class PipelineImplTest extends FievelTestBase {
   @Test
   public void getProcessor() {
     ProcessorImpl result = pipeline.processor();
-    Assert.assertEquals(processor, result);
+    Assertions.assertEquals(processor, result);
   }
 }

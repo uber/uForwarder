@@ -4,9 +4,9 @@ import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
 public class DlqDispatchManagerTest extends ProcessorTestBase {
@@ -15,7 +15,7 @@ public class DlqDispatchManagerTest extends ProcessorTestBase {
   private Gauge mockGauge;
   private Counter mockCounter;
 
-  @Before
+  @BeforeEach
   public void setUp() throws Exception {
     mockScope = Mockito.mock(Scope.class);
     mockGauge = Mockito.mock(Gauge.class);
@@ -32,17 +32,17 @@ public class DlqDispatchManagerTest extends ProcessorTestBase {
   public void testCredit() {
     TopicPartition tp = new TopicPartition(TOPIC, PARTITION);
     dlqDispatchManager.credit(tp, 1);
-    Assert.assertEquals(2, dlqDispatchManager.getTokens(tp));
+    Assertions.assertEquals(2, dlqDispatchManager.getTokens(tp));
   }
 
   @Test
   public void testAcquire() {
     TopicPartition tp = new TopicPartition(TOPIC, PARTITION);
-    Assert.assertTrue(dlqDispatchManager.tryAcquire(tp, 1));
-    Assert.assertEquals(0, dlqDispatchManager.getTokens(tp));
+    Assertions.assertTrue(dlqDispatchManager.tryAcquire(tp, 1));
+    Assertions.assertEquals(0, dlqDispatchManager.getTokens(tp));
     Mockito.verify(mockCounter, Mockito.times(1)).inc(1);
 
-    Assert.assertFalse(dlqDispatchManager.tryAcquire(tp, 1));
+    Assertions.assertFalse(dlqDispatchManager.tryAcquire(tp, 1));
     Mockito.verify(mockCounter, Mockito.times(2)).inc(1);
   }
 
@@ -50,14 +50,14 @@ public class DlqDispatchManagerTest extends ProcessorTestBase {
   public void testCancel() {
     TopicPartition tp = new TopicPartition(TOPIC, PARTITION);
     dlqDispatchManager.cancel(job);
-    Assert.assertTrue(dlqDispatchManager.tryAcquire(tp, 100));
+    Assertions.assertTrue(dlqDispatchManager.tryAcquire(tp, 100));
   }
 
   @Test
   public void testCancelAll() {
     TopicPartition tp = new TopicPartition(TOPIC, PARTITION);
     dlqDispatchManager.cancelAll();
-    Assert.assertTrue(dlqDispatchManager.tryAcquire(tp, 100));
+    Assertions.assertTrue(dlqDispatchManager.tryAcquire(tp, 100));
   }
 
   @Test

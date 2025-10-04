@@ -3,13 +3,12 @@ package com.uber.data.kafka.consumerproxy.worker.filter;
 import com.uber.data.kafka.consumerproxy.worker.processor.ProcessorMessage;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class CompositeFilterTest extends FievelTestBase {
+public class CompositeFilterTest {
   private Filter compositeFilter;
   private Filter filter1;
   private Filter filter2;
@@ -19,7 +18,7 @@ public class CompositeFilterTest extends FievelTestBase {
   private Job job;
   private ProcessorMessage pm;
 
-  @Before
+  @BeforeEach
   public void setup() {
     job = Job.newBuilder().setJobId(100).build();
     pm = Mockito.mock(ProcessorMessage.class);
@@ -36,30 +35,30 @@ public class CompositeFilterTest extends FievelTestBase {
   @Test
   public void testEmptyFactory() {
     compositeFilter = CompositeFilter.newFactory(new Filter.Factory[] {}).create(job);
-    Assert.assertEquals(Filter.NOOP_FILTER, compositeFilter);
+    Assertions.assertEquals(Filter.NOOP_FILTER, compositeFilter);
   }
 
   @Test
   public void testTrueFilter() {
     compositeFilter = CompositeFilter.newFactory(factory1, factory1).create(job);
-    Assert.assertTrue(compositeFilter.shouldProcess(ItemAndJob.of(pm, job)));
+    Assertions.assertTrue(compositeFilter.shouldProcess(ItemAndJob.of(pm, job)));
   }
 
   @Test
   public void testFalseFilter() {
     compositeFilter = CompositeFilter.newFactory(factory2, factory2).create(job);
-    Assert.assertFalse(compositeFilter.shouldProcess(ItemAndJob.of(pm, job)));
+    Assertions.assertFalse(compositeFilter.shouldProcess(ItemAndJob.of(pm, job)));
   }
 
   @Test
   public void testTrueFalseFilter() {
     compositeFilter = CompositeFilter.newFactory(factory1, factory2).create(job);
-    Assert.assertFalse(compositeFilter.shouldProcess(ItemAndJob.of(pm, job)));
+    Assertions.assertFalse(compositeFilter.shouldProcess(ItemAndJob.of(pm, job)));
   }
 
   @Test
   public void testFalseTrueFilter() {
     compositeFilter = CompositeFilter.newFactory(factory2, factory1).create(job);
-    Assert.assertFalse(compositeFilter.shouldProcess(ItemAndJob.of(pm, job)));
+    Assertions.assertFalse(compositeFilter.shouldProcess(ItemAndJob.of(pm, job)));
   }
 }

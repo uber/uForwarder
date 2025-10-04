@@ -1,18 +1,17 @@
 package com.uber.data.kafka.consumerproxy.worker.limiter;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class VegasAdaptiveInflightLimiterTest extends FievelTestBase {
+public class VegasAdaptiveInflightLimiterTest {
   @Test
   public void testAcquire() throws InterruptedException {
     AdaptiveInflightLimiter adaptiveInflightLimiter =
         VegasAdaptiveInflightLimiter.newBuilder().build();
     InflightLimiter.Permit p = adaptiveInflightLimiter.acquire();
-    Assert.assertEquals(1, adaptiveInflightLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(1, adaptiveInflightLimiter.getMetrics().getInflight());
     p.complete();
-    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(0, adaptiveInflightLimiter.getMetrics().getInflight());
   }
 
   @Test
@@ -20,8 +19,8 @@ public class VegasAdaptiveInflightLimiterTest extends FievelTestBase {
     AdaptiveInflightLimiter adaptiveInflightLimiter =
         VegasAdaptiveInflightLimiter.newBuilder().build();
     InflightLimiter.Permit p = adaptiveInflightLimiter.acquire();
-    Assert.assertEquals(1, adaptiveInflightLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(1, adaptiveInflightLimiter.getMetrics().getInflight());
     adaptiveInflightLimiter.setMaxInflight(100);
-    Assert.assertEquals(0, adaptiveInflightLimiter.getMetrics().getInflight());
+    Assertions.assertEquals(0, adaptiveInflightLimiter.getMetrics().getInflight());
   }
 }

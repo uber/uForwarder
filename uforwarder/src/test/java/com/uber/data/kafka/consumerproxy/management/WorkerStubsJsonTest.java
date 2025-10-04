@@ -5,15 +5,14 @@ import com.uber.data.kafka.consumerproxy.worker.processor.MessageStub;
 import com.uber.data.kafka.consumerproxy.worker.processor.ProcessorImpl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManager;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class WorkerStubsJsonTest extends FievelTestBase {
+public class WorkerStubsJsonTest {
   @Test
   public void test() throws Exception {
     PipelineManager pipelineManager = Mockito.mock(PipelineManager.class);
@@ -28,6 +27,6 @@ public class WorkerStubsJsonTest extends FievelTestBase {
     Mockito.doReturn(stubs).when(processor).getStubs();
 
     WorkerStubsJson workerStubsJson = new WorkerStubsJson(pipelineManager);
-    Assert.assertNotNull(workerStubsJson.read());
+    Assertions.assertNotNull(workerStubsJson.read());
   }
 }

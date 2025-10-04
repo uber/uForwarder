@@ -1,8 +1,9 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.datatransfer.Job;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Timer;
@@ -10,13 +11,13 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class LinkedAckTrackingQueueTest extends FievelTestBase {
+public class LinkedAckTrackingQueueTest {
   private static final int SIZE = 3;
   private static final AttributeKey ZONE_KEY = new AttributeKey("zone");
   private static final Attribute<String> ZONE_A = new Attribute<>("a");
@@ -26,7 +27,7 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
   private Gauge gauge;
   private Job job;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     scope = Mockito.mock(Scope.class);
     Timer timer = Mockito.mock(Timer.class);
@@ -40,27 +41,36 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
 
   @Test
   public void testGetTopicPartition() {
-    Assert.assertEquals(job.getKafkaConsumerTask().getTopic(), queue.getTopicPartition().topic());
-    Assert.assertEquals(
+    Assertions.assertEquals(
+        job.getKafkaConsumerTask().getTopic(), queue.getTopicPartition().topic());
+    Assertions.assertEquals(
         job.getKafkaConsumerTask().getPartition(), queue.getTopicPartition().partition());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testNegativeCapacity1() {
-    new LinkedAckTrackingQueue(job, 0, scope);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new LinkedAckTrackingQueue(job, 0, scope);
+        });
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testNegativeCapacity2() {
-    new LinkedAckTrackingQueue(job, -5, scope);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          new LinkedAckTrackingQueue(job, -5, scope);
+        });
   }
 
   @Test
   public void testInitialValue() {
     assertValues(-1, -1, -1, -1, 0, 0, 0, 0, 0);
-    Assert.assertEquals(SIZE, queue.capacity);
-    Assert.assertEquals(0, queue.offsetStatusMap.size());
-    Assert.assertEquals(0, queue.getState().stats().acked());
+    Assertions.assertEquals(SIZE, queue.capacity);
+    Assertions.assertEquals(0, queue.offsetStatusMap.size());
+    Assertions.assertEquals(0, queue.getState().stats().acked());
   }
 
   @Test
@@ -104,7 +114,7 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(102, ImmutableMap.of(ZONE_KEY, ZONE_A));
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 3, 0, 0);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_B), 0, 0, 0);
-    Assert.assertFalse(queue.notInUse);
+    Assertions.assertFalse(queue.notInUse);
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
@@ -123,25 +133,25 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
             })
         .start();
     queue.receive(102);
-    Assert.assertTrue(queue.notInUse);
+    Assertions.assertTrue(queue.notInUse);
   }
 
   @Test
   public void testAck() throws InterruptedException {
     // before receive
-    Assert.assertEquals(AckTrackingQueue.CANNOT_ACK, queue.ack(99));
+    Assertions.assertEquals(AckTrackingQueue.CANNOT_ACK, queue.ack(99));
     assertValues(-1, -1, -1, -1, 0, 0, 0, 0, 0);
     // ack a too large offset
     queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
-    Assert.assertEquals(AckTrackingQueue.CANNOT_ACK, queue.ack(200));
+    Assertions.assertEquals(AckTrackingQueue.CANNOT_ACK, queue.ack(200));
     assertValues(99, 99, 99, 99, 1, 0, 0, 0, 1);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
     // ack a too small offset
-    Assert.assertEquals(AckTrackingQueue.CANNOT_ACK, queue.ack(99));
+    Assertions.assertEquals(AckTrackingQueue.CANNOT_ACK, queue.ack(99));
     assertValues(99, 99, 99, 99, 1, 0, 0, 0, 1);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
     // ack normally
-    Assert.assertEquals(100, queue.ack(100));
+    Assertions.assertEquals(100, queue.ack(100));
     assertValues(99, 100, -1, -1, 0, 0, 0, 0, 0);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 0, 0, 0);
   }
@@ -151,13 +161,13 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     queue.receive(100);
     queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_A));
-    Assert.assertEquals(100, queue.ack(100));
+    Assertions.assertEquals(100, queue.ack(100));
     assertValues(101, 100, 100, 100, 2, 0, 0, 0, 2);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
-    Assert.assertEquals(101, queue.ack(101));
+    Assertions.assertEquals(101, queue.ack(101));
     assertValues(101, 101, 101, 101, 1, 0, 0, 0, 1);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
-    Assert.assertEquals(102, queue.ack(102));
+    Assertions.assertEquals(102, queue.ack(102));
     assertValues(101, 102, -1, -1, 0, 0, 0, 0, 0);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 0, 0, 0);
   }
@@ -167,16 +177,16 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     queue.receive(100);
     queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_A));
-    Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
+    Assertions.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
     assertValues(101, 99, 99, 99, 3, 1, 0, 1, 3);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 0, 0);
-    Assert.assertEquals(AckTrackingQueue.DUPLICATED_ACK, queue.ack(101));
+    Assertions.assertEquals(AckTrackingQueue.DUPLICATED_ACK, queue.ack(101));
     assertValues(101, 99, 99, 99, 3, 1, 0, 1, 3);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 0, 0);
-    Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(102));
+    Assertions.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(102));
     assertValues(101, 99, 99, 99, 3, 2, 0, 2, 3);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 1, 0);
-    Assert.assertEquals(102, queue.ack(100));
+    Assertions.assertEquals(102, queue.ack(100));
     assertValues(101, 102, -1, -1, 0, 0, 0, 0, 0);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 0, 0, 0);
   }
@@ -189,14 +199,14 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99);
     queue.receive(100);
     queue.receive(103);
-    Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
+    Assertions.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
     assertValues(103, 99, 99, 99, 3, 1, 0, 1, 5);
     Mockito.verify(scope, Mockito.times(1))
         .gauge(AckTrackingQueue.MetricNames.IN_MEMORY_UNCOMMITTED);
     Mockito.verify(uncommitedGauage, Mockito.times(1)).update(3);
 
     // commit first message in the queue,
-    Assert.assertEquals(101, queue.ack(100));
+    Assertions.assertEquals(101, queue.ack(100));
     assertValues(103, 101, 103, 103, 1, 0, 0, 0, 1);
     Mockito.verify(scope, Mockito.times(2))
         .gauge(AckTrackingQueue.MetricNames.IN_MEMORY_UNCOMMITTED);
@@ -213,13 +223,13 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99);
     queue.receive(110);
     queue.receive(121);
-    Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(111));
+    Assertions.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(111));
     assertValues(121, 99, 99, 99, 3, 1, 0, 11, 23);
-    Assert.assertEquals(AckTrackingQueue.DUPLICATED_ACK, queue.ack(111));
+    Assertions.assertEquals(AckTrackingQueue.DUPLICATED_ACK, queue.ack(111));
     assertValues(121, 99, 99, 99, 3, 1, 0, 11, 23);
-    Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(122));
+    Assertions.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(122));
     assertValues(121, 99, 99, 99, 3, 2, 0, 22, 23);
-    Assert.assertEquals(122, queue.ack(100));
+    Assertions.assertEquals(122, queue.ack(100));
     assertValues(121, 122, -1, -1, 0, 0, 0, 0, 0);
   }
 
@@ -240,9 +250,9 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
             })
         .start();
     queue.receive(102);
-    Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(103));
+    Assertions.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(103));
     assertValues(102, 100, 100, 100, 3, 1, 0, 2, 3);
-    Assert.assertFalse(queue.notInUse);
+    Assertions.assertFalse(queue.notInUse);
   }
 
   // this should never happen, but in case something is wrong, we test this case
@@ -262,30 +272,30 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
             })
         .start();
     queue.receive(102);
-    Assert.assertEquals(AckTrackingQueue.CANNOT_ACK, queue.ack(103));
+    Assertions.assertEquals(AckTrackingQueue.CANNOT_ACK, queue.ack(103));
     assertValues(101, 99, 99, 99, 3, 0, 0, 0, 3);
-    Assert.assertTrue(queue.notInUse);
+    Assertions.assertTrue(queue.notInUse);
   }
 
   @Test
   public void testNack() throws InterruptedException {
     // before receive
-    Assert.assertFalse(queue.nack(99));
+    Assertions.assertFalse(queue.nack(99));
     assertValues(-1, -1, -1, -1, 0, 0, 0, 0, 0);
     // nack a too large offset
     queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
-    Assert.assertFalse(queue.nack(200));
+    Assertions.assertFalse(queue.nack(200));
     assertValues(99, 99, 99, 99, 1, 0, 0, 0, 1);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
     // nack a too small offset
-    Assert.assertFalse(queue.nack(99));
+    Assertions.assertFalse(queue.nack(99));
     assertValues(99, 99, 99, 99, 1, 0, 0, 0, 1);
     // nack normally
-    Assert.assertTrue(queue.nack(100));
+    Assertions.assertTrue(queue.nack(100));
     assertValues(99, 99, 99, 99, 1, 0, 0, 0, 1);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
     // nack a nacked offset
-    Assert.assertFalse(queue.nack(100));
+    Assertions.assertFalse(queue.nack(100));
     assertValues(99, 99, 99, 99, 1, 0, 0, 0, 1);
   }
 
@@ -304,9 +314,9 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
               }
             })
         .start();
-    Assert.assertTrue(queue.nack(102));
+    Assertions.assertTrue(queue.nack(102));
     assertValues(101, 99, 99, 99, 3, 0, 0, 0, 3);
-    Assert.assertFalse(queue.notInUse);
+    Assertions.assertFalse(queue.notInUse);
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
@@ -315,11 +325,11 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99);
     queue.receive(100);
     queue.receive(101);
-    Assert.assertFalse(queue.nack(103));
+    Assertions.assertFalse(queue.nack(103));
     assertValues(101, 99, 99, 99, 3, 0, 0, 0, 3);
-    Assert.assertFalse(queue.notInUse);
+    Assertions.assertFalse(queue.notInUse);
     queue.markAsNotInUse();
-    Assert.assertTrue(queue.notInUse);
+    Assertions.assertTrue(queue.notInUse);
   }
 
   @Test
@@ -328,13 +338,13 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99);
     queue.receive(100);
     queue.receive(101);
-    Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
+    Assertions.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
     assertValues(101, 99, 99, 99, 3, 1, 0, 1, 3);
-    Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(102));
+    Assertions.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(102));
     assertValues(101, 99, 99, 99, 3, 2, 0, 2, 3);
     // test
-    Assert.assertFalse(queue.nack(101));
-    Assert.assertFalse(queue.nack(102));
+    Assertions.assertFalse(queue.nack(101));
+    Assertions.assertFalse(queue.nack(102));
   }
 
   @Test
@@ -343,9 +353,9 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     queue.receive(100);
     queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_A));
-    Assert.assertTrue(queue.nack(100));
-    Assert.assertTrue(queue.nack(101));
-    Assert.assertTrue(queue.nack(102));
+    Assertions.assertTrue(queue.nack(100));
+    Assertions.assertTrue(queue.nack(101));
+    Assertions.assertTrue(queue.nack(102));
     assertValues(101, 99, 99, 99, 3, 0, 0, 0, 3);
     // test: reuse the code
     testOutOfOrderAck();
@@ -357,10 +367,10 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     queue.receive(100, ImmutableMap.of(ZONE_KEY, ZONE_B));
     queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_A));
-    Assert.assertTrue(queue.cancel(100));
+    Assertions.assertTrue(queue.cancel(100));
     assertValues(101, 99, 99, 100, 3, 0, 1, 0, 3);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 0, 1);
-    Assert.assertEquals(100, queue.ack(100));
+    Assertions.assertEquals(100, queue.ack(100));
     assertValues(101, 100, 100, 100, 2, 0, 0, 0, 2);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 1, 0, 0);
   }
@@ -371,10 +381,10 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     queue.receive(100, ImmutableMap.of(ZONE_KEY, ZONE_A));
     queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_B));
-    Assert.assertTrue(queue.cancel(100));
+    Assertions.assertTrue(queue.cancel(100));
     assertValues(101, 99, 99, 100, 3, 0, 1, 0, 3);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 0, 1);
-    Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
+    Assertions.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
     assertValues(101, 99, 99, 101, 3, 1, 1, 1, 3);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 1, 1);
   }
@@ -385,9 +395,9 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99);
     queue.receive(100);
     queue.receive(101);
-    Assert.assertEquals(100, queue.ack(100));
+    Assertions.assertEquals(100, queue.ack(100));
     assertValues(101, 100, 100, 100, 2, 0, 0, 0, 2);
-    Assert.assertFalse(queue.cancel(100));
+    Assertions.assertFalse(queue.cancel(100));
     assertValues(101, 100, 100, 100, 2, 0, 0, 0, 2);
   }
 
@@ -397,10 +407,10 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99, ImmutableMap.of(ZONE_KEY, ZONE_A));
     queue.receive(100, ImmutableMap.of(ZONE_KEY, ZONE_A));
     queue.receive(101, ImmutableMap.of(ZONE_KEY, ZONE_B));
-    Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
+    Assertions.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(101));
     assertValues(101, 99, 99, 99, 3, 1, 0, 1, 3);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 1, 0);
-    Assert.assertTrue(queue.cancel(100));
+    Assertions.assertTrue(queue.cancel(100));
     assertValues(101, 99, 99, 101, 3, 1, 1, 1, 3);
     assertAttributeStatus(ImmutableMap.of(ZONE_KEY, ZONE_A), 2, 1, 1);
   }
@@ -411,9 +421,9 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99);
     queue.receive(100);
     queue.receive(101);
-    Assert.assertEquals(true, queue.nack(100));
+    Assertions.assertEquals(true, queue.nack(100));
     assertValues(101, 99, 99, 99, 3, 0, 0, 0, 3);
-    Assert.assertTrue(queue.cancel(100));
+    Assertions.assertTrue(queue.cancel(100));
     assertValues(101, 99, 99, 100, 3, 0, 1, 0, 3);
   }
 
@@ -437,9 +447,9 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     queue.receive(99);
     queue.receive(100);
     queue.receive(101);
-    Assert.assertTrue(queue.cancel(100));
+    Assertions.assertTrue(queue.cancel(100));
     assertValues(101, 99, 99, 100, 3, 0, 1, 0, 3);
-    Assert.assertEquals(false, queue.nack(100));
+    Assertions.assertEquals(false, queue.nack(100));
     assertValues(101, 99, 99, 100, 3, 0, 1, 0, 3);
   }
 
@@ -457,12 +467,12 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
     // set up
     queue.receive(99);
     queue.receive(102);
-    Assert.assertTrue(queue.nack(100));
-    Assert.assertFalse(queue.nack(101));
-    Assert.assertFalse(queue.nack(102));
-    Assert.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(103));
+    Assertions.assertTrue(queue.nack(100));
+    Assertions.assertFalse(queue.nack(101));
+    Assertions.assertFalse(queue.nack(102));
+    Assertions.assertEquals(AckTrackingQueue.IN_MEMORY_ACK_ONLY, queue.ack(103));
     assertValues(102, 99, 99, 99, 2, 1, 0, 3, 4);
-    Assert.assertEquals(103, queue.ack(100));
+    Assertions.assertEquals(103, queue.ack(100));
     assertValues(102, 103, -1, -1, 0, 0, 0, 0, 0);
   }
 
@@ -564,24 +574,24 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
       int canceled,
       int width,
       int length) {
-    Assert.assertEquals(highestReceivedOffset, queue.highestReceivedOffset);
-    Assert.assertEquals(highestCommittedOffset, queue.highestCommittedOffset);
-    Assert.assertEquals(headOffset, queue.getState().headOffset());
-    Assert.assertEquals(lowestCancelableOffset, queue.getState().lowestCancelableOffset());
-    Assert.assertEquals(size, queue.getState().stats().size());
-    Assert.assertEquals(ackedCount, queue.getState().stats().acked());
-    Assert.assertEquals(canceled, queue.getState().stats().canceled());
-    Assert.assertEquals(width, width(queue.getState()));
-    Assert.assertEquals(length, length(queue.getState()));
+    Assertions.assertEquals(highestReceivedOffset, queue.highestReceivedOffset);
+    Assertions.assertEquals(highestCommittedOffset, queue.highestCommittedOffset);
+    Assertions.assertEquals(headOffset, queue.getState().headOffset());
+    Assertions.assertEquals(lowestCancelableOffset, queue.getState().lowestCancelableOffset());
+    Assertions.assertEquals(size, queue.getState().stats().size());
+    Assertions.assertEquals(ackedCount, queue.getState().stats().acked());
+    Assertions.assertEquals(canceled, queue.getState().stats().canceled());
+    Assertions.assertEquals(width, width(queue.getState()));
+    Assertions.assertEquals(length, length(queue.getState()));
   }
 
   private void assertAttributeStatus(
       Map<AttributeKey, Attribute> attributes, int size, int acked, int canceled) {
     Attribute zone = attributes.get(ZONE_KEY);
     AckTrackingQueue.Stats stats = queue.getState().attributesStats().get(ZONE_KEY).get(zone);
-    Assert.assertEquals(size, stats.size());
-    Assert.assertEquals(acked, stats.acked());
-    Assert.assertEquals(canceled, stats.canceled());
+    Assertions.assertEquals(size, stats.size());
+    Assertions.assertEquals(acked, stats.acked());
+    Assertions.assertEquals(canceled, stats.canceled());
   }
 
   // TODO: 1.remove width and length. 2. validate offsets instead of width nor length

@@ -13,7 +13,6 @@ import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.JobPodPlacementProvider;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Scope;
 import java.util.ArrayList;
@@ -22,10 +21,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class JobGroupAndWorkerPodifierTest extends FievelTestBase {
+public class JobGroupAndWorkerPodifierTest {
   @Test
   public void test() throws Exception {
     Map<String, RebalancingJobGroup> jobGroupMap = new HashMap<>();
@@ -114,7 +113,7 @@ public class JobGroupAndWorkerPodifierTest extends FievelTestBase {
     List<PodAwareRebalanceGroup> result =
         jobGroupAndWorkerPodifier.podifyJobGroupsAndWorkers(jobGroupMap, workerMap);
 
-    Assert.assertEquals(result.size(), 2);
+    Assertions.assertEquals(result.size(), 2);
     int actualDefaultJobs = 0;
     int actualPod1Jobs = 0;
     int actualPod2Jobs = 0;
@@ -124,11 +123,11 @@ public class JobGroupAndWorkerPodifierTest extends FievelTestBase {
       Map<Long, StoredWorker> workers = podAwareRebalanceGroup.getWorkers();
       Map<String, List<StoredJob>> jobs = podAwareRebalanceGroup.getGroupIdToJobs();
       if (pod.equals("default")) {
-        Assert.assertEquals(workers.size(), 50);
+        Assertions.assertEquals(workers.size(), 50);
       } else if (pod.equals("pod1")) {
-        Assert.assertEquals(workers.size(), 25);
+        Assertions.assertEquals(workers.size(), 25);
       } else {
-        Assert.fail("only has two pods");
+        Assertions.fail("only has two pods");
       }
 
       int tempPod2Jobs = 0;
@@ -146,13 +145,13 @@ public class JobGroupAndWorkerPodifierTest extends FievelTestBase {
         }
       }
       if (pod.equals("default")) {
-        Assert.assertEquals(13, tempPod2Jobs);
+        Assertions.assertEquals(13, tempPod2Jobs);
       } else {
-        Assert.assertEquals(7, tempPod2Jobs);
+        Assertions.assertEquals(7, tempPod2Jobs);
       }
     }
-    Assert.assertEquals(actualDefaultJobs, 100);
-    Assert.assertEquals(actualPod1Jobs, 20);
-    Assert.assertEquals(actualPod2Jobs, 20);
+    Assertions.assertEquals(actualDefaultJobs, 100);
+    Assertions.assertEquals(actualPod1Jobs, 20);
+    Assertions.assertEquals(actualPod2Jobs, 20);
   }
 }

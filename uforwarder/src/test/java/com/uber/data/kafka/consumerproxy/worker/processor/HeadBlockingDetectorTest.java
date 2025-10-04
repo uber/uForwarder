@@ -1,26 +1,25 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
 import com.uber.data.kafka.datatransfer.Job;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
 import java.util.Optional;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class HeadBlockingDetectorTest extends FievelTestBase {
+public class HeadBlockingDetectorTest {
   private AckTrackingQueue ackTrackingQueue;
   private HeadBlockingDetector detector;
   private Job job;
   private Scope scope;
   private TopicPartition topicPartition;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     scope = Mockito.mock(Scope.class);
     Counter counter = Mockito.mock(Counter.class);
@@ -42,7 +41,7 @@ public class HeadBlockingDetectorTest extends FievelTestBase {
       ackTrackingQueue.receive(offset);
     }
     Optional<BlockingQueue.BlockingMessage> message = detector.detect(scope, ackTrackingQueue);
-    Assert.assertFalse(message.isPresent());
+    Assertions.assertFalse(message.isPresent());
   }
 
   @Test
@@ -51,7 +50,7 @@ public class HeadBlockingDetectorTest extends FievelTestBase {
       ackTrackingQueue.receive(offset);
     }
     Optional<BlockingQueue.BlockingMessage> message = detector.detect(scope, ackTrackingQueue);
-    Assert.assertEquals(BlockingQueue.BlockingReason.BLOCKING, message.get().getReason());
+    Assertions.assertEquals(BlockingQueue.BlockingReason.BLOCKING, message.get().getReason());
   }
 
   @Test
@@ -61,30 +60,30 @@ public class HeadBlockingDetectorTest extends FievelTestBase {
     }
 
     Optional<BlockingQueue.BlockingMessage> message = detector.detect(scope, ackTrackingQueue);
-    Assert.assertFalse(message.isPresent());
+    Assertions.assertFalse(message.isPresent());
 
     ackTrackingQueue.receive(90);
     message = detector.detect(scope, ackTrackingQueue);
-    Assert.assertEquals(BlockingQueue.BlockingReason.BLOCKING, message.get().getReason());
+    Assertions.assertEquals(BlockingQueue.BlockingReason.BLOCKING, message.get().getReason());
 
     // ack most offsets in received offsets
     for (long offset = 5; offset < 10; ++offset) {
       ackTrackingQueue.ack(offset + 1);
     }
     message = detector.detect(scope, ackTrackingQueue);
-    Assert.assertEquals(BlockingQueue.BlockingReason.BLOCKING, message.get().getReason());
+    Assertions.assertEquals(BlockingQueue.BlockingReason.BLOCKING, message.get().getReason());
 
     // cancel one message to resolve Blocking state
     AckTrackingQueue.State state = ackTrackingQueue.getState();
-    Assert.assertTrue(ackTrackingQueue.cancel(state.lowestCancelableOffset() + 1));
+    Assertions.assertTrue(ackTrackingQueue.cancel(state.lowestCancelableOffset() + 1));
     message = detector.detect(scope, ackTrackingQueue);
-    Assert.assertFalse(message.isPresent());
+    Assertions.assertFalse(message.isPresent());
   }
 
   @Test
   public void testDetectEmptyQueue() {
     Optional<BlockingQueue.BlockingMessage> message = detector.detect(scope, ackTrackingQueue);
-    Assert.assertFalse(message.isPresent());
+    Assertions.assertFalse(message.isPresent());
   }
 
   @Test
@@ -92,6 +91,6 @@ public class HeadBlockingDetectorTest extends FievelTestBase {
     ackTrackingQueue.receive(0);
     ackTrackingQueue.cancel(1);
     Optional<BlockingQueue.BlockingMessage> message = detector.detect(scope, ackTrackingQueue);
-    Assert.assertFalse(message.isPresent());
+    Assertions.assertFalse(message.isPresent());
   }
 }

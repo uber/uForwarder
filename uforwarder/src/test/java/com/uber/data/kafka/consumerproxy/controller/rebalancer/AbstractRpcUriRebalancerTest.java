@@ -20,7 +20,6 @@ import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.Scalar;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.Throughput;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.NoopScope;
@@ -41,12 +40,12 @@ import java.util.function.BiConsumer;
 import java.util.stream.Collectors;
 import java.util.stream.LongStream;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class AbstractRpcUriRebalancerTest extends FievelTestBase {
+public class AbstractRpcUriRebalancerTest {
 
   AbstractRpcUriRebalancer rpcUriJobAssigner;
   static int messagesPerSecPerWorker = 10;
@@ -64,7 +63,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
 
   // suppress ForbidClassloaderGetResourceInTests as moving to gradle repo
   @SuppressWarnings("ForbidClassloaderGetResourceInTests")
-  @Before
+  @BeforeEach
   public void setup() throws IOException {
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setNumWorkersPerUri(2);
@@ -85,10 +84,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             })
         .when(scalar)
         .apply(Mockito.any(RebalancingJobGroup.class), Mockito.anyDouble());
-    Mockito.doAnswer(
-            invocation -> {
-              return Collections.EMPTY_SET;
-            })
+    Mockito.doAnswer(invocation -> Collections.EMPTY_SET)
         .when(hibernatingJobRebalancer)
         .computeWorkerId(Mockito.anyList(), Mockito.anyMap());
     Mockito.when(mockScope.tagged(Mockito.anyMap())).thenReturn(mockScope);
@@ -395,7 +391,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
                       .flatMap(s -> s.getJobs().values().stream())
                       .collect(Collectors.toList())));
       Set<Long> usedWorkers = usedWorkers(jobs, workers);
-      Assert.assertFalse(usedWorkers.contains(0L));
+      Assertions.assertFalse(usedWorkers.contains(0L));
       if (diff == 0) {
         if (result == Integer.MAX_VALUE) {
           result = i;
@@ -405,7 +401,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
       }
     }
 
-    Assert.assertNotEquals(Integer.MAX_VALUE, result);
+    Assertions.assertNotEquals(Integer.MAX_VALUE, result);
     return result;
   }
 
@@ -421,10 +417,10 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
 
     int round = runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 10);
     Set<Long> usedWorkers = usedWorkers(jobs, workers);
-    Assert.assertFalse(usedWorkers.contains(0L));
+    Assertions.assertFalse(usedWorkers.contains(0L));
     // result must converge in maximsum 2 rounds
     // result doesn't diverge in 10 rounds
-    Assert.assertTrue(round < 2);
+    Assertions.assertTrue(round < 2);
   }
 
   @Test
@@ -459,7 +455,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
     Set<Long> deletedJobIds = deletedJob(prevJobToWorkerId, jobToWorkerId);
-    Assert.assertEquals(nJobs, deletedJobIds.size());
+    Assertions.assertEquals(nJobs, deletedJobIds.size());
 
     // updated jobs and deleted job should have same URI
     Set<Long> updatedJobIds = updatedJob(prevJobToWorkerId, jobToWorkerId);
@@ -469,7 +465,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             .filter(o -> updatedJobIds.contains(o.getJob().getJobId()))
             .collect(Collectors.toList());
     for (StoredJob updatedJob : updatedJobs) {
-      Assert.assertEquals(uri, updatedJob.getJob().getRpcDispatcherTask().getUri());
+      Assertions.assertEquals(uri, updatedJob.getJob().getRpcDispatcherTask().getUri());
     }
   }
 
@@ -499,10 +495,10 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
-    Assert.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
+    Assertions.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
     Set<Long> jobIds = updatedJob(prevJobToWorkerId, jobToWorkerId);
     for (long jobId : jobIds) {
-      Assert.assertEquals(newWorkerId, jobToWorkerId.get(jobId));
+      Assertions.assertEquals(newWorkerId, jobToWorkerId.get(jobId));
     }
   }
 
@@ -532,10 +528,10 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             jobs.values().stream()
                 .flatMap(s -> s.getJobs().values().stream())
                 .collect(Collectors.toList()));
-    Assert.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
+    Assertions.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
     Set<Long> jobIds = updatedJob(prevJobToWorkerId, jobToWorkerId);
     for (long jobId : jobIds) {
-      Assert.assertEquals(removedWorkerId, prevJobToWorkerId.get(jobId));
+      Assertions.assertEquals(removedWorkerId, prevJobToWorkerId.get(jobId));
     }
   }
 
@@ -555,7 +551,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
         workers, LongStream.rangeClosed(1, 60).boxed().mapToLong(Long::longValue).toArray());
     runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 2);
     Set<Long> usedWorkers = usedWorkers(jobs, workers);
-    Assert.assertTrue(usedWorkers.size() < workers.size());
+    Assertions.assertTrue(usedWorkers.size() < workers.size());
 
     RebalancingJobGroup rebalancingJobGroup =
         buildRebalancingJobGroup("newGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0, "a", 12));
@@ -576,7 +572,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
                 .collect(Collectors.toList()));
     int diff = calcDiff(prevJobToWorkerId, jobToWorkerId);
     // make sure only updated job get reassigned
-    Assert.assertEquals(1, diff);
+    Assertions.assertEquals(1, diff);
   }
 
   @Test
@@ -586,8 +582,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_CANCELED, buildJob(1, 0), buildJob(2, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertFalse(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertFalse(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -597,8 +593,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_INVALID, buildJob(1, 0), buildJob(2, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertFalse(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertFalse(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -608,8 +604,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_UNIMPLEMENTED, buildJob(1, 0), buildJob(2, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertFalse(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertFalse(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -619,8 +615,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_FAILED, buildJob(1, 0), buildJob(2, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertFalse(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertFalse(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -630,8 +626,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap();
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertFalse(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertFalse(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -641,8 +637,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertFalse(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(1L, 2L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertFalse(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(1L, 2L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -652,8 +648,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(3, 4);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(3L, 4L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(3L, 4L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -663,8 +659,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
     Map<Long, StoredWorker> workerMap = buildWorkerMap();
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -674,8 +670,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(2, 3);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(2L, 3L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(2L, 3L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -684,7 +680,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
         buildRebalancingJobGroup(
             "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
     rpcUriJobAssigner.computeLoad(ImmutableMap.of("jobGroup", rebalancingJobGroup));
-    Assert.assertEquals(1.2, rebalancingJobGroup.getScale().get(), 0.0001);
+    Assertions.assertEquals(1.2, rebalancingJobGroup.getScale().get(), 0.0001);
   }
 
   @Test
@@ -694,8 +690,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 2));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(1L, 2L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(1L, 2L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   // TODO: There is a todo in the code for this feature. Leaving commented test for TDD.
@@ -720,8 +716,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     updateScale(rebalancingJobGroup);
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2, 3);
     rpcUriJobAssigner.computeWorkerId(jobGroupMap, workerMap);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(2, getWorkersIds(rebalancingJobGroup.getJobs()).size());
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(2, getWorkersIds(rebalancingJobGroup.getJobs()).size());
   }
 
   @Test
@@ -731,8 +727,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 1));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2, 3);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(1L, 3L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(1L, 3L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -742,8 +738,9 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 0), buildJob(3, 0));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2, 3);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(1L, 2L, 3L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(
+        ImmutableSet.of(1L, 2L, 3L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -754,8 +751,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
         buildRebalancingJobGroup("jobGroup", JobState.JOB_STATE_RUNNING, jobBuilder.build());
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(1L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(1L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -772,8 +769,8 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     rpcUriJobAssigner.computeWorkerId(
         ImmutableMap.of("jobGroup1", rebalancingJobGroup1, "jobGroup2", rebalancingJobGroup2),
         workerMap);
-    Assert.assertEquals(ImmutableSet.of(3L), getWorkersIds(rebalancingJobGroup1.getJobs()));
-    Assert.assertEquals(ImmutableSet.of(1L, 2L), getWorkersIds(rebalancingJobGroup2.getJobs()));
+    Assertions.assertEquals(ImmutableSet.of(3L), getWorkersIds(rebalancingJobGroup1.getJobs()));
+    Assertions.assertEquals(ImmutableSet.of(1L, 2L), getWorkersIds(rebalancingJobGroup2.getJobs()));
   }
 
   @Test
@@ -783,8 +780,9 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2, 3, 4, 5);
     Map<Long, Long> jobToWorkerId = jobToWorkerId(rebalancingJobGroup.getJobs().values());
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertNotEquals(jobToWorkerId, jobToWorkerId(rebalancingJobGroup.getJobs().values()));
-    Assert.assertEquals(
+    Assertions.assertNotEquals(
+        jobToWorkerId, jobToWorkerId(rebalancingJobGroup.getJobs().values()));
+    Assertions.assertEquals(
         1, calcDiff(jobToWorkerId, jobToWorkerId(rebalancingJobGroup.getJobs().values())));
     for (int i = 0; i < 5; ++i) {
       rebalancingJobGroup =
@@ -794,12 +792,12 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
       jobToWorkerId = jobToWorkerId(rebalancingJobGroup.getJobs().values());
       rpcUriJobAssigner.computeWorkerId(
           ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-      Assert.assertEquals(jobToWorkerId, jobToWorkerId(rebalancingJobGroup.getJobs().values()));
+      Assertions.assertEquals(jobToWorkerId, jobToWorkerId(rebalancingJobGroup.getJobs().values()));
 
       jobToWorkerId = jobToWorkerId(rebalancingJobGroup.getJobs().values());
       rpcUriJobAssigner.computeWorkerId(
           ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-      Assert.assertEquals(jobToWorkerId, jobToWorkerId(rebalancingJobGroup.getJobs().values()));
+      Assertions.assertEquals(jobToWorkerId, jobToWorkerId(rebalancingJobGroup.getJobs().values()));
     }
   }
 
@@ -823,10 +821,10 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     rpcUriJobAssigner.computeWorkerId(
         ImmutableMap.of("jobGroup1", rebalancingJobGroup1, "jobGroup2", rebalancingJobGroup2),
         workerMap);
-    Assert.assertTrue(rebalancingJobGroup1.isChanged());
-    Assert.assertTrue(rebalancingJobGroup2.isChanged());
-    Assert.assertEquals(12, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
-    Assert.assertEquals(12, getMaxLoadOfWorker(rebalancingJobGroup2.getJobs()).intValue());
+    Assertions.assertTrue(rebalancingJobGroup1.isChanged());
+    Assertions.assertTrue(rebalancingJobGroup2.isChanged());
+    Assertions.assertEquals(12, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
+    Assertions.assertEquals(12, getMaxLoadOfWorker(rebalancingJobGroup2.getJobs()).intValue());
 
     putWorkerToMap(workerMap, 5);
     Map<Long, Long> jobToWorkerId1 = jobToWorkerId(rebalancingJobGroup1.getJobs().values());
@@ -834,12 +832,12 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     rpcUriJobAssigner.computeWorkerId(
         ImmutableMap.of("jobGroup1", rebalancingJobGroup1, "jobGroup2", rebalancingJobGroup2),
         workerMap);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1, calcDiff(jobToWorkerId1, jobToWorkerId(rebalancingJobGroup1.getJobs().values())));
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0, calcDiff(jobToWorkerId2, jobToWorkerId(rebalancingJobGroup2.getJobs().values())));
-    Assert.assertEquals(6, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
-    Assert.assertEquals(12, getMaxLoadOfWorker(rebalancingJobGroup2.getJobs()).intValue());
+    Assertions.assertEquals(6, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
+    Assertions.assertEquals(12, getMaxLoadOfWorker(rebalancingJobGroup2.getJobs()).intValue());
 
     putWorkerToMap(workerMap, 6);
     jobToWorkerId1 = jobToWorkerId(rebalancingJobGroup1.getJobs().values());
@@ -847,10 +845,11 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     rpcUriJobAssigner.computeWorkerId(
         ImmutableMap.of("jobGroup1", rebalancingJobGroup1, "jobGroup2", rebalancingJobGroup2),
         workerMap);
-    Assert.assertEquals(jobToWorkerId1, jobToWorkerId(rebalancingJobGroup1.getJobs().values()));
-    Assert.assertNotEquals(jobToWorkerId2, jobToWorkerId(rebalancingJobGroup2.getJobs().values()));
-    Assert.assertEquals(6, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
-    Assert.assertEquals(6, getMaxLoadOfWorker(rebalancingJobGroup2.getJobs()).intValue());
+    Assertions.assertEquals(jobToWorkerId1, jobToWorkerId(rebalancingJobGroup1.getJobs().values()));
+    Assertions.assertNotEquals(
+        jobToWorkerId2, jobToWorkerId(rebalancingJobGroup2.getJobs().values()));
+    Assertions.assertEquals(6, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
+    Assertions.assertEquals(6, getMaxLoadOfWorker(rebalancingJobGroup2.getJobs()).intValue());
   }
 
   @Test
@@ -865,9 +864,9 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1);
     rpcUriJobAssigner.computeWorkerId(
         ImmutableMap.of("jobGroup1", rebalancingJobGroup1), workerMap);
-    Assert.assertTrue(rebalancingJobGroup1.isChanged());
-    Assert.assertEquals(9, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
-    Assert.assertEquals(
+    Assertions.assertTrue(rebalancingJobGroup1.isChanged());
+    Assertions.assertEquals(9, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
+    Assertions.assertEquals(
         1,
         rebalancingJobGroup1.getJobs().values().stream()
             .map(StoredJob::getWorkerId)
@@ -886,11 +885,11 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     Map<Long, Long> jobToWorkerId1 = jobToWorkerId(rebalancingJobGroup1.getJobs().values());
     rpcUriJobAssigner.computeWorkerId(
         ImmutableMap.of("jobGroup1", rebalancingJobGroup1), workerMap);
-    Assert.assertNotEquals(
+    Assertions.assertNotEquals(
         0, calcDiff(jobToWorkerId1, jobToWorkerId(rebalancingJobGroup1.getJobs().values())));
-    Assert.assertEquals(6, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
+    Assertions.assertEquals(6, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         2,
         rebalancingJobGroup1.getJobs().values().stream()
             .map(StoredJob::getWorkerId)
@@ -908,11 +907,11 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     jobToWorkerId1 = jobToWorkerId(rebalancingJobGroup1.getJobs().values());
     rpcUriJobAssigner.computeWorkerId(
         ImmutableMap.of("jobGroup1", rebalancingJobGroup1), workerMap);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         0, calcDiff(jobToWorkerId1, jobToWorkerId(rebalancingJobGroup1.getJobs().values())));
-    Assert.assertEquals(6, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
+    Assertions.assertEquals(6, getMaxLoadOfWorker(rebalancingJobGroup1.getJobs()).intValue());
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         2,
         rebalancingJobGroup1.getJobs().values().stream()
             .map(StoredJob::getWorkerId)
@@ -938,10 +937,10 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     rpcUriJobAssigner.computeWorkerId(
         ImmutableMap.of("jobGroup1", rebalancingJobGroup1, "jobGroup2", rebalancingJobGroup2),
         workerMap);
-    Assert.assertTrue(rebalancingJobGroup1.isChanged());
-    Assert.assertTrue(rebalancingJobGroup2.isChanged());
-    Assert.assertEquals(ImmutableSet.of(1L), getWorkersIds(rebalancingJobGroup1.getJobs()));
-    Assert.assertEquals(ImmutableSet.of(2L, 3L), getWorkersIds(rebalancingJobGroup2.getJobs()));
+    Assertions.assertTrue(rebalancingJobGroup1.isChanged());
+    Assertions.assertTrue(rebalancingJobGroup2.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(1L), getWorkersIds(rebalancingJobGroup1.getJobs()));
+    Assertions.assertEquals(ImmutableSet.of(2L, 3L), getWorkersIds(rebalancingJobGroup2.getJobs()));
   }
 
   @Test
@@ -951,8 +950,9 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 1), buildJob(3, 1));
     Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2, 3);
     rpcUriJobAssigner.computeWorkerId(ImmutableMap.of("jobGroup", rebalancingJobGroup), workerMap);
-    Assert.assertTrue(rebalancingJobGroup.isChanged());
-    Assert.assertEquals(ImmutableSet.of(1L, 2L, 3L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(
+        ImmutableSet.of(1L, 2L, 3L), getWorkersIds(rebalancingJobGroup.getJobs()));
   }
 
   @Test
@@ -986,17 +986,17 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     jobBuilder.getJobBuilder().getFlowControlBuilder().setMessagesPerSec(3);
     RebalancingJob largerJob = new RebalancingJob(jobBuilder.build(), jobGroup);
 
-    Assert.assertEquals(0, job.getWorkerId());
-    Assert.assertEquals("grpc://uri", job.getRpcUri());
-    Assert.assertEquals(JobState.JOB_STATE_RUNNING, job.getJobState());
-    Assert.assertEquals(2.0 / messagesPerSecPerWorker, job.getLoad(), 0.0);
-    Assert.assertEquals(job, job);
-    Assert.assertEquals(job.hashCode(), job.hashCode());
-    Assert.assertNotEquals(job, smallerJob);
-    Assert.assertNotEquals(job.hashCode(), smallerJob.hashCode());
-    Assert.assertNotEquals(job, jobGroup);
-    Assert.assertTrue(job.compareTo(smallerJob) < 0);
-    Assert.assertTrue(job.compareTo(largerJob) > 0);
+    Assertions.assertEquals(0, job.getWorkerId());
+    Assertions.assertEquals("grpc://uri", job.getRpcUri());
+    Assertions.assertEquals(JobState.JOB_STATE_RUNNING, job.getJobState());
+    Assertions.assertEquals(2.0 / messagesPerSecPerWorker, job.getLoad(), 0.0);
+    Assertions.assertEquals(job, job);
+    Assertions.assertEquals(job.hashCode(), job.hashCode());
+    Assertions.assertNotEquals(job, smallerJob);
+    Assertions.assertNotEquals(job.hashCode(), smallerJob.hashCode());
+    Assertions.assertNotEquals(job, jobGroup);
+    Assertions.assertTrue(job.compareTo(smallerJob) < 0);
+    Assertions.assertTrue(job.compareTo(largerJob) > 0);
 
     jobBuilder.getJobBuilder().setJobId(2);
     jobBuilder.setScale(0.2);
@@ -1012,15 +1012,15 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     RebalancingWorker smallerWorker = new RebalancingWorker(1, 1);
     RebalancingWorker largerWorker = new RebalancingWorker(3, 3);
 
-    Assert.assertEquals(2, worker.getWorkerId());
-    Assert.assertEquals(2.0, worker.getLoad(), 0.0);
-    Assert.assertEquals(worker, worker);
-    Assert.assertEquals(worker.hashCode(), worker.hashCode());
-    Assert.assertNotEquals(worker, smallerWorker);
-    Assert.assertNotEquals(worker.hashCode(), smallerWorker.hashCode());
-    Assert.assertNotEquals(worker, StoredJob.getDefaultInstance());
-    Assert.assertTrue(worker.compareTo(smallerWorker) > 0);
-    Assert.assertTrue(worker.compareTo(largerWorker) < 0);
+    Assertions.assertEquals(2, worker.getWorkerId());
+    Assertions.assertEquals(2.0, worker.getLoad(), 0.0);
+    Assertions.assertEquals(worker, worker);
+    Assertions.assertEquals(worker.hashCode(), worker.hashCode());
+    Assertions.assertNotEquals(worker, smallerWorker);
+    Assertions.assertNotEquals(worker.hashCode(), smallerWorker.hashCode());
+    Assertions.assertNotEquals(worker, StoredJob.getDefaultInstance());
+    Assertions.assertTrue(worker.compareTo(smallerWorker) > 0);
+    Assertions.assertTrue(worker.compareTo(largerWorker) < 0);
   }
 
   @Test
@@ -1029,10 +1029,10 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
     config.setNumWorkersPerUri(2);
     config.setMessagesPerSecPerWorker(4000);
     AbstractRpcUriRebalancer rebalancer = new SimpleRpcUriAssigner(new NoopScope(), config, scalar);
-    Assert.assertEquals(0, roundUpToNearestNumber(0, 5));
-    Assert.assertEquals(10, roundUpToNearestNumber(9, 5));
-    Assert.assertEquals(10, roundUpToNearestNumber(10, 5));
-    Assert.assertEquals(15, roundUpToNearestNumber(11, 5));
+    Assertions.assertEquals(0, roundUpToNearestNumber(0, 5));
+    Assertions.assertEquals(10, roundUpToNearestNumber(9, 5));
+    Assertions.assertEquals(10, roundUpToNearestNumber(10, 5));
+    Assertions.assertEquals(15, roundUpToNearestNumber(11, 5));
   }
 
   private class SimpleRpcUriAssigner extends AbstractRpcUriRebalancer {

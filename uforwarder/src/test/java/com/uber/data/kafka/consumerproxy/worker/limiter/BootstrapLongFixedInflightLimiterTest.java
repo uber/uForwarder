@@ -1,14 +1,13 @@
 package com.uber.data.kafka.consumerproxy.worker.limiter;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class BootstrapLongFixedInflightLimiterTest extends FievelTestBase {
+public class BootstrapLongFixedInflightLimiterTest {
   private BootstrapLongFixedInflightLimiter limiter;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     limiter =
         BootstrapLongFixedInflightLimiter.newBuilder()
@@ -20,26 +19,26 @@ public class BootstrapLongFixedInflightLimiterTest extends FievelTestBase {
 
   @Test
   public void testAcquireInBootstrap() {
-    Assert.assertTrue(limiter.isBootstrapping());
+    Assertions.assertTrue(limiter.isBootstrapping());
     int succeed = 0;
     for (int i = 0; i < 10; ++i) {
       if (limiter.tryAcquire().isPresent()) {
         succeed++;
       }
     }
-    Assert.assertEquals(4, succeed);
+    Assertions.assertEquals(4, succeed);
   }
 
   @Test
   public void testSwitchToWorking() {
-    Assert.assertTrue(limiter.isBootstrapping());
+    Assertions.assertTrue(limiter.isBootstrapping());
     switchToWorking();
-    Assert.assertFalse(limiter.isBootstrapping());
+    Assertions.assertFalse(limiter.isBootstrapping());
   }
 
   @Test
   public void testAcquireWorking() {
-    Assert.assertTrue(limiter.isBootstrapping());
+    Assertions.assertTrue(limiter.isBootstrapping());
     switchToWorking();
     int succeed = 0;
     for (int i = 0; i < 10; ++i) {
@@ -47,7 +46,7 @@ public class BootstrapLongFixedInflightLimiterTest extends FievelTestBase {
         succeed++;
       }
     }
-    Assert.assertEquals(10, succeed);
+    Assertions.assertEquals(10, succeed);
   }
 
   @Test
@@ -64,14 +63,14 @@ public class BootstrapLongFixedInflightLimiterTest extends FievelTestBase {
         succeed++;
       }
     }
-    Assert.assertEquals(1, succeed);
+    Assertions.assertEquals(1, succeed);
     lowLimitLimiter.updateLimit(10);
     for (int i = 0; i < 10; ++i) {
       if (lowLimitLimiter.tryAcquire().isPresent()) {
         succeed++;
       }
     }
-    Assert.assertEquals(4, succeed);
+    Assertions.assertEquals(4, succeed);
   }
 
   private void switchToWorking() {
