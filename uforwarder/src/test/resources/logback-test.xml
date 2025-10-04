@@ -12,12 +12,6 @@
       <customFields>{"filebeat_topic":"${serviceName}"}</customFields>
 
       <!-- tuning exception stacktrace in log -->
-      <throwableConverter class="net.logstash.logback.stacktrace.ShortenedThrowableConverter">
-        <maxDepthPerThrowable>20</maxDepthPerThrowable>
-        <maxLength>10000</maxLength>
-        <shortenedClassNameLength>30</shortenedClassNameLength>
-        <rootCauseFirst>true</rootCauseFirst>
-      </throwableConverter>
 
       <!-- enables KeyValue... 's substitution -->
       <provider class="net.logstash.logback.composite.loggingevent.ArgumentsJsonProvider"/>
