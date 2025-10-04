@@ -1791,6 +1791,10 @@ public class ProcessorImplTest extends ProcessorTestBase {
             .getItem()
             .getGrpcMessage()
             .getDispatchAttempt());
+    Mockito.verify(pipelineStateManager, Mockito.times(1))
+        .reportIssue(
+            jobWithoutRetryQueueTopic,
+            KafkaPipelineIssue.RETRY_WITHOUT_RETRY_QUEUE.getPipelineHealthIssue());
   }
 
   @Test(timeout = 5000)

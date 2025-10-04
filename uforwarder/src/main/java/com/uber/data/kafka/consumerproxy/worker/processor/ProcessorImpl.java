@@ -689,6 +689,10 @@ public class ProcessorImpl
                     return false;
                   }
                   // No retry or DLQ retried to gRPC.
+                  Preconditions.checkNotNull(
+                      pipelineStateManager, "pipeline config manager required");
+                  pipelineStateManager.reportIssue(
+                      job, KafkaPipelineIssue.RETRY_WITHOUT_RETRY_QUEUE.getPipelineHealthIssue());
                   return proceedToRetry(
                       true, retryerScope, dispatcher, rpcUri, group, topic, partition);
                 case RESQ:
