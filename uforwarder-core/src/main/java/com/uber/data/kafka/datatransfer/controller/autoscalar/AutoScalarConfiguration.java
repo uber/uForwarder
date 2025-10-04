@@ -22,8 +22,9 @@ public class AutoScalarConfiguration {
   private static final long DEFAULT_BYTES_PER_SECOND_PER_WORKER = 16 * 1024 * 1024; // 16MB/s
   private static final double DEFAULT_CPU_USAGE_PER_WORKER = 3.0; // 3 CPU cores
   private static final Duration DEFAULT_REACTIVE_WINDOW_SCALE_DURATION = Duration.ofMinutes(5);
-  private static final double DEFAULT_REACTIVE_WINDOW_SCALE_RATE = 0.2;
-  private static final double DEFAULT_DOWN_SCALE_WINDOW_MIN_RATIO = 1.0;
+  private static final double DEFAULT_REACTIVE_WINDOW_SCALE_RATE = 0.5;
+  private static final double DEFAULT_REACTIVE_DOWN_SCALE_WINDOW_MIN_RATIO = 1.0;
+  private static final double DEFAULT_REACTIVE_DOWN_SCALE_THRESHOLD = 0.9;
   private static final double DEFAULT_MAX_SCALE_WINDOW_DURATION_JITTER = 0.0;
 
   // scale window duration for up scale
@@ -91,7 +92,10 @@ public class AutoScalarConfiguration {
 
   // indicates minimum down scale window relatively to down scale window, set to 1.0 to disable
   // reactive down scale window
-  private double downScaleWindowMinRatio = DEFAULT_DOWN_SCALE_WINDOW_MIN_RATIO;
+  private double reactiveDownScaleWindowMinRatio = DEFAULT_REACTIVE_DOWN_SCALE_WINDOW_MIN_RATIO;
+
+  // indicates minimal system load that can trigger reactive down scale window
+  private double reactiveDownScaleWindowThreshold = DEFAULT_REACTIVE_DOWN_SCALE_THRESHOLD;
 
   private double maxScaleWindowDurationJitter = DEFAULT_MAX_SCALE_WINDOW_DURATION_JITTER;
 
@@ -428,17 +432,32 @@ public class AutoScalarConfiguration {
    *
    * @return
    */
-  public double getDownScaleWindowMinRatio() {
-    return downScaleWindowMinRatio;
+  public double getReactiveDownScaleWindowMinRatio() {
+    return reactiveDownScaleWindowMinRatio;
   }
 
-  public void setDownScaleWindowMinRatio(double downScaleWindowMinRatio) {
+  public void setReactiveDownScaleWindowMinRatio(double reactiveDownScaleWindowMinRatio) {
     Preconditions.checkArgument(
-        downScaleWindowMinRatio > 0.0, "downScaleWindowMinRatio must be > 0");
+        reactiveDownScaleWindowMinRatio > 0.0, "reactiveDownScaleWindowMinRatio must be > 0");
     Preconditions.checkArgument(
-        downScaleWindowMinRatio <= 1.0, "downScaleWindowMinRatio must be <= 1.0");
+        reactiveDownScaleWindowMinRatio <= 1.0, "reactiveDownScaleWindowMinRatio must be <= 1.0");
 
-    this.downScaleWindowMinRatio = downScaleWindowMinRatio;
+    this.reactiveDownScaleWindowMinRatio = reactiveDownScaleWindowMinRatio;
+  }
+
+  /**
+   * Gets minimal threshold to trigger reactive scale window
+   *
+   * @return
+   */
+  public double getReactiveDownScaleWindowThreshold() {
+    return reactiveDownScaleWindowThreshold;
+  }
+
+  public void setReactiveDownScaleWindowThreshold(double reactiveDownScaleWindowThreshold) {
+    Preconditions.checkArgument(
+        reactiveDownScaleWindowThreshold > 0.0, "reactiveDownScaleWindowThreshold must be > 0");
+    this.reactiveDownScaleWindowThreshold = reactiveDownScaleWindowThreshold;
   }
 
   /**

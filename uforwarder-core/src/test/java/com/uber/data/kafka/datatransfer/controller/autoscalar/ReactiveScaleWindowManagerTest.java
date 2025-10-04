@@ -25,7 +25,8 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
     reactiveScaleWindowCalculator = Mockito.mock(ReactiveScaleWindowCalculator.class);
     autoScalingConfig = new AutoScalarConfiguration();
     autoScalingConfig.setReactiveScaleWindowRate(1.0);
-    autoScalingConfig.setDownScaleWindowMinRatio(0.001);
+    autoScalingConfig.setReactiveDownScaleWindowMinRatio(0.001);
+    autoScalingConfig.setReactiveDownScaleWindowThreshold(0.8);
     ticker = new TestUtils.TestTicker();
     scaleStatusStore = new ScaleStatusStore(autoScalingConfig, ticker);
     reactiveScaleWindowManager =
@@ -87,7 +88,7 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
     Mockito.verify(reactiveScaleWindowCalculator, Mockito.times(1))
         .calculateDownScaleWindowDuration(
             Mockito.any(ScaleStoreSnapshot.class),
-            Mockito.anyDouble(),
+            Mockito.eq(0.815 / 0.8),
             Mockito.anyLong(),
             Mockito.any(Duration.class));
   }
@@ -122,7 +123,7 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
     Mockito.verify(reactiveScaleWindowCalculator, Mockito.times(1))
         .calculateDownScaleWindowDuration(
             Mockito.any(ScaleStoreSnapshot.class),
-            Mockito.anyDouble(),
+            Mockito.eq(0.815 / 0.9),
             Mockito.anyLong(),
             Mockito.any(Duration.class));
   }
@@ -159,7 +160,7 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
   public void testDecreaseDownScaleWindowLimitByMinDuration() {
     autoScalingConfig = new AutoScalarConfiguration();
     autoScalingConfig.setReactiveScaleWindowRate(1.0);
-    autoScalingConfig.setDownScaleWindowMinRatio(0.1);
+    autoScalingConfig.setReactiveDownScaleWindowMinRatio(0.1);
     reactiveScaleWindowManager =
         new ReactiveScaleWindowManager(
             scaleStatusStore, autoScalingConfig, ticker, reactiveScaleWindowCalculator);
@@ -175,7 +176,7 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
   public void testIncreaseDownScaleWindowLimitByRatio() {
     autoScalingConfig = new AutoScalarConfiguration();
     autoScalingConfig.setReactiveScaleWindowRate(0.2);
-    autoScalingConfig.setDownScaleWindowMinRatio(0.1);
+    autoScalingConfig.setReactiveDownScaleWindowMinRatio(0.1);
     reactiveScaleWindowManager =
         new ReactiveScaleWindowManager(
             scaleStatusStore, autoScalingConfig, ticker, reactiveScaleWindowCalculator);
@@ -193,7 +194,7 @@ public class ReactiveScaleWindowManagerTest extends FievelTestBase {
   public void testDecreaseDownScaleWindowLimitByRatio() {
     autoScalingConfig = new AutoScalarConfiguration();
     autoScalingConfig.setReactiveScaleWindowRate(0.2);
-    autoScalingConfig.setDownScaleWindowMinRatio(0.1);
+    autoScalingConfig.setReactiveDownScaleWindowMinRatio(0.1);
     reactiveScaleWindowManager =
         new ReactiveScaleWindowManager(
             scaleStatusStore, autoScalingConfig, ticker, reactiveScaleWindowCalculator);

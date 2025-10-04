@@ -83,6 +83,7 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
   private volatile State state;
   private final Duration minDownScaleWindowDuration;
   private final Duration maxDownScaleWindowDuration;
+  private final double reactiveDownScaleWindowThreshold;
 
   /**
    * Constructs a new ReactiveScaleWindowManager with the specified configuration and dependencies.
@@ -115,8 +116,9 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
         Duration.ofSeconds(
             (long)
                 (config.getDownScaleWindowDuration().toSeconds()
-                    * config.getDownScaleWindowMinRatio()));
+                    * config.getReactiveDownScaleWindowMinRatio()));
     this.maxDownScaleWindowDuration = config.getDownScaleWindowDuration();
+    this.reactiveDownScaleWindowThreshold = config.getReactiveDownScaleWindowThreshold();
   }
 
   /**
@@ -230,7 +232,10 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
           double systemLoad = scaleWindow.getByPercentile(WINDOW_PERCENTILE);
           Duration newDownScaleWindowDuration =
               reactiveScaleWindowCalculator.calculateDownScaleWindowDuration(
-                  scaleStatusStore.snapshot(), systemLoad, stateTimeNano, downScaleWindowDuration);
+                  scaleStatusStore.snapshot(),
+                  systemLoad / reactiveDownScaleWindowThreshold,
+                  stateTimeNano,
+                  downScaleWindowDuration);
 
           newDownScaleWindowDuration =
               validateDownScaleWindow(newDownScaleWindowDuration, downScaleWindowDuration);
