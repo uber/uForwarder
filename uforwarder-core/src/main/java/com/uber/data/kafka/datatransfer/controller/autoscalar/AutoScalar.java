@@ -39,7 +39,7 @@ public class AutoScalar implements Scalar {
   private final LeaderSelector leaderSelector;
   private final ScaleConverter primaryScaleConverter;
   private final Optional<ScaleConverter> shadowScaleConverter;
-  private final ScaleWindowManager scaleWindowManager;
+  private final ReactiveScaleWindowManager scaleWindowManager;
   private final Ticker ticker;
 
   /**
@@ -57,7 +57,7 @@ public class AutoScalar implements Scalar {
       AutoScalarConfiguration config,
       ScaleStatusStore statusStore,
       JobWorkloadMonitor JobWorkloadMonitor,
-      ScaleWindowManager scaleWindowManager,
+      ReactiveScaleWindowManager scaleWindowManager,
       Ticker ticker,
       Scope scope,
       LeaderSelector leaderSelector) {
@@ -197,6 +197,11 @@ public class AutoScalar implements Scalar {
           StructuredLogging.kafkaCluster(jobGroup.getKafkaConsumerTaskGroup().getCluster()),
           StructuredLogging.kafkaGroup(jobGroup.getKafkaConsumerTaskGroup().getConsumerGroup()));
     }
+  }
+
+  @Override
+  public void onLoad(double load) {
+    scaleWindowManager.onSample(load);
   }
 
   /**

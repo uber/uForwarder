@@ -61,6 +61,7 @@ master:
     throughputTTL: 10s
     jobStatusTTL: 5m
     sampleInterval: 5000
+    enabled: true
     dryRun: true
     hibernatingEnabled: true
     messagesPerSecPerWorker: 100
@@ -69,6 +70,7 @@ master:
     scaleConverterMode: CPU
     shadowScaleConverterMode: THROUGHPUT
     reactiveScaleWindowDuration: 10m
+    reactiveScaleWindowEnabled: true
 # These are configurations for the worker.
 worker:
   controller:

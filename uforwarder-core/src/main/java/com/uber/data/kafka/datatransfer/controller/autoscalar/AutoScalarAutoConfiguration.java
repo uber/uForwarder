@@ -35,8 +35,20 @@ public class AutoScalarAutoConfiguration {
   }
 
   @Bean
-  public ScaleWindowManager scaleWindowManager(AutoScalarConfiguration autoScalarConfiguration) {
-    return new ScaleWindowManager(autoScalarConfiguration);
+  public ReactiveScaleWindowCalculator reactiveScaleWindowCalculator() {
+    return new ReactiveScaleWindowCalculator();
+  }
+
+  @Bean
+  public ReactiveScaleWindowManager scaleWindowManager(
+      ScaleStatusStore scaleStatusStore,
+      AutoScalarConfiguration autoScalarConfiguration,
+      ReactiveScaleWindowCalculator reactiveScaleWindowCalculator) {
+    return new ReactiveScaleWindowManager(
+        scaleStatusStore,
+        autoScalarConfiguration,
+        Ticker.systemTicker(),
+        reactiveScaleWindowCalculator);
   }
 
   @Bean
@@ -44,7 +56,7 @@ public class AutoScalarAutoConfiguration {
       AutoScalarConfiguration autoScalarConfiguration,
       ScaleStatusStore scaleStatusStore,
       JobWorkloadSink jobWorkloadSink,
-      ScaleWindowManager scaleWindowManager,
+      ReactiveScaleWindowManager scaleWindowManager,
       Scope scope,
       LeaderSelector leaderSelector) {
     if (jobWorkloadSink instanceof JobWorkloadMonitor) {
