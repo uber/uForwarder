@@ -2,6 +2,7 @@ package com.uber.data.kafka.datatransfer.management;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.protobuf.util.JsonFormat;
 import com.uber.data.kafka.datatransfer.JobStatus;
 import com.uber.data.kafka.datatransfer.worker.pipelines.Pipeline;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManager;
@@ -26,7 +27,8 @@ public class JobStatusJsonTest extends FievelTestBase {
                 "pipelineTwo", pipelineTwo))
         .when(pipelineManager)
         .getPipelines();
-    JobStatusJson jobStatusJson = new JobStatusJson(pipelineManager);
+    JobStatusJson jobStatusJson =
+        new JobStatusJson(pipelineManager, JsonFormat.TypeRegistry.getEmptyTypeRegistry());
     Assert.assertNotNull(jobStatusJson.read());
   }
 }

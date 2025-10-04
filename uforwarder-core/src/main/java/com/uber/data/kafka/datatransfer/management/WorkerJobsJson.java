@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.management;
 
+import com.google.protobuf.util.JsonFormat;
 import com.uber.data.kafka.datatransfer.DebugJobRow;
 import com.uber.data.kafka.datatransfer.DebugJobsTable;
 import com.uber.data.kafka.datatransfer.Job;
@@ -15,8 +16,12 @@ import org.springframework.boot.actuate.endpoint.web.annotation.WebEndpoint;
 public class WorkerJobsJson extends AbstractJobsJson {
   private final PipelineManager pipelineManger;
 
-  WorkerJobsJson(PipelineManager pipelineManager, String hostName, String debugUrlFormat) {
-    super(hostName, debugUrlFormat);
+  WorkerJobsJson(
+      PipelineManager pipelineManager,
+      String hostName,
+      String debugUrlFormat,
+      JsonFormat.TypeRegistry typeRegistry) {
+    super(hostName, debugUrlFormat, typeRegistry);
     this.pipelineManger = pipelineManager;
   }
 

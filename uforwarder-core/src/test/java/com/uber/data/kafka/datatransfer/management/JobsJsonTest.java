@@ -2,6 +2,7 @@ package com.uber.data.kafka.datatransfer.management;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.google.protobuf.util.JsonFormat;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
@@ -26,7 +27,12 @@ public class JobsJsonTest extends FievelTestBase {
                     0)))
         .when(jobGroupStore)
         .getAll();
-    MasterJobsJson jobsJson = new MasterJobsJson(jobGroupStore, "hostname", "https://%s:5328/");
+    MasterJobsJson jobsJson =
+        new MasterJobsJson(
+            jobGroupStore,
+            "hostname",
+            "https://%s:5328/",
+            JsonFormat.TypeRegistry.getEmptyTypeRegistry());
     Assert.assertNotNull(jobsJson.read());
   }
 
@@ -36,7 +42,12 @@ public class JobsJsonTest extends FievelTestBase {
     Pipeline pipeline = Mockito.mock(Pipeline.class);
     Mockito.doReturn(ImmutableMap.of("p1", pipeline)).when(pipelineManager).getPipelines();
     Mockito.doReturn(ImmutableList.of(Job.getDefaultInstance())).when(pipeline).getJobs();
-    WorkerJobsJson jobsJson = new WorkerJobsJson(pipelineManager, "hostname", "https://%s:5328/");
+    WorkerJobsJson jobsJson =
+        new WorkerJobsJson(
+            pipelineManager,
+            "hostname",
+            "https://%s:5328/",
+            JsonFormat.TypeRegistry.getEmptyTypeRegistry());
     Assert.assertNotNull(jobsJson.read());
   }
 }

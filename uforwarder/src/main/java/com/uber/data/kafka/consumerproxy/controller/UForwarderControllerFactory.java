@@ -37,6 +37,7 @@ import com.uber.data.kafka.datatransfer.controller.rpc.RpcAutoConfiguration;
 import com.uber.data.kafka.datatransfer.controller.storage.IdProvider;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
 import com.uber.data.kafka.datatransfer.controller.storage.StoreAutoConfiguration;
+import com.uber.data.kafka.datatransfer.controller.storage.TypeRegistryAutoConfiguration;
 import com.uber.data.kafka.datatransfer.management.MasterManagementAutoConfiguration;
 import com.uber.m3.tally.Scope;
 import java.io.IOException;
@@ -59,6 +60,7 @@ import org.springframework.context.annotation.Profile;
   KafkaAdminClientConfiguration.class,
 })
 @Import({
+  TypeRegistryAutoConfiguration.class,
   AutoScalarAutoConfiguration.class,
   StoreAutoConfiguration.class,
   CoordinatorAutoConfiguration.class,

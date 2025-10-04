@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.management;
 
+import com.google.protobuf.util.JsonFormat;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
@@ -49,9 +50,13 @@ public class MasterManagementAutoConfiguration {
   public MasterJobsJson jobsJson(
       Store<String, StoredJobGroup> jobGroupStore,
       Node node,
-      ManagementServerConfiguration managementServerConfiguration) {
+      ManagementServerConfiguration managementServerConfiguration,
+      JsonFormat.TypeRegistry typeRegistry) {
     return new MasterJobsJson(
-        jobGroupStore, node.getHost(), managementServerConfiguration.getDebugUrlFormat());
+        jobGroupStore,
+        node.getHost(),
+        managementServerConfiguration.getDebugUrlFormat(),
+        typeRegistry);
   }
 
   @Bean
