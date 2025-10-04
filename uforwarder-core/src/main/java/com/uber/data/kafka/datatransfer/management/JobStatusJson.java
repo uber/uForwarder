@@ -16,10 +16,13 @@ public class JobStatusJson {
   private final PipelineManager pipelineManager;
   private final JsonFormat.Printer jsonPrinter;
 
-  public JobStatusJson(PipelineManager pipelineManager) {
+  public JobStatusJson(PipelineManager pipelineManager, JsonFormat.TypeRegistry typeRegistry) {
     this.pipelineManager = pipelineManager;
     this.jsonPrinter =
-        JsonFormat.printer().omittingInsignificantWhitespace().includingDefaultValueFields();
+        JsonFormat.printer()
+            .usingTypeRegistry(typeRegistry)
+            .omittingInsignificantWhitespace()
+            .includingDefaultValueFields();
   }
 
   @ReadOperation

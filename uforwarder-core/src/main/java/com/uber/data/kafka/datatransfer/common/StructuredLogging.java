@@ -1,9 +1,6 @@
 package com.uber.data.kafka.datatransfer.common;
 
-import com.google.protobuf.InvalidProtocolBufferException;
-import com.google.protobuf.util.JsonFormat;
 import com.uber.data.kafka.datatransfer.CommandType;
-import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.WorkerState;
 import java.util.Collection;
@@ -227,16 +224,6 @@ public class StructuredLogging extends StructuredFields {
 
   public static StructuredArgument pipelineId(String pipelineId) {
     return StructuredArguments.keyValue(PIPELINE_ID, pipelineId);
-  }
-
-  public static StructuredArgument pipelineJob(Job job) {
-    String jobStr;
-    try {
-      jobStr = JsonFormat.printer().print(job);
-    } catch (InvalidProtocolBufferException e) {
-      jobStr = "invalidProto";
-    }
-    return StructuredArguments.keyValue(PIPELINE_JOB, jobStr);
   }
 
   public static StructuredArgument controllableCommand(String command) {

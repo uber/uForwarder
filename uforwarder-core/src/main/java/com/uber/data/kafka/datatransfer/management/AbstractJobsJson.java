@@ -8,11 +8,15 @@ public abstract class AbstractJobsJson {
   private final String hostName;
   private final String debugUrlFormat;
 
-  public AbstractJobsJson(String hostName, String debugUrlFormat) {
+  public AbstractJobsJson(
+      String hostName, String debugUrlFormat, JsonFormat.TypeRegistry typeRegistry) {
     this.hostName = hostName;
     this.debugUrlFormat = debugUrlFormat;
     this.jsonPrinter =
-        JsonFormat.printer().omittingInsignificantWhitespace().includingDefaultValueFields();
+        JsonFormat.printer()
+            .usingTypeRegistry(typeRegistry)
+            .omittingInsignificantWhitespace()
+            .includingDefaultValueFields();
   }
 
   public String getRpcDebugUrl() {

@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 @Configuration
-@Profile("uforwarder-controller")
+@Profile(value = {"uforwarder-controller", "uforwarder-worker"})
 public class TypeRegistryAutoConfiguration {
 
   /**

@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.management;
 
+import com.google.protobuf.util.JsonFormat;
 import com.uber.data.kafka.datatransfer.DebugJobRow;
 import com.uber.data.kafka.datatransfer.DebugJobsTable;
 import com.uber.data.kafka.datatransfer.StoredJob;
@@ -15,8 +16,11 @@ public class MasterJobsJson extends AbstractJobsJson {
   private final Store<String, StoredJobGroup> jobGroupStore;
 
   MasterJobsJson(
-      Store<String, StoredJobGroup> jobGroupStore, String hostName, String debugUrlFormat) {
-    super(hostName, debugUrlFormat);
+      Store<String, StoredJobGroup> jobGroupStore,
+      String hostName,
+      String debugUrlFormat,
+      JsonFormat.TypeRegistry typeRegistry) {
+    super(hostName, debugUrlFormat, typeRegistry);
     this.jobGroupStore = jobGroupStore;
   }
 

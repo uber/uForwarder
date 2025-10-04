@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.management;
 
+import com.google.protobuf.util.JsonFormat;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManagerAutoConfiguration;
@@ -24,14 +25,19 @@ public class WorkerManagementAutoConfiguration {
   public WorkerJobsJson jobsJson(
       PipelineManager pipelineManager,
       Node node,
-      ManagementServerConfiguration managementServerConfiguration) {
+      ManagementServerConfiguration managementServerConfiguration,
+      JsonFormat.TypeRegistry typeRegistry) {
     return new WorkerJobsJson(
-        pipelineManager, node.getHost(), managementServerConfiguration.getDebugUrlFormat());
+        pipelineManager,
+        node.getHost(),
+        managementServerConfiguration.getDebugUrlFormat(),
+        typeRegistry);
   }
 
   @Bean
-  public JobStatusJson jobStatusJson(PipelineManager pipelineManager) {
-    return new JobStatusJson(pipelineManager);
+  public JobStatusJson jobStatusJson(
+      PipelineManager pipelineManager, JsonFormat.TypeRegistry typeRegistry) {
+    return new JobStatusJson(pipelineManager, typeRegistry);
   }
 
   @Bean

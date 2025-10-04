@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.management;
 
+import com.google.protobuf.util.JsonFormat.TypeRegistry;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.common.MetricsConfiguration;
@@ -35,6 +36,7 @@ public class WorkerManagementAutoConfigurationTest extends FievelTestBase {
   @MockBean Store<String, StoredJobGroup> jobGroupStore;
   @MockBean PipelineFactory pipelineFactory;
   @MockBean Node node;
+  @MockBean TypeRegistry typeRegistry;
 
   @Autowired WorkerJobsJson jobsJson;
   @Autowired JobsHtml jobsHtml;

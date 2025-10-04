@@ -131,11 +131,7 @@ public final class PipelineManager implements Controllable, MetricSource {
     } catch (Exception e) {
       isFailure = true;
       fnScope.counter(Metrics.GET_OR_CREATE_FAILURE).inc(1);
-      logger.warn(
-          Logging.GET_OR_CREATE_FAILURE,
-          StructuredLogging.pipelineId(pipelineId),
-          StructuredLogging.pipelineJob(job),
-          e);
+      logger.warn(Logging.GET_OR_CREATE_FAILURE, StructuredLogging.pipelineId(pipelineId), e);
       throw new RuntimeException(e);
     } finally {
       getOrCreateTimer.stop();

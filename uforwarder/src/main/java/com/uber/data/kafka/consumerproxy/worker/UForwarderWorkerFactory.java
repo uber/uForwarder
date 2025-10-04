@@ -24,6 +24,7 @@ import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.CoreInfraAutoConfiguration;
 import com.uber.data.kafka.datatransfer.common.MetricsConfiguration;
 import com.uber.data.kafka.datatransfer.common.NodeAutoConfiguration;
+import com.uber.data.kafka.datatransfer.controller.storage.TypeRegistryAutoConfiguration;
 import com.uber.data.kafka.datatransfer.management.WorkerManagementAutoConfiguration;
 import com.uber.data.kafka.datatransfer.worker.controller.ControllerAutoConfiguration;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcherFactory;
@@ -50,6 +51,7 @@ import org.springframework.context.annotation.Profile;
   NoopTracerAutoConfiguration.class
 })
 @Import({
+  TypeRegistryAutoConfiguration.class,
   KafkaDispatcherFactoryAutoConfiguration.class,
   KafkaFetcherAutoConfiguration.class,
   PipelineManagerAutoConfiguration.class,
