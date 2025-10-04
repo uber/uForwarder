@@ -65,6 +65,9 @@ master:
     hibernatingEnabled: true
     messagesPerSecPerWorker: 100
     bytesPerSecPerWorker: 1000
+    cpuUsagePerWorker: 5.0
+    scaleConverterMode: CPU
+    shadowScaleConverterMode: THROUGHPUT
 # These are configurations for the worker.
 worker:
   controller:
