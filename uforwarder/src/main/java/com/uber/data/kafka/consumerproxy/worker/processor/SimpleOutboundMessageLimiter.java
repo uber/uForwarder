@@ -4,6 +4,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.uber.data.kafka.consumerproxy.common.LingerSampler;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.common.StructuredTags;
 import com.uber.data.kafka.consumerproxy.worker.limiter.AdaptiveInflightLimiter;
@@ -27,6 +28,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.stream.Collectors;
+import org.apache.commons.math3.util.Pair;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,6 +40,9 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   private static final int BUCKET_SECONDS_PER_MINUTE = 60 / N_BUCKETS_PER_MINUTE;
   private static final int DEFAULT_MAX_INFLIGHT = 1000;
   private static final int BACKPRESSURE_ADAPTIVE_LIMITER_MINUTE = 30;
+  // critical level of inflight limit being used, over the threshold indicates risk of lag caused by
+  // inflight limiting
+  private static final double CRITICAL_INFLIGHT_LIMIT_USAGE = 0.8;
   protected final Job jobTemplate;
   private final AdaptiveInflightLimiter.Builder adaptiveInfligtLimiterBuilder;
   private final LongFixedInflightLimiter longFixedInflightLimiter;
@@ -50,6 +55,7 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
   private final AsyncInflightLimiterAdapter asyncAdaptiveLimiterAdapter;
   private final AsyncInflightLimiterAdapter asyncShadowAdaptiveLimiterAdapter;
   private final int maxOutboundCacheCount;
+  private final LingerSampler<Stats> statsSampler;
   private final Ticker ticker;
   // time measured in nanoseconds, use adaptive limit if current time is before
   // useAdaptiveLimiterUntilTick
@@ -71,6 +77,7 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     this.maxOutboundCacheCount = builder.maxOutboundCacheCount;
     this.ticker = builder.ticker;
     this.useAdaptiveLimiterUntilTick = ticker.read();
+    this.statsSampler = new LingerSampler<>(() -> createStats());
   }
 
   /** Closes the limiter */
@@ -218,6 +225,11 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     return topicPartitionToScopeAndInflight.containsKey(new TopicPartition(topic, partition));
   }
 
+  @Override
+  public Stats getStats() {
+    return statsSampler.get();
+  }
+
   /**
    * tries to get a permit from the inflight limiter TODO: cleanup after migrate to async permit
    * mode
@@ -333,6 +345,20 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     // current time is after the time to use adaptive limiter
     return longFixedInflightLimiter.getMetrics().getLimit() > 0
         && useAdaptiveLimiterUntilTick < ticker.read();
+  }
+
+  protected Stats createStats() {
+    long limit =
+        useFixedLimiter()
+            ? longFixedInflightLimiter.getMetrics().getLimit()
+            : adaptiveInflightLimiter.getMetrics().getLimit();
+    double oneMinAverageUsage;
+    if (limit == 0) {
+      oneMinAverageUsage = 0.0;
+    } else {
+      oneMinAverageUsage = inflightTracker.oneMinuteAverage() / (double) limit;
+    }
+    return new StatsImpl(oneMinAverageUsage);
   }
 
   /**
@@ -474,12 +500,19 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
             .withBucketDuration(BUCKET_SECONDS_PER_MINUTE, TimeUnit.SECONDS)
             .withNBuckets(N_BUCKETS_PER_MINUTE)
             .of((a, b) -> Math.min(a, b));
+
+    private final WindowedAggregator<Pair<Long, Integer>> oneMinuteAvgInflight =
+        WindowedAggregator.newBuilder()
+            .withBucketDuration(BUCKET_SECONDS_PER_MINUTE, TimeUnit.SECONDS)
+            .withNBuckets(N_BUCKETS_PER_MINUTE)
+            .of((a, b) -> new Pair<>(a.getFirst() + b.getFirst(), a.getSecond() + b.getSecond()));
     private final AtomicLong inflight = new AtomicLong(0);
 
     private void increase() {
       oneMinuteMinInflight.put(inflight.get());
       inflight.incrementAndGet();
       oneMinuteMaxInflight.put(inflight.get());
+      oneMinuteAvgInflight.put(new Pair<>(inflight.get(), 1));
     }
 
     private void decrease() {
@@ -492,6 +525,16 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
 
     private long oneMinuteMin() {
       return oneMinuteMinInflight.get(0L);
+    }
+
+    private long oneMinuteAverage() {
+      Pair<Long, Integer> pair = oneMinuteAvgInflight.get(new Pair<>(0L, 0));
+      int count = pair.getSecond();
+      if (count == 0) {
+        return 0L;
+      } else {
+        return pair.getFirst() / pair.getSecond();
+      }
     }
   }
 
@@ -527,6 +570,25 @@ public class SimpleOutboundMessageLimiter implements OutboundMessageLimiter {
     @Override
     public OutboundMessageLimiter build(Job job) {
       return new SimpleOutboundMessageLimiter(this, job);
+    }
+  }
+
+  public static class StatsImpl implements Stats {
+    private double oneMinAverageUsage;
+    private boolean closeToFull;
+
+    protected StatsImpl(double oneMinAverageUsage) {
+      this.oneMinAverageUsage = oneMinAverageUsage;
+    }
+
+    @Override
+    public double oneMinAverageUsage() {
+      return oneMinAverageUsage;
+    }
+
+    @Override
+    public boolean isCloseToFull() {
+      return oneMinAverageUsage > CRITICAL_INFLIGHT_LIMIT_USAGE;
     }
   }
 }

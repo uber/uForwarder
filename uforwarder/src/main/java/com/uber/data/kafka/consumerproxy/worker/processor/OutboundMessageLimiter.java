@@ -59,6 +59,13 @@ public interface OutboundMessageLimiter extends MetricSource {
    */
   boolean contains(Job job);
 
+  /**
+   * Gets metrics of the limiter
+   *
+   * @return
+   */
+  Stats getStats();
+
   /** Factory of OutboundMessageLimiter */
   interface Builder {
 
@@ -68,5 +75,23 @@ public interface OutboundMessageLimiter extends MetricSource {
      * @return the outbound message limiter
      */
     OutboundMessageLimiter build(Job job);
+  }
+
+  /** Statistic of the limiter */
+  interface Stats {
+
+    /**
+     * Gets if actual inflight is close to limit
+     *
+     * @return the boolean
+     */
+    boolean isCloseToFull();
+
+    /**
+     * Gets one min average usage
+     *
+     * @return the double
+     */
+    double oneMinAverageUsage();
   }
 }

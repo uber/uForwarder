@@ -1,7 +1,5 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
-import static org.awaitility.Awaitility.await;
-
 import com.google.common.util.concurrent.RateLimiter;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.uber.data.kafka.consumer.DLQMetadata;
@@ -57,7 +55,6 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
-import org.mockito.invocation.Invocation;
 import org.mockito.stubbing.Answer;
 
 public class ProcessorImplTest extends ProcessorTestBase {
@@ -128,7 +125,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
     outboundMessageLimiterBuilder =
         new SimpleOutboundMessageLimiter.Builder(
             infra, VegasAdaptiveInflightLimiter.newBuilder(), false);
-    outboundMessageLimiter = Mockito.mock(OutboundMessageLimiter.class);
+    outboundMessageLimiter = Mockito.spy(outboundMessageLimiterBuilder.build(job));
 
     config = new ProcessorConfiguration();
     config.setMaxInboundCacheCount(1);
@@ -142,7 +139,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
         new ProcessorImpl(
             ackManager,
             executor,
-            outboundMessageLimiterBuilder.build(job),
+            outboundMessageLimiter,
             job.getRpcDispatcherTask().getUri(),
             10,
             filter,
@@ -2154,48 +2151,20 @@ public class ProcessorImplTest extends ProcessorTestBase {
   }
 
   @Test
-  public void testSubmitInflightLimited() throws Exception {
-    CompletableFuture inflightReslt = new CompletableFuture<>();
-    Mockito.when(outboundMessageLimiter.acquirePermitAsync(Mockito.any(ProcessorMessage.class)))
-        .thenReturn(inflightReslt);
-    Mockito.when(outboundMessageLimiter.contains(Mockito.any(Job.class))).thenReturn(true);
+  public void testReportInflightLimitedIssue() throws ExecutionException, InterruptedException {
+    Mockito.when(outboundMessageLimiter.getStats())
+        .thenReturn(new SimpleOutboundMessageLimiter.StatsImpl(0.9));
 
-    processor =
-        new ProcessorImpl(
-            ackManager,
-            executor,
-            outboundMessageLimiter,
-            job.getRpcDispatcherTask().getUri(),
-            10,
-            filter,
-            1,
-            1,
-            infra);
-    processor.setNextStage(dispatcher);
-    processor.setPipelineStateManager(pipelineStateManager);
     processor.start();
-    processor.run(job).toCompletableFuture().get();
-
     CompletableFuture<DispatcherResponse> dispatcherFuture = new CompletableFuture<>();
     dispatcherFuture.complete(new DispatcherResponse(DispatcherResponse.Code.COMMIT));
     Mockito.when(dispatcher.submit(Mockito.any())).thenReturn(dispatcherFuture);
 
     CompletableFuture<Long> offsetFuture =
         processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
-    // limited by limiter
-    await()
-        .until(
-            () -> {
-              for (Invocation invocation :
-                  Mockito.mockingDetails(outboundMessageLimiter).getInvocations()) {
-                if (invocation.getMethod().getName().equals("acquirePermitAsync")) {
-                  return true;
-                }
-              }
-              return false;
-            });
-    // grant permit to unblock
-    inflightReslt.complete((InflightLimiter.Permit) result -> true);
     Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+
+    Mockito.verify(pipelineStateManager, Mockito.times(1))
+        .reportIssue(job, KafkaPipelineIssue.INFLIGHT_MESSAGE_LIMITED.getPipelineHealthIssue());
   }
 }

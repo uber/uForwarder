@@ -12,7 +12,9 @@ import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -302,5 +304,17 @@ public class SimpleOutboundMessageLimiterTest extends ProcessorTestBase {
     // use static limiter after limited time elapsed
     result = outboundMessageLimiter.useFixedLimiter();
     Assert.assertTrue(result);
+  }
+
+  @Test
+  public void testGetStats() {
+    outboundMessageLimiter.updateLimit(100);
+    List<InflightLimiter.Permit> permits = new ArrayList<>();
+    for (int i = 0; i < 10; ++i) {
+      permits.add(outboundMessageLimiter.acquirePermit(pm1));
+    }
+    OutboundMessageLimiter.Stats stats = outboundMessageLimiter.getStats();
+    Assert.assertFalse(stats.isCloseToFull());
+    Assert.assertEquals(0.05, stats.oneMinAverageUsage(), 0.001);
   }
 }
