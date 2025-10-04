@@ -10,11 +10,13 @@ import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.ResqConfig;
 import com.uber.data.kafka.datatransfer.RpcDispatcherTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
+import com.uber.data.kafka.datatransfer.worker.common.ThreadRegister;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcher;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcherFactory;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcher;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
 import com.uber.fievel.testing.base.FievelTestBase;
+import java.util.concurrent.ThreadFactory;
 import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
@@ -54,7 +56,8 @@ public class PipelineFactoryImplTest extends FievelTestBase {
     processor = Mockito.mock(ProcessorImpl.class);
     Mockito.doReturn(kafkaFetcher)
         .when(kafkaFetcherFactory)
-        .create(Mockito.any(), Mockito.anyString(), Mockito.any());
+        .create(
+            Mockito.any(), Mockito.anyString(), Mockito.any(ThreadRegister.class), Mockito.any());
     kafkaDispatcherFactory = Mockito.mock(KafkaDispatcherFactory.class);
     Mockito.doReturn(Mockito.mock(KafkaDispatcher.class))
         .when(kafkaDispatcherFactory)
@@ -73,7 +76,7 @@ public class PipelineFactoryImplTest extends FievelTestBase {
     processorFactory = Mockito.mock(ProcessorFactory.class);
     Mockito.doReturn(processor)
         .when(processorFactory)
-        .create(Mockito.any(Job.class), Mockito.anyString());
+        .create(Mockito.any(Job.class), Mockito.anyString(), Mockito.any(ThreadFactory.class));
     pipelineFactory =
         new PipelineFactoryImpl(
             SERVICE_NAME,
@@ -135,7 +138,10 @@ public class PipelineFactoryImplTest extends FievelTestBase {
   public void testCreatePipelineWithException() throws Exception {
     Mockito.when(
             kafkaFetcherFactory.create(
-                ArgumentMatchers.any(), ArgumentMatchers.anyString(), ArgumentMatchers.any()))
+                ArgumentMatchers.any(),
+                ArgumentMatchers.anyString(),
+                ArgumentMatchers.any(ThreadRegister.class),
+                ArgumentMatchers.any()))
         .thenThrow(new Exception());
     pipelineFactory.createPipeline(pipelineFactory.getPipelineId(job), job);
   }

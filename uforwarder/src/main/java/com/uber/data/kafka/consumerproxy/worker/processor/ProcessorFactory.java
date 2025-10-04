@@ -6,6 +6,7 @@ import com.uber.data.kafka.consumerproxy.worker.filter.Filter;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import java.util.concurrent.Executors;
+import java.util.concurrent.ThreadFactory;
 
 public class ProcessorFactory {
   private final ProcessorConfiguration config;
@@ -30,7 +31,7 @@ public class ProcessorFactory {
     this.filterFactory = filterFactory;
   }
 
-  public ProcessorImpl create(Job job, String processorId) {
+  public ProcessorImpl create(Job job, String processorId, ThreadFactory threadFactory) {
     return new ProcessorImpl(
         job,
         coreInfra
@@ -38,7 +39,10 @@ public class ProcessorFactory {
             .wrap(
                 Executors.newScheduledThreadPool(
                     config.getThreadPoolSize(),
-                    new ThreadFactoryBuilder().setNameFormat(processorId + "-%d").build())),
+                    new ThreadFactoryBuilder()
+                        .setNameFormat(processorId + "-%d")
+                        .setThreadFactory(threadFactory)
+                        .build())),
         outboundMessageLimiterBuilder,
         ackStatusManagerBuilder,
         unprocessedManagerBuilder,

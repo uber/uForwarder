@@ -11,6 +11,7 @@ import com.uber.data.kafka.datatransfer.RetryQueue;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.KafkaUtils;
 import com.uber.data.kafka.datatransfer.common.StructuredTags;
+import com.uber.data.kafka.datatransfer.worker.common.ThreadRegister;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcher;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfiguration;
@@ -44,7 +45,8 @@ public class KafkaFetcherFactory {
    * @return a {@link KafkaFetcher} for fetching messages from Kafka servers.
    * @throws Exception if there are errors when creating a {@link KafkaFetcher}.
    */
-  public KafkaFetcher<byte[], byte[]> create(Job jobTemplate, String threadId, CoreInfra coreInfra)
+  public KafkaFetcher<byte[], byte[]> create(
+      Job jobTemplate, String threadId, ThreadRegister threadRegister, CoreInfra coreInfra)
       throws Exception {
     Scope fetcherScope =
         coreInfra
@@ -105,7 +107,8 @@ public class KafkaFetcherFactory {
               isSecure,
               coreInfra);
     }
-    KafkaFetcher<byte[], byte[]> fetcher = new KafkaFetcher<>(kafkaFetcher);
+    KafkaFetcher<byte[], byte[]> fetcher =
+        new KafkaFetcher<>(threadRegister.register(kafkaFetcher));
     fetcherCreateTimer.stop();
     return fetcher;
   }

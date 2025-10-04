@@ -6,6 +6,7 @@ import com.uber.data.kafka.datatransfer.RetryConfig;
 import com.uber.data.kafka.datatransfer.RetryQueue;
 import com.uber.data.kafka.datatransfer.RpcDispatcherTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
+import com.uber.data.kafka.datatransfer.worker.common.ThreadRegister;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcher;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfiguration;
 import com.uber.fievel.testing.base.FievelTestBase;
@@ -17,6 +18,7 @@ import com.uber.m3.tally.Timer;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.AdditionalAnswers;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
@@ -29,6 +31,7 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
   private static final String THREAD_ID = "thread-id";
 
   private CoreInfra infra;
+  private ThreadRegister threadRegister;
 
   @Before
   public void setup() {
@@ -43,6 +46,9 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
     Mockito.when(scope.gauge(ArgumentMatchers.anyString())).thenReturn(gauge);
     Mockito.when(scope.timer(ArgumentMatchers.anyString())).thenReturn(timer);
     Mockito.when(timer.start()).thenReturn(stopwatch);
+
+    threadRegister = Mockito.mock(ThreadRegister.class);
+    Mockito.when(threadRegister.register(Mockito.any())).then(AdditionalAnswers.returnsFirstArg());
   }
 
   @Test
@@ -58,7 +64,8 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
                     .setTopic(ORIGINAL_TOPIC)
                     .build())
             .build();
-    Assert.assertTrue(kafkaFetcherFactory.create(job1, THREAD_ID, infra) instanceof KafkaFetcher);
+    Assert.assertTrue(
+        kafkaFetcherFactory.create(job1, THREAD_ID, threadRegister, infra) instanceof KafkaFetcher);
 
     // create a DlqTopicKafkaFetcher
     Job job2 =
@@ -66,7 +73,8 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
             .setRpcDispatcherTask(
                 RpcDispatcherTask.newBuilder().setDlqTopic(ORIGINAL_TOPIC).build())
             .build();
-    Assert.assertTrue(kafkaFetcherFactory.create(job2, THREAD_ID, infra) instanceof KafkaFetcher);
+    Assert.assertTrue(
+        kafkaFetcherFactory.create(job2, THREAD_ID, threadRegister, infra) instanceof KafkaFetcher);
 
     // create a RetryTopicKafkaFetcher
     Job job3 =
@@ -74,7 +82,10 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
             .setRpcDispatcherTask(
                 RpcDispatcherTask.newBuilder().setRetryQueueTopic(RETRY_TOPIC_1).build())
             .build();
-    Assert.assertTrue(kafkaFetcherFactory.create(job3, THREAD_ID, infra) instanceof KafkaFetcher);
+    Assert.assertTrue(
+        kafkaFetcherFactory.create(job3, THREAD_ID, threadRegister, infra) instanceof KafkaFetcher);
+
+    Mockito.verify(threadRegister, Mockito.times(3)).register(Mockito.any());
   }
 
   @Test()
@@ -97,9 +108,11 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
     KafkaFetcherFactory retryKafkaFetcherFactory =
         new KafkaFetcherFactory(new KafkaFetcherConfiguration());
     KafkaFetcher<byte[], byte[]> retryFetcherInstance =
-        retryKafkaFetcherFactory.create(job, THREAD_ID, infra);
+        retryKafkaFetcherFactory.create(job, THREAD_ID, threadRegister, infra);
 
     Assert.assertTrue(retryFetcherInstance instanceof KafkaFetcher);
+
+    Mockito.verify(threadRegister, Mockito.times(1)).register(Mockito.any());
   }
 
   @Test()
@@ -131,8 +144,10 @@ public class KafkaFetcherFactoryTest extends FievelTestBase {
     KafkaFetcherFactory retryKafkaFetcherFactory =
         new KafkaFetcherFactory(new KafkaFetcherConfiguration());
     KafkaFetcher<byte[], byte[]> retryFetcherInstance =
-        retryKafkaFetcherFactory.create(job, THREAD_ID, infra);
+        retryKafkaFetcherFactory.create(job, THREAD_ID, threadRegister, infra);
 
     Assert.assertTrue(retryFetcherInstance instanceof KafkaFetcher);
+
+    Mockito.verify(threadRegister, Mockito.times(1)).register(Mockito.any());
   }
 }

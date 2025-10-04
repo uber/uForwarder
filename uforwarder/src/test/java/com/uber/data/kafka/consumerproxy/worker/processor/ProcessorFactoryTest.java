@@ -5,6 +5,7 @@ import com.uber.data.kafka.consumerproxy.worker.filter.Filter;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.fievel.testing.base.FievelTestBase;
+import java.util.concurrent.ThreadFactory;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -19,6 +20,7 @@ public class ProcessorFactoryTest extends FievelTestBase {
   private UnprocessedMessageManager.Builder unprocessedManagerBuilder;
   private ProcessorFactory processorFactory;
   private Filter.Factory filterFactory;
+  private ThreadFactory threadFactory;
 
   @Before
   public void setUP() {
@@ -29,6 +31,7 @@ public class ProcessorFactoryTest extends FievelTestBase {
     unprocessedManagerBuilder = Mockito.mock(UnprocessedMessageManager.Builder.class);
     outboundMessageLimiter = Mockito.mock(OutboundMessageLimiter.class);
     filterFactory = Mockito.mock(Filter.Factory.class);
+    threadFactory = Mockito.mock(ThreadFactory.class);
 
     Mockito.when(outboundMessageLimiterBuilder.build(Mockito.any(Job.class)))
         .thenReturn(outboundMessageLimiter);
@@ -44,7 +47,8 @@ public class ProcessorFactoryTest extends FievelTestBase {
 
   @Test
   public void testCreate() {
-    ProcessorImpl processor = processorFactory.create(Job.newBuilder().build(), "processor-id");
+    ProcessorImpl processor =
+        processorFactory.create(Job.newBuilder().build(), "processor-id", threadFactory);
     Assert.assertNotNull(processor);
   }
 
