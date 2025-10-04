@@ -144,6 +144,13 @@ public class ReactiveScaleWindowManager extends ScaleWindowManager {
     nextState.ifPresent(state -> this.state = state);
   }
 
+  /**
+   * Gets down scale window size in duration During job scale calibration, down scale use a special
+   * duration to quickly coverage estimated scale to actual scale otherwise use reactive downscale
+   * window duration
+   *
+   * @return
+   */
   @Override
   public Duration getDownScaleWindowDuration() {
     return state.downScaleWindowDuration;

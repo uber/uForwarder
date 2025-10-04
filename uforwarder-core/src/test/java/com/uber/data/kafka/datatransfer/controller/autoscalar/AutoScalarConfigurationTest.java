@@ -54,6 +54,9 @@ public class AutoScalarConfigurationTest extends FievelTestBase {
     Assert.assertEquals(0.1, autoScalarConfiguration.getReactiveScaleWindowRate(), 0.00001);
     Assert.assertEquals(0.5, autoScalarConfiguration.getReactiveDownScaleWindowMinRatio(), 0.0001);
     Assert.assertEquals(0.1, autoScalarConfiguration.getMaxScaleWindowDurationJitter(), 0.00001);
+    Assert.assertEquals(
+        Duration.ofMinutes(3), autoScalarConfiguration.getCalibrateScaleWindowDuration());
+    Assert.assertEquals(Duration.ofMinutes(10), autoScalarConfiguration.getCalibrateDuration());
   }
 
   @Test

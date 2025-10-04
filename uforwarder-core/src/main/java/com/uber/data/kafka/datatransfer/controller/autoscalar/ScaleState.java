@@ -11,7 +11,23 @@ import java.util.concurrent.ThreadLocalRandom;
 import java.util.stream.Collectors;
 import javax.annotation.concurrent.ThreadSafe;
 
-/** ScalarState indicates in-memory autoscalar state of workload */
+/**
+ * ScalarState indicates in-memory autoscalar state of workload There are
+ *
+ * <p>CalibratingState, RunningState and HibernateState, and transit as bellow
+ *
+ * <pre>
+ *           CalibratingState
+ *              |   ^
+ *              |   |     to RunningState: after calibrating duration
+ *              V   |     to CalibratingState: reset scale with quota update
+ *           RunningState
+ *              |   ^
+ *              |   |     to HibernateState: 0 traffic observed after hibernate duration
+ *              V   |     to RunningState: none 0 traffic observed any time
+ *           HibernateState
+ * </pre>
+ */
 @ThreadSafe
 abstract class ScaleState {
   private static final double ONE = 1.0d;
@@ -99,14 +115,92 @@ abstract class ScaleState {
      * Builds scalar state.
      *
      * @param scale the current scale
+     * @param fromQuota should calibrate the scale when scale is from quota
      * @return the scalar state
      */
-    public ScaleState build(double scale) {
+    public ScaleState build(double scale, boolean fromQuota) {
       if (scale == Scalar.ZERO) {
         return new HibernateState(this);
+      } else if (fromQuota) {
+        return new CalibratingState(this, scale);
       } else {
         return new RunningState(this, scale);
       }
+    }
+  }
+
+  private static class CalibratingState extends ScaleState {
+    private final long startNano;
+    // Contains upScaleComputer and downScaleComputer
+    private final List<ScaleComputer> upDownScaleComputers;
+
+    private CalibratingState(Builder builder, double scale) {
+      this(builder, scale, builder.ticker.read());
+    }
+
+    private CalibratingState(Builder builder, double scale, long startNano) {
+      super(builder, scale);
+      this.startNano = startNano;
+      // initialize window for up scale,down scale with calibrate window
+      ImmutableList.Builder<ScaleComputer> listBuilder = new ImmutableList.Builder();
+      listBuilder.add(
+          new WindowedScaleComputer(
+              ScaleWindow.newBuilder()
+                  .withWindowDurationSupplier(
+                      () -> builder.config.getCalibrateScaleWindowDuration().toNanos())
+                  .withTicker(builder.ticker),
+              scale,
+              ONE,
+              builder.config.getUpScaleMaxFactor(),
+              builder.config.getUpScaleMinFactor(),
+              builder.config.getUpScaleMaxFactor(),
+              builder.config.getUpScalePercentile(),
+              builder.config.getMaxScaleWindowDurationJitter()));
+      // with small scale, stop further scale down
+      if (scale > EPSILON) {
+        listBuilder.add(
+            new WindowedScaleComputer(
+                ScaleWindow.newBuilder()
+                    .withWindowDurationSupplier(
+                        () -> builder.config.getCalibrateScaleWindowDuration().toNanos())
+                    .withTicker(builder.ticker),
+                scale,
+                builder.config.getDownScaleMinFactor(),
+                ONE,
+                builder.config.getDownScaleMinFactor(),
+                builder.config.getDownScaleMaxFactor(),
+                builder.config.getDownScalePercentile(),
+                builder.config.getMaxScaleWindowDurationJitter()));
+      }
+      upDownScaleComputers = listBuilder.build();
+    }
+
+    @Override
+    public ScaleStateSnapshot snapshot() {
+      return ScaleStateSnapshot.newBuilder()
+          .addAllScaleComputerSnapshots(
+              upDownScaleComputers.stream()
+                  .map(ScaleComputer::snapshot)
+                  .collect(Collectors.toList()))
+          .setScale(getScale())
+          .setName(CalibratingState.class.getSimpleName())
+          .build();
+    }
+
+    @Override
+    public ScaleState onSample(double scale) {
+      for (ScaleComputer computer : upDownScaleComputers) {
+        Optional<Double> nextScale = computer.onSample(scale);
+        if (nextScale.isPresent()) {
+          if (builder.ticker.read() - startNano > builder.config.getCalibrateDuration().toNanos()) {
+            // enter running state
+            return new RunningState(builder, nextScale.get());
+          } else {
+            return new CalibratingState(builder, nextScale.get(), startNano);
+          }
+        }
+      }
+      return this;
     }
   }
 
@@ -175,6 +269,7 @@ abstract class ScaleState {
                   .collect(Collectors.toList()))
           .addScaleComputerSnapshots(hibernatingComputer.snapshot())
           .setScale(getScale())
+          .setName(RunningState.class.getSimpleName())
           .build();
     }
 
@@ -241,6 +336,7 @@ abstract class ScaleState {
       return ScaleStateSnapshot.newBuilder()
           .addScaleComputerSnapshots(bootstrapComputer.snapshot())
           .setScale(getScale())
+          .setName(HibernateState.class.getSimpleName())
           .build();
     }
 

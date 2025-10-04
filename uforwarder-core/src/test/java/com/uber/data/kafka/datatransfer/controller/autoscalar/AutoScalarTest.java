@@ -8,6 +8,7 @@ import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTaskGroup;
 import com.uber.data.kafka.datatransfer.MiscConfig;
+import com.uber.data.kafka.datatransfer.ScaleStatus;
 import com.uber.data.kafka.datatransfer.ScaleStoreSnapshot;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
@@ -17,6 +18,7 @@ import com.uber.data.kafka.datatransfer.controller.rpc.Workload;
 import com.uber.m3.tally.NoopScope;
 import java.time.Duration;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
+import org.junit.Assert;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -101,6 +103,12 @@ public class AutoScalarTest {
                 StoredJobGroup.newBuilder()
                     .setJobGroup(jobGroup)
                     .setState(JobState.JOB_STATE_RUNNING)
+                    .setScaleStatus(
+                        ScaleStatus.newBuilder()
+                            .setScale(2.0)
+                            .setTotalMessagesPerSec(4000)
+                            .setTotalBytesPerSec(100000)
+                            .build())
                     .build(),
                 1),
             ImmutableMap.of());
@@ -249,6 +257,15 @@ public class AutoScalarTest {
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
     Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
+    Assert.assertEquals(
+        "RunningState",
+        scaleStatusStore
+            .asMap()
+            .get(JobGroupKey.of(jobGroup))
+            .snapshot()
+            .getScaleStateSnapshot()
+            .getName());
+
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
       jobWorkloadMonitor.consume(job, Workload.of(1, 1, i < 28 ? 4.0 : 4.8));
@@ -629,5 +646,204 @@ public class AutoScalarTest {
   public void testReceivedLoad() {
     autoScalar.onLoad(1.0);
     Mockito.verify(scaleWindowManager, Mockito.times(1)).onSample(1.0);
+  }
+
+  @Test
+  public void testCalibratingDownScaleIn5Minutes() {
+    rebalancingJobGroup =
+        RebalancingJobGroup.of(
+            Versioned.from(
+                StoredJobGroup.newBuilder()
+                    .setJobGroup(jobGroup)
+                    .setState(JobState.JOB_STATE_RUNNING)
+                    .build(),
+                1),
+            ImmutableMap.of());
+    config.setScaleConverterMode(ScaleConverterMode.CPU);
+    autoScalar =
+        new AutoScalar(
+            config,
+            scaleStatusStore,
+            jobWorkloadMonitor,
+            scaleWindowManager,
+            testTicker,
+            new NoopScope(),
+            leaderSelector);
+    autoScalar.apply(rebalancingJobGroup, 0.0d);
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
+        4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
+    Assertions.assertEquals(
+        100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
+    Assert.assertEquals(
+        "CalibratingState",
+        scaleStatusStore
+            .asMap()
+            .get(JobGroupKey.of(jobGroup))
+            .snapshot()
+            .getScaleStateSnapshot()
+            .getName());
+    for (int i = 0; i < 61; ++i) {
+      testTicker.add(Duration.ofSeconds(5));
+      jobWorkloadMonitor.consume(job, Workload.of(1, 1, 0.1));
+      autoScalar.runSample();
+      autoScalar.apply(rebalancingJobGroup, 0.0d);
+    }
+    Assertions.assertEquals(1.6, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
+        3200, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
+    Assertions.assertEquals(
+        80000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
+    Assert.assertEquals(
+        "CalibratingState",
+        scaleStatusStore
+            .asMap()
+            .get(JobGroupKey.of(jobGroup))
+            .snapshot()
+            .getScaleStateSnapshot()
+            .getName());
+  }
+
+  @Test
+  public void testCalibratingUpScaleIn5Minutes() {
+    rebalancingJobGroup =
+        RebalancingJobGroup.of(
+            Versioned.from(
+                StoredJobGroup.newBuilder()
+                    .setJobGroup(jobGroup)
+                    .setState(JobState.JOB_STATE_RUNNING)
+                    .build(),
+                1),
+            ImmutableMap.of());
+    config.setScaleConverterMode(ScaleConverterMode.CPU);
+    autoScalar =
+        new AutoScalar(
+            config,
+            scaleStatusStore,
+            jobWorkloadMonitor,
+            scaleWindowManager,
+            testTicker,
+            new NoopScope(),
+            leaderSelector);
+    autoScalar.apply(rebalancingJobGroup, 0.0d);
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
+        4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
+    Assertions.assertEquals(
+        100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
+    Assert.assertEquals(
+        "CalibratingState",
+        scaleStatusStore
+            .asMap()
+            .get(JobGroupKey.of(jobGroup))
+            .snapshot()
+            .getScaleStateSnapshot()
+            .getName());
+    for (int i = 0; i < 61; ++i) {
+      testTicker.add(Duration.ofSeconds(5));
+      jobWorkloadMonitor.consume(job, Workload.of(1, 1, 8));
+      autoScalar.runSample();
+      autoScalar.apply(rebalancingJobGroup, 0.0d);
+    }
+    Assertions.assertEquals(2.792, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
+        5584, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
+    Assertions.assertEquals(
+        139600, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
+    Assert.assertEquals(
+        "CalibratingState",
+        scaleStatusStore
+            .asMap()
+            .get(JobGroupKey.of(jobGroup))
+            .snapshot()
+            .getScaleStateSnapshot()
+            .getName());
+  }
+
+  @Test
+  public void testCalibratingToRunningStateTransition() {
+    rebalancingJobGroup =
+        RebalancingJobGroup.of(
+            Versioned.from(
+                StoredJobGroup.newBuilder()
+                    .setJobGroup(jobGroup)
+                    .setState(JobState.JOB_STATE_RUNNING)
+                    .build(),
+                1),
+            ImmutableMap.of());
+    config.setScaleConverterMode(ScaleConverterMode.CPU);
+    autoScalar.apply(rebalancingJobGroup, 0.0d);
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assert.assertEquals(
+        "CalibratingState",
+        scaleStatusStore
+            .asMap()
+            .get(JobGroupKey.of(jobGroup))
+            .snapshot()
+            .getScaleStateSnapshot()
+            .getName());
+    for (int i = 0; i < 400; ++i) {
+      testTicker.add(Duration.ofSeconds(5));
+      jobWorkloadMonitor.consume(job, Workload.of(1, 1, 1));
+      autoScalar.runSample();
+      autoScalar.apply(rebalancingJobGroup, 0.0d);
+    }
+    // 30 minutes later, state switch to RunningState
+    Assert.assertEquals(
+        "RunningState",
+        scaleStatusStore
+            .asMap()
+            .get(JobGroupKey.of(jobGroup))
+            .snapshot()
+            .getScaleStateSnapshot()
+            .getName());
+  }
+
+  @Test
+  public void testRunningToCalibratingStateTransitionWithQuotaUpdate() {
+    config.setScaleConverterMode(ScaleConverterMode.CPU);
+    autoScalar.apply(rebalancingJobGroup, 0.0d);
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assert.assertEquals(
+        "RunningState",
+        scaleStatusStore
+            .asMap()
+            .get(JobGroupKey.of(jobGroup))
+            .snapshot()
+            .getScaleStateSnapshot()
+            .getName());
+    // update quota to 5000
+    jobGroup =
+        JobGroup.newBuilder()
+            .setKafkaConsumerTaskGroup(
+                KafkaConsumerTaskGroup.newBuilder()
+                    .setTopic(TOPIC)
+                    .setConsumerGroup(GROUP)
+                    .setCluster(CLUSTER)
+                    .build())
+            .setFlowControl(
+                FlowControl.newBuilder().setMessagesPerSec(5000).setBytesPerSec(10000).build())
+            .setMiscConfig(MiscConfig.newBuilder().setScaleResetEnabled(true).build())
+            .build();
+    rebalancingJobGroup =
+        RebalancingJobGroup.of(
+            Versioned.from(
+                StoredJobGroup.newBuilder()
+                    .setJobGroup(jobGroup)
+                    .setState(JobState.JOB_STATE_RUNNING)
+                    .setScaleStatus(rebalancingJobGroup.toStoredJobGroup().model().getScaleStatus())
+                    .build(),
+                1),
+            ImmutableMap.of());
+    autoScalar.apply(rebalancingJobGroup, 0.0d);
+    // 30 minutes later, state switch to RunningState
+    Assert.assertEquals(
+        "CalibratingState",
+        scaleStatusStore
+            .asMap()
+            .get(JobGroupKey.of(jobGroup))
+            .snapshot()
+            .getScaleStateSnapshot()
+            .getName());
   }
 }
