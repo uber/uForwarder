@@ -31,7 +31,14 @@ public class JobCreatorWithOffsetsTest extends FievelTestBase {
   @Test
   public void testNewJobSmallerStartOffset() {
     StoredJob newJob =
-        jobCreatorWithOffsets.newJob(scope, logger, storedJobGroup, jobType, 10, 20, 30, 40);
+        jobCreatorWithOffsets.newJob(
+            scope,
+            logger,
+            storedJobGroup,
+            jobType,
+            10,
+            20,
+            new JobCreatorWithOffsets.OffsetRange(30, 40));
     Assert.assertEquals(10, newJob.getJob().getJobId());
     Assert.assertEquals(20, newJob.getJob().getKafkaConsumerTask().getPartition());
     Assert.assertEquals(30, newJob.getJob().getKafkaConsumerTask().getStartOffset());
@@ -42,7 +49,14 @@ public class JobCreatorWithOffsetsTest extends FievelTestBase {
   @Test
   public void testNewJobSameOffset() {
     StoredJob newJob =
-        jobCreatorWithOffsets.newJob(scope, logger, storedJobGroup, jobType, 10, 20, 40, 40);
+        jobCreatorWithOffsets.newJob(
+            scope,
+            logger,
+            storedJobGroup,
+            jobType,
+            10,
+            20,
+            new JobCreatorWithOffsets.OffsetRange(40, 40));
     Assert.assertEquals(10, newJob.getJob().getJobId());
     Assert.assertEquals(20, newJob.getJob().getKafkaConsumerTask().getPartition());
     Assert.assertEquals(40, newJob.getJob().getKafkaConsumerTask().getStartOffset());
@@ -53,7 +67,14 @@ public class JobCreatorWithOffsetsTest extends FievelTestBase {
   @Test
   public void testNewJobLargerStartOffset() {
     StoredJob newJob =
-        jobCreatorWithOffsets.newJob(scope, logger, storedJobGroup, jobType, 10, 20, 50, 40);
+        jobCreatorWithOffsets.newJob(
+            scope,
+            logger,
+            storedJobGroup,
+            jobType,
+            10,
+            20,
+            new JobCreatorWithOffsets.OffsetRange(50, 40));
     Assert.assertEquals(10, newJob.getJob().getJobId());
     Assert.assertEquals(20, newJob.getJob().getKafkaConsumerTask().getPartition());
     Assert.assertEquals(50, newJob.getJob().getKafkaConsumerTask().getStartOffset());

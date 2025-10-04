@@ -24,8 +24,7 @@ public abstract class JobCreatorWithOffsets implements JobCreator {
    * @param jobType either STREAMING or BATCH
    * @param jobId the jobId of the StoredJob
    * @param partition the partition of the StoredJob
-   * @param startOffset the start offset for the StoredJob
-   * @param endOffset the end offset for the StoredJob
+   * @param offsetRange the range in offsets of this partition
    * @return a StoredJob with start and end offsets.
    */
   public StoredJob newJob(
@@ -35,8 +34,7 @@ public abstract class JobCreatorWithOffsets implements JobCreator {
       String jobType,
       long jobId,
       int partition,
-      long startOffset,
-      long endOffset) {
+      OffsetRange offsetRange) {
     logAndMetricHelper(scope, logger, storedJobGroup, jobType, jobId, partition);
 
     // we don't use JobUtils here because
@@ -45,7 +43,10 @@ public abstract class JobCreatorWithOffsets implements JobCreator {
     Job.Builder jobBuilder = Job.newBuilder(JobUtils.newJob(storedJobGroup.getJobGroup()));
     jobBuilder.setJobId(jobId);
     jobBuilder.getKafkaConsumerTaskBuilder().setPartition(partition);
-    jobBuilder.getKafkaConsumerTaskBuilder().setStartOffset(startOffset).setEndOffset(endOffset);
+    jobBuilder
+        .getKafkaConsumerTaskBuilder()
+        .setStartOffset(offsetRange.start())
+        .setEndOffset(offsetRange.end());
 
     StoredJob.Builder storedJobBuilder = StoredJob.newBuilder();
     storedJobBuilder
@@ -53,7 +54,9 @@ public abstract class JobCreatorWithOffsets implements JobCreator {
         // if startOffset >= endOffset, we don't need to assign the job, so we set it to canceled
         // state.
         .setState(
-            startOffset >= endOffset ? JobState.JOB_STATE_CANCELED : storedJobGroup.getState())
+            offsetRange.start() >= offsetRange.end()
+                ? JobState.JOB_STATE_CANCELED
+                : storedJobGroup.getState())
         .setJob(jobBuilder.build());
     return storedJobBuilder.build();
   }
@@ -85,5 +88,24 @@ public abstract class JobCreatorWithOffsets implements JobCreator {
         StructuredLogging.kafkaTopic(kafkaConsumerGroupTask.getTopic()),
         StructuredLogging.kafkaPartition(partition),
         StructuredLogging.jobType(jobType));
+  }
+
+  // TODO: After JDK17 adoption, use record instead
+  protected static class OffsetRange {
+    private final long start;
+    private final long end;
+
+    OffsetRange(long start, long end) {
+      this.start = start;
+      this.end = end;
+    }
+
+    public long start() {
+      return start;
+    }
+
+    public long end() {
+      return end;
+    }
   }
 }
