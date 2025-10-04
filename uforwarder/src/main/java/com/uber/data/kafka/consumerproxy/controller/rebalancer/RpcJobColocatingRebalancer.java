@@ -288,6 +288,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
       allWorkers.sort(RebalancingWorkerWithSortedJobs::compareTo);
 
       int numberOfOverloadingWorker = 0;
+      int numberOfWorkerHittingWorkloadHardLimit = 0;
       int numberOfUnadjustedWorker = 0;
       // starting from the most loaded worker
       for (int workerIdx = allWorkers.size() - 1; workerIdx >= 0; workerIdx--) {
@@ -309,6 +310,9 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
                 StructuredLogging.count(rebalancingWorkerWithSortedJobs.getNumberOfJobs()),
                 StructuredLogging.workloadScale(rebalancingWorkerWithSortedJobs.getLoad()),
                 StructuredLogging.virtualPartition(partitionIdx));
+            if (rebalancingWorkerWithSortedJobs.getLoad() > placementWorkerScaleHardLimit) {
+              numberOfWorkerHittingWorkloadHardLimit += 1;
+            }
           }
         }
       }
@@ -324,69 +328,12 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
           .gauge(MetricNames.UNADJUSTED_WORKLOAD_WORKER)
           .update(numberOfUnadjustedWorker);
 
-      // do a second traverse to make sure we don't have overloaded job(>1.0) on same worker
-      for (int workerIdx = allWorkers.size() - 1; workerIdx >= 0; workerIdx--) {
-        RebalancingWorkerWithSortedJobs rebalancingWorkerWithSortedJobs = allWorkers.get(workerIdx);
-        if (rebalancingWorkerWithSortedJobs.getNumberOfJobs() == 1) {
-          // we don't move if the worker only has one job
-          continue;
-        }
-
-        if (!isWorkerUnderLoadLimit(rebalancingWorkerWithSortedJobs)) {
-          boolean adjustedLoad =
-              ensureOverloadedJobsMovedToIdleWorker(
-                  rebalancingWorkerTable, rebalancingWorkerWithSortedJobs, workerIdx, allWorkers);
-          if (!adjustedLoad) {
-            logger.warn(
-                "Worker is still overloaded after adjusting large workload.",
-                StructuredLogging.workerId(rebalancingWorkerWithSortedJobs.getWorkerId()),
-                StructuredLogging.count(rebalancingWorkerWithSortedJobs.getNumberOfJobs()),
-                StructuredLogging.workloadScale(rebalancingWorkerWithSortedJobs.getLoad()),
-                StructuredLogging.virtualPartition(partitionIdx));
-          }
-        }
-      }
+      scope
+          .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
+          .tagged(ImmutableMap.of(VIRTUAL_PARTITION_TAG, Long.toString(partitionIdx)))
+          .gauge(MetricNames.HIT_WORKLOAD_HARDLIMIT_WORKER)
+          .update(numberOfWorkerHittingWorkloadHardLimit);
     }
-  }
-
-  private boolean ensureOverloadedJobsMovedToIdleWorker(
-      RebalancingWorkerTable rebalancingWorkerTable,
-      RebalancingWorkerWithSortedJobs adjustedWorker,
-      int toAdjustWorkerIdx,
-      List<RebalancingWorkerWithSortedJobs> allWorkersInPartition) {
-    List<RebalancingJob> allJobsInQueue = new ArrayList<>(adjustedWorker.getAllJobs());
-    allJobsInQueue.sort(RebalancingJob::compareTo);
-    boolean adjustedLoad = false;
-    // starting from the most loaded job
-    for (RebalancingJob toBeMovedJob : allJobsInQueue) {
-      if (toBeMovedJob.getLoad() <= 1.0) {
-        // if the job is with load <= 1.0, which means it should considered in #adjustJobsOnWorker
-        // and we can cancel the adjust
-        break;
-      }
-
-      long newWorkerId = -1L;
-      for (int otherWorkerIdx = 0; otherWorkerIdx < toAdjustWorkerIdx; otherWorkerIdx++) {
-        RebalancingWorkerWithSortedJobs otherWorker = allWorkersInPartition.get(otherWorkerIdx);
-        if (otherWorker.getNumberOfJobs() == 0) {
-          newWorkerId = otherWorker.getWorkerId();
-          break;
-        }
-      }
-
-      if (newWorkerId != -1L) {
-        adjustedWorker.removeJob(toBeMovedJob);
-        rebalancingWorkerTable.getRebalancingWorkerWithSortedJobs(newWorkerId).addJob(toBeMovedJob);
-        scope.subScope(COLOCATING_REBALANCER_SUB_SCOPE).counter(MetricNames.JOB_MOVEMENT).inc(1);
-      }
-
-      if (adjustedWorker.getNumberOfJobs() == 1) {
-        adjustedLoad = true;
-        break;
-      }
-    }
-
-    return adjustedLoad;
   }
 
   private boolean adjustJobsOnWorker(
@@ -403,9 +350,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
       long newWorkerId = -1L;
       for (int otherWorkerIdx = 0; otherWorkerIdx < toAdjustWorkerIdx; otherWorkerIdx++) {
         RebalancingWorkerWithSortedJobs otherWorker = allWorkersInPartition.get(otherWorkerIdx);
-        if (otherWorker.getLoad() + toBeMovedJob.getLoad() <= placementWorkerScaleHardLimit
-            && otherWorker.getNumberOfJobs() + 1
-                <= rebalancerConfiguration.getMaxJobNumberPerWorker()) {
+        if (canMoveWorkloadToWorker(otherWorker, toBeMovedJob)) {
           newWorkerId = otherWorker.getWorkerId();
           break;
         }
@@ -431,9 +376,30 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     return adjustedLoad;
   }
 
+  /**
+   * There are two conditions that we can move a workload to a worker 1. After taking the workload,
+   * the total workload is within the hard limit and number of jobs is within the job limit Or 2.
+   * The worker is empty
+   */
+  private boolean canMoveWorkloadToWorker(
+      RebalancingWorkerWithSortedJobs otherWorker, RebalancingJob toBeMovedJob) {
+    if (otherWorker.getLoad() + toBeMovedJob.getLoad() <= placementWorkerScaleHardLimit
+        && otherWorker.getNumberOfJobs() + 1
+            <= rebalancerConfiguration.getMaxJobNumberPerWorker()) {
+      return true;
+    }
+
+    if (otherWorker.getNumberOfJobs() == 0) {
+      return true;
+    }
+
+    return false;
+  }
+
   private boolean isWorkerUnderLoadLimit(RebalancingWorkerWithSortedJobs worker) {
-    return worker.getLoad() <= placementWorkerScaleHardLimit
-        && worker.getNumberOfJobs() <= rebalancerConfiguration.getMaxJobNumberPerWorker();
+    return (worker.getLoad() <= placementWorkerScaleHardLimit
+            && worker.getNumberOfJobs() <= rebalancerConfiguration.getMaxJobNumberPerWorker())
+        || (worker.getNumberOfJobs() == 1);
   }
 
   private void emitMetrics(
@@ -662,6 +628,8 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
     private static final String OVERLOAD_WORKER_NUMBER = "overload.worker.number";
 
     private static final String UNADJUSTED_WORKLOAD_WORKER = "unadjusted.worker.number";
+
+    private static final String HIT_WORKLOAD_HARDLIMIT_WORKER = "hit.hardlimit.worker.number";
 
     private static final String ASSIGNED_WORKER_NUMBER_IN_PARTITION =
         "per.partition.assigned.worker.number";
