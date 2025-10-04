@@ -180,6 +180,7 @@ worker:
     clusterFilterEnabled: true
     experimentalLimiterEnabled: true
     regionalFilterEnabled: true
+    useLinkedListAckTrackingQueue: true
   # These are the configurations for the fetchers.
   fetcher:
     # These are the configurations for the kafka fetcher.

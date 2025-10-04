@@ -63,7 +63,7 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
     Mockito.when(scope.gauge(ArgumentMatchers.anyString())).thenReturn(gauge);
     Mockito.when(scope.timer(ArgumentMatchers.anyString())).thenReturn(timer);
     Mockito.when(timer.start()).thenReturn(stopwatch);
-    messageAckStatusManager = new MessageAckStatusManager(ACK_TRACKING_QUEUE_SIZE, scope);
+    messageAckStatusManager = new MessageAckStatusManager(ACK_TRACKING_QUEUE_SIZE, true, scope);
     messageAckStatusManager.init(job1);
     messageAckStatusManager.init(job2);
     pm1 = newProcessMessage(physicalKafkaMetadata1);
@@ -140,7 +140,7 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
   public void testDetectBlockingMessage() throws Exception {
     messageAckStatusManager =
         new MessageAckStatusManager(
-            100, HeadBlockingDetector.newBuilder().setMinAckPercent(0.95), scope);
+            100, true, HeadBlockingDetector.newBuilder().setMinAckPercent(0.95), scope);
     messageAckStatusManager.init(job1);
     TopicPartition tp =
         new TopicPartition(
@@ -173,7 +173,7 @@ public class MessageAckStatusManagerTest extends ProcessorTestBase {
 
   @Test
   public void testMarkCanceled() throws Exception {
-    messageAckStatusManager = new MessageAckStatusManager(100, scope);
+    messageAckStatusManager = new MessageAckStatusManager(100, true, scope);
     messageAckStatusManager.init(job1);
     for (int i = 0; i < 100; ++i) {
       ProcessorMessage pm = newProcessMessage(new TopicPartitionOffset(TOPIC, 1, i));

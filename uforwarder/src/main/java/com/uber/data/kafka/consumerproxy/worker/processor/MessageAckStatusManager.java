@@ -23,16 +23,26 @@ public class MessageAckStatusManager implements MetricSource, BlockingQueue {
   protected final ConcurrentMap<TopicPartition, QueueAndScope> tpAckMap;
   protected final Scope scope;
   private final int ackTrackingQueueSize;
+  private final boolean useLinkedListAckTrackingQueue;
   private final HeadBlockingDetector headBlockingDetector;
 
-  MessageAckStatusManager(int ackTrackingQueueSize, Scope scope) {
-    this(ackTrackingQueueSize, HeadBlockingDetector.newBuilder(), scope);
+  MessageAckStatusManager(
+      int ackTrackingQueueSize, boolean useLinkedListAckTrackingQueue, Scope scope) {
+    this(
+        ackTrackingQueueSize,
+        useLinkedListAckTrackingQueue,
+        HeadBlockingDetector.newBuilder(),
+        scope);
   }
 
   @VisibleForTesting
   MessageAckStatusManager(
-      int ackTrackingQueueSize, HeadBlockingDetector.Builder builder, Scope scope) {
+      int ackTrackingQueueSize,
+      boolean useLinkedListAckTrackingQueue,
+      HeadBlockingDetector.Builder builder,
+      Scope scope) {
     this.ackTrackingQueueSize = ackTrackingQueueSize;
+    this.useLinkedListAckTrackingQueue = useLinkedListAckTrackingQueue;
     this.tpAckMap = new ConcurrentHashMap<>();
     this.scope = scope;
     this.headBlockingDetector = builder.build();
@@ -227,7 +237,8 @@ public class MessageAckStatusManager implements MetricSource, BlockingQueue {
       // overhead
       this.ackTrackingQueue =
           job.getKafkaConsumerTask().getIsolationLevel()
-                  == IsolationLevel.ISOLATION_LEVEL_READ_COMMITTED
+                      == IsolationLevel.ISOLATION_LEVEL_READ_COMMITTED
+                  || useLinkedListAckTrackingQueue
               ? new LinkedAckTrackingQueue(job, ackTrackingQueueSize, jobScope)
               : new ArrayAckTrackingQueue(job, ackTrackingQueueSize, jobScope);
     }
@@ -235,15 +246,19 @@ public class MessageAckStatusManager implements MetricSource, BlockingQueue {
 
   public static class Builder {
     protected final int ackTrackingQueueSize;
+    protected final boolean useLinkedListAckTrackingQueue;
     protected final CoreInfra infra;
 
-    public Builder(int ackTrackingQueueSize, CoreInfra infra) {
+    public Builder(
+        int ackTrackingQueueSize, boolean useLinkedListAckTrackingQueue, CoreInfra infra) {
       this.ackTrackingQueueSize = ackTrackingQueueSize;
+      this.useLinkedListAckTrackingQueue = useLinkedListAckTrackingQueue;
       this.infra = infra;
     }
 
     MessageAckStatusManager build(Job job) {
-      return new MessageAckStatusManager(ackTrackingQueueSize, infra.scope());
+      return new MessageAckStatusManager(
+          ackTrackingQueueSize, useLinkedListAckTrackingQueue, infra.scope());
     }
   }
 
