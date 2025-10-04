@@ -44,8 +44,6 @@ public class DispatcherImplTest extends FievelTestBase {
   private Headers headers;
   private PipelineStateManager pipelineStateManager;
 
-  private LatencyTracker latencyTracker;
-
   @Before
   public void setUp() {
     headers = new RecordHeaders();
@@ -69,10 +67,9 @@ public class DispatcherImplTest extends FievelTestBase {
     Mockito.when(scope.timer(ArgumentMatchers.anyString())).thenReturn(timer);
 
     pipelineStateManager = Mockito.mock(PipelineStateManager.class);
-    latencyTracker = Mockito.mock(LatencyTracker.class);
+
     dispatcher =
-        new DispatcherImpl(
-            coreInfra, grpcDispatcher, dlqProducer, Optional.of(resqProducer), latencyTracker);
+        new DispatcherImpl(coreInfra, grpcDispatcher, dlqProducer, Optional.of(resqProducer));
     dispatcher.setPipelineStateManager(pipelineStateManager);
     MessageStub mockStub = Mockito.mock(MessageStub.class);
     grpcDispatcherMessage =
@@ -224,8 +221,7 @@ public class DispatcherImplTest extends FievelTestBase {
   @Test(expected = IllegalStateException.class)
   public void testSubmitResqKafkaMessageWithoutResqProducer() throws Throwable {
     DispatcherImpl badDispatcher =
-        new DispatcherImpl(
-            coreInfra, grpcDispatcher, dlqProducer, Optional.empty(), latencyTracker);
+        new DispatcherImpl(coreInfra, grpcDispatcher, dlqProducer, Optional.empty());
     try {
       badDispatcher.submit(ItemAndJob.of(kafkaResqDispatcherMessage, job)).get();
     } catch (ExecutionException e) {
@@ -336,20 +332,5 @@ public class DispatcherImplTest extends FievelTestBase {
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
     Mockito.verify(pipelineStateManager, Mockito.times(1))
         .reportIssue(job, KafkaPipelineIssue.INVALID_RESPONSE_RECEIVED.getPipelineHealthIssue());
-  }
-
-  @Test
-  public void testReportUnstableLatencyIssue() throws ExecutionException, InterruptedException {
-    Mockito.when(grpcDispatcher.submit(ItemAndJob.of(grpcDispatcherMessage.getGrpcMessage(), job)))
-        .thenReturn(
-            CompletableFuture.completedFuture(
-                GrpcResponse.of(Status.fromCode(Status.Code.OK), null, false)));
-    Mockito.when(latencyTracker.updateRequestLatency(Mockito.anyLong()))
-        .thenReturn(Optional.of(new LatencyTracker.Sample(100, 2000)));
-    Assert.assertEquals(
-        DispatcherResponse.Code.COMMIT,
-        dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
-    Mockito.verify(pipelineStateManager, Mockito.times(1))
-        .reportIssue(job, KafkaPipelineIssue.RPC_LATENCY_UNSTABLE.getPipelineHealthIssue());
   }
 }
