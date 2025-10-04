@@ -1,16 +1,15 @@
 package com.uber.data.kafka.consumerproxy.client.grpc;
 
 import com.google.protobuf.ByteString;
-import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.Metadata;
 import io.grpc.ServerCall;
 import io.grpc.ServerCallHandler;
 import java.nio.charset.Charset;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class ConsumerMetadataTest extends FievelTestBase {
+public class ConsumerMetadataTest {
   private static final String TENANCY_HEADER_KEY = "x-uber-tenancy";
   private static final String TENANCY_HEADER_VALUE = "uber/testing/kafka";
   private static final String TEST_TOPIC = "test-topic";
@@ -62,9 +61,9 @@ public class ConsumerMetadataTest extends FievelTestBase {
         () -> {
           try {
             String headerValue = ConsumerMetadata.getHeader("kafka-topic");
-            Assert.fail("get kafka-prefix header should throw error");
+            Assertions.fail("get kafka-prefix header should throw error");
           } catch (IllegalArgumentException exception) {
-            Assert.assertEquals(
+            Assertions.assertEquals(
                 "disallowed header key with prefix `kafka` supplied", exception.getMessage());
           }
           Mockito.verifyNoInteractions(metadata);
@@ -83,9 +82,9 @@ public class ConsumerMetadataTest extends FievelTestBase {
 
           try {
             String tenancy = ConsumerMetadata.getHeader(TENANCY_HEADER_KEY);
-            Assert.assertEquals(TENANCY_HEADER_VALUE, tenancy);
+            Assertions.assertEquals(TENANCY_HEADER_VALUE, tenancy);
           } catch (IllegalArgumentException exception) {
-            Assert.fail("no exception should be thrown");
+            Assertions.fail("no exception should be thrown");
           }
         });
   }
@@ -108,9 +107,9 @@ public class ConsumerMetadataTest extends FievelTestBase {
   }
 
   private void verifyMetadata() {
-    Assert.assertEquals(TEST_TOPIC, ConsumerMetadata.getTopic());
-    Assert.assertEquals(TEST_GROUP, ConsumerMetadata.getConsumerGroup());
-    Assert.assertEquals(-1, ConsumerMetadata.getPartition());
-    Assert.assertEquals(-1L, ConsumerMetadata.getRetryCount());
+    Assertions.assertEquals(TEST_TOPIC, ConsumerMetadata.getTopic());
+    Assertions.assertEquals(TEST_GROUP, ConsumerMetadata.getConsumerGroup());
+    Assertions.assertEquals(-1, ConsumerMetadata.getPartition());
+    Assertions.assertEquals(-1L, ConsumerMetadata.getRetryCount());
   }
 }

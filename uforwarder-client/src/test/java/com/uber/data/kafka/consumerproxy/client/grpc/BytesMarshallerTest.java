@@ -1,16 +1,15 @@
 package com.uber.data.kafka.consumerproxy.client.grpc;
 
 import com.google.protobuf.ByteString;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.nio.charset.StandardCharsets;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class BytesMarshallerTest extends FievelTestBase {
+public class BytesMarshallerTest {
   private ConsumerBytesServerMethodDefinition.BytesMarshaller marshaller;
 
-  @Before
+  @BeforeEach
   public void setup() {
     marshaller = new ConsumerBytesServerMethodDefinition.BytesMarshaller();
   }
@@ -18,7 +17,7 @@ public class BytesMarshallerTest extends FievelTestBase {
   @Test
   public void testMarshaller() {
     ByteString bytes = ByteString.copyFrom("data", StandardCharsets.UTF_8);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         bytes,
         marshaller.parse(marshaller.stream(ByteString.copyFrom("data", StandardCharsets.UTF_8))));
   }
