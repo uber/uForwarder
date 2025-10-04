@@ -119,6 +119,14 @@ public class AutoScalar implements Scalar {
                 }
               });
     }
+
+    scope
+        .gauge(MetricNames.AUTOSCALAR_SCALE_DOWN_MINUTES)
+        .update(scaleWindowManager.getDownScaleWindowDuration().toMinutes());
+    scope
+        .gauge(MetricNames.AUTOSCALAR_SCALE_UP_MINUTES)
+        .update(scaleWindowManager.getUpScaleWindowDuration().toMinutes());
+
     timer.stop();
   }
 
@@ -353,6 +361,8 @@ public class AutoScalar implements Scalar {
     private static final String AUTOSCALAR_APPLIED_SCALE = "autoscalar.applied.scale";
     private static final String AUTOSCALAR_SAMPLED_SCALE = "autoscalar.sampled.scale";
     private static final String AUTOSCALAR_SHADOW_SCALE = "autoscalar.shadow.scale";
+    private static final String AUTOSCALAR_SCALE_DOWN_MINUTES = "autoscalar.scale.down.minutes";
+    private static final String AUTOSCALAR_SCALE_UP_MINUTES = "autoscalar.scale.up.minutes";
   }
 
   @VisibleForTesting
