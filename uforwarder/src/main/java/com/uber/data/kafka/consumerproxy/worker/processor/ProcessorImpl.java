@@ -113,6 +113,7 @@ public class ProcessorImpl
 
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcessorImpl.class);
   private static final double MINIMUM_VALID_RATE = 1.0;
+  private static final int DEFAULT_ADPATIVE_INFLIGHT_VALUE = -1;
 
   private static final Buckets E2E_DURATION_BUCKETS =
       new DurationBuckets(
@@ -1335,9 +1336,19 @@ public class ProcessorImpl
     Preconditions.checkNotNull(pipelineStateManager, "pipeline config manager required");
     messageRateLimiter.setRate(pipelineStateManager.getFlowControl().getMessagesPerSec());
     byteRateLimiter.setRate(pipelineStateManager.getFlowControl().getBytesPerSec());
-    outboundMessageLimiter.updateLimit(
-        (int)
-            Math.round(Math.ceil(pipelineStateManager.getFlowControl().getMaxInflightMessages())));
+    long maxInflightMessage =
+        Math.round(Math.ceil(pipelineStateManager.getFlowControl().getMaxInflightMessages()));
+    if (maxInflightMessage > Integer.MAX_VALUE
+        || maxInflightMessage < DEFAULT_ADPATIVE_INFLIGHT_VALUE) {
+      LOGGER.error(
+          "The inflight message limit is not valid {}",
+          pipelineStateManager.getFlowControl().getMaxInflightMessages());
+      throw new IllegalArgumentException(
+          "The inflight message limit is not valid "
+              + pipelineStateManager.getFlowControl().getMaxInflightMessages());
+    } else {
+      outboundMessageLimiter.updateLimit((int) maxInflightMessage);
+    }
   }
 
   private void acquireQuota(Job job, ProcessorMessage processorMessage) {

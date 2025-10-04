@@ -49,6 +49,7 @@ import org.apache.kafka.common.TopicPartition;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
@@ -1929,6 +1930,46 @@ public class ProcessorImplTest extends ProcessorTestBase {
                 .getProducerRecord()
                 .key());
     Assert.assertEquals(2, dlqMetadata1.getRetryCount());
+  }
+
+  @Test
+  public void testControlFlowNegativeValue() {
+    Mockito.when(pipelineStateManager.getFlowControl())
+        .thenReturn(
+            FlowControl.newBuilder()
+                .setMessagesPerSec(1000)
+                .setBytesPerSec(1000)
+                .setMaxInflightMessages(-2)
+                .build());
+    Exception exception =
+        Assertions.assertThrows(
+            ExecutionException.class,
+            () -> {
+              processor.run(job).toCompletableFuture().get();
+              processor.start();
+            });
+    String expectedMessage = "The inflight message limit is not valid";
+    Assert.assertTrue(exception.getMessage().contains(expectedMessage));
+  }
+
+  @Test
+  public void testControlFlowTooLargeValue() {
+    Mockito.when(pipelineStateManager.getFlowControl())
+        .thenReturn(
+            FlowControl.newBuilder()
+                .setMessagesPerSec(1000)
+                .setBytesPerSec(1000)
+                .setMaxInflightMessages((double) Integer.MAX_VALUE + 1)
+                .build());
+    Exception exception =
+        Assertions.assertThrows(
+            ExecutionException.class,
+            () -> {
+              processor.run(job).toCompletableFuture().get();
+              processor.start();
+            });
+    String expectedMessage = "The inflight message limit is not valid";
+    Assert.assertTrue(exception.getMessage().contains(expectedMessage));
   }
 
   @Test
