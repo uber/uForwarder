@@ -1,5 +1,8 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher;
 
+import static io.grpc.Status.Code.PERMISSION_DENIED;
+
+import com.google.common.base.Preconditions;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.common.StructuredTags;
 import com.uber.data.kafka.consumerproxy.utils.RetryUtils;
@@ -7,22 +10,27 @@ import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcDispatcher;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.grpc.GrpcResponse;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
+import com.uber.data.kafka.datatransfer.worker.common.Configurable;
 import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
+import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcher;
+import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineIssue;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
+import javax.annotation.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class DispatcherImpl implements Sink<DispatcherMessage, DispatcherResponse> {
+public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, DispatcherResponse> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DispatcherImpl.class);
   private final CoreInfra infra;
   private final GrpcDispatcher grpcDispatcher;
   private final KafkaDispatcher<byte[], byte[]> dlqProducer;
   private final Optional<KafkaDispatcher<byte[], byte[]>> resqProducer;
   private final AtomicBoolean isRunning;
+  @Nullable private volatile PipelineStateManager pipelineStateManager;
 
   // We currently only allow a single grpc dispatcher, we may need to add more gRPC dispatchers
   // to achieve higher # of concurrent connections.
@@ -37,6 +45,11 @@ public class DispatcherImpl implements Sink<DispatcherMessage, DispatcherRespons
     this.grpcDispatcher = grpcDispatcher;
     this.dlqProducer = dlqProducer;
     this.resqProducer = resqProducer;
+  }
+
+  @Override
+  public void setPipelineStateManager(PipelineStateManager pipelineStateManager) {
+    this.pipelineStateManager = pipelineStateManager;
   }
 
   public static DispatcherResponse dispatcherResponseFromGrpcStatus(GrpcResponse resp) {
@@ -133,6 +146,7 @@ public class DispatcherImpl implements Sink<DispatcherMessage, DispatcherRespons
       case GRPC:
         return grpcDispatcher
             .submit(ItemAndJob.of(message.getGrpcMessage(), job))
+            .whenComplete((resp, ex) -> reportHealthIssues(job, resp))
             // wrap KafkaMessageAction from gRPC response in a Dispatcher response
             // exceptional completions are treated as in-memory retry by the processor,
             // which resends the message to the gRPC endpoint.
@@ -199,6 +213,17 @@ public class DispatcherImpl implements Sink<DispatcherMessage, DispatcherRespons
     isRunning.set(false);
     infra.scope().counter(MetricNames.CLOSE_SUCCESS).inc(1);
     LOGGER.info("stopped message dispatcher");
+  }
+
+  private void reportHealthIssues(Job job, GrpcResponse resp) {
+    if (!resp.code().isEmpty()) {
+      return;
+    }
+    if (resp.status().getCode() == PERMISSION_DENIED) {
+      Preconditions.checkNotNull(pipelineStateManager, "pipeline config manager required");
+      pipelineStateManager.reportIssue(
+          job, KafkaPipelineIssue.PERMISSION_DENIED.getPipelineHealthIssue());
+    }
   }
 
   private static class MetricNames {

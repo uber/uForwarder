@@ -8,7 +8,9 @@ import com.uber.data.kafka.datatransfer.ResqConfig;
 import com.uber.data.kafka.datatransfer.RpcDispatcherTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
+import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcher;
+import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineIssue;
 import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Scope;
@@ -40,6 +42,7 @@ public class DispatcherImplTest extends FievelTestBase {
   private DispatcherMessage kafkaDispatcherMessage;
   private DispatcherMessage kafkaResqDispatcherMessage;
   private Headers headers;
+  private PipelineStateManager pipelineStateManager;
 
   @Before
   public void setUp() {
@@ -62,8 +65,12 @@ public class DispatcherImplTest extends FievelTestBase {
     Mockito.when(scope.tagged(ArgumentMatchers.anyMap())).thenReturn(scope);
     Mockito.when(scope.counter(ArgumentMatchers.anyString())).thenReturn(counter);
     Mockito.when(scope.timer(ArgumentMatchers.anyString())).thenReturn(timer);
+
+    pipelineStateManager = Mockito.mock(PipelineStateManager.class);
+
     dispatcher =
         new DispatcherImpl(coreInfra, grpcDispatcher, dlqProducer, Optional.of(resqProducer));
+    dispatcher.setPipelineStateManager(pipelineStateManager);
     MessageStub mockStub = Mockito.mock(MessageStub.class);
     grpcDispatcherMessage =
         new DispatcherMessage(
@@ -299,5 +306,18 @@ public class DispatcherImplTest extends FievelTestBase {
                 GrpcResponse.of(
                     Status.fromCode(Status.Code.UNIMPLEMENTED), Optional.empty(), false))
             .getCode());
+  }
+
+  @Test
+  public void testReportPermissionDeniedIssue() throws ExecutionException, InterruptedException {
+    Mockito.when(grpcDispatcher.submit(ItemAndJob.of(grpcDispatcherMessage.getGrpcMessage(), job)))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                GrpcResponse.of(Status.fromCode(Status.Code.PERMISSION_DENIED), null, false)));
+    Assert.assertEquals(
+        DispatcherResponse.Code.INVALID,
+        dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
+    Mockito.verify(pipelineStateManager, Mockito.times(1))
+        .reportIssue(job, KafkaPipelineIssue.PERMISSION_DENIED.getPipelineHealthIssue());
   }
 }
