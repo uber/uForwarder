@@ -17,8 +17,10 @@ public enum KafkaPipelineIssue {
   INVALID_RESPONSE_RECEIVED(4),
   /** Received retry response, but retry queue is not enabled */
   RETRY_WITHOUT_RETRY_QUEUE(5),
-  /** RPC latency is unstable, p99 latency is much higher than p50 latency */
-  RPC_LATENCY_UNSTABLE(6);
+  /** Median RPC latency is above threshold determined by throughput and concurrency */
+  MEDIAN_RPC_LATENCY_HIGH(6),
+  /** Maximum RPC latency is above threshold determined by throughput and ack skew limit */
+  MAX_RPC_LATENCY_HIGH(7);
 
   private final PipelineHealthIssue healthIssue;
 

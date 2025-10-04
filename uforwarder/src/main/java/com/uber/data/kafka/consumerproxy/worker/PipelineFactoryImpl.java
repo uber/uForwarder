@@ -94,7 +94,9 @@ public class PipelineFactoryImpl implements PipelineFactory {
                   // DLQ always use lossless producer
                   kafkaDispatcherFactory.create(clientId, DLQ, infra, isSecure, false),
                   resqKafkaProducer,
-                  new LatencyTracker()));
+                  new LatencyTracker(
+                      processorFactory.getMaxInboundCacheCount(),
+                      processorFactory.getMaxAckCommitSkew())));
       return new PipelineImpl(
           pipelineId,
           fetcher.get(),
