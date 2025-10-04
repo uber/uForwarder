@@ -16,6 +16,7 @@ import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Stopwatch;
 import com.uber.m3.tally.Timer;
 import java.util.concurrent.ExecutionException;
+import org.junit.After;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -26,6 +27,8 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
 public class KafkaPipelineStateManagerTest extends FievelTestBase {
+
+  private MockedStatic<PipelineHealthManager> staticContext;
 
   private final String TOPIC = "topic";
   private final String GROUP = "group";
@@ -41,8 +44,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
   @Before
   public void setUp() {
     pipelineHealthManager = Mockito.mock(PipelineHealthManager.class);
-    MockedStatic<PipelineHealthManager> staticContext =
-        Mockito.mockStatic(PipelineHealthManager.class);
+    staticContext = Mockito.mockStatic(PipelineHealthManager.class);
     staticContext
         .when(() -> PipelineHealthManager.newBuilder())
         .thenReturn(
@@ -434,5 +436,12 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
 
   private void validateMap(int jobRunningMapSize) {
     Assert.assertEquals(jobRunningMapSize, pipelineStateManager.getExpectedRunningJobMap().size());
+  }
+
+  @After
+  public void tearDownMocks() {
+    if (staticContext != null) {
+      staticContext.closeOnDemand();
+    }
   }
 }

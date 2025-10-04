@@ -186,40 +186,42 @@ public class GrpcDispatcherTest extends FievelTestBase {
   @SuppressWarnings({"CheckReturnValue"})
   @Test
   public void testCancelDispatch() {
-    MockedStatic<Context> staticContext = Mockito.mockStatic(Context.class);
-    Context.CancellableContext mockContext = Mockito.mock(Context.CancellableContext.class);
-    staticContext.when(() -> Context.current()).thenReturn(mockContext);
-    Mockito.when(mockContext.withCancellation()).thenReturn(mockContext);
-    ClientCall<ByteString, Empty> clientCall = Mockito.mock(ClientCall.class);
-    MessageStub messageStub = new MessageStub();
-    final String serviceIdentity = "spiffe://kafka-consumer/test/proxy";
-    Mockito.when(channel.newCall(Mockito.any(), Mockito.any())).thenReturn((ClientCall) clientCall);
-    Job.Builder jobBuilder = Job.newBuilder();
-    jobBuilder.getRpcDispatcherTaskBuilder().setRpcTimeoutMs(1000000);
-    jobBuilder.getSecurityConfigBuilder().addServiceIdentities(serviceIdentity);
-    jobBuilder.getSecurityConfigBuilder().setIsSecure(true);
-    Job job = jobBuilder.build();
-    GrpcRequest grpcRequest =
-        new GrpcRequest(
-            "group",
-            "topic",
-            0,
-            0,
-            messageStub,
-            0,
-            0,
-            0,
-            "physicaltopic",
-            "physicalCluster",
-            0,
-            0,
-            HEADERS,
-            "value".getBytes(),
-            "key".getBytes());
-    Assert.assertFalse(
-        dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture().isDone());
-    messageStub.cancel(DispatcherResponse.Code.RETRY);
-    Mockito.verify(mockContext, Mockito.times(1)).cancel(null);
+    try (MockedStatic<Context> staticContext = Mockito.mockStatic(Context.class)) {
+      Context.CancellableContext mockContext = Mockito.mock(Context.CancellableContext.class);
+      staticContext.when(() -> Context.current()).thenReturn(mockContext);
+      Mockito.when(mockContext.withCancellation()).thenReturn(mockContext);
+      ClientCall<ByteString, Empty> clientCall = Mockito.mock(ClientCall.class);
+      MessageStub messageStub = new MessageStub();
+      final String serviceIdentity = "spiffe://kafka-consumer/test/proxy";
+      Mockito.when(channel.newCall(Mockito.any(), Mockito.any()))
+          .thenReturn((ClientCall) clientCall);
+      Job.Builder jobBuilder = Job.newBuilder();
+      jobBuilder.getRpcDispatcherTaskBuilder().setRpcTimeoutMs(1000000);
+      jobBuilder.getSecurityConfigBuilder().addServiceIdentities(serviceIdentity);
+      jobBuilder.getSecurityConfigBuilder().setIsSecure(true);
+      Job job = jobBuilder.build();
+      GrpcRequest grpcRequest =
+          new GrpcRequest(
+              "group",
+              "topic",
+              0,
+              0,
+              messageStub,
+              0,
+              0,
+              0,
+              "physicaltopic",
+              "physicalCluster",
+              0,
+              0,
+              HEADERS,
+              "value".getBytes(),
+              "key".getBytes());
+      Assert.assertFalse(
+          dispatcher.submit(ItemAndJob.of(grpcRequest, job)).toCompletableFuture().isDone());
+      messageStub.cancel(DispatcherResponse.Code.RETRY);
+      Mockito.verify(mockContext, Mockito.times(1)).cancel(null);
+    }
   }
 
   @Test
