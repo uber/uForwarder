@@ -26,6 +26,11 @@ uber_proto_java_library(
         "com.uber.data.kafka.consumer.OffsetSyncRequest",
         "com.uber.data.kafka.consumer.OffsetSyncResponse",
         "com.uber.data.kafka.consumer.PartitionOffsetInfo",
+        "com.uber.data.kafka.consumer.DlqMetadataProto",
+        "com.uber.data.kafka.consumer.GroupSubProto",
+        "com.uber.data.kafka.consumer.ListGroupProto",
+        "com.uber.data.kafka.consumer.OffsetMappingProto",
+        "com.uber.data.kafka.consumer.OffsetsProto",
     ],
     strip_import_prefix = "/idl/code.uber.internal/",
 )

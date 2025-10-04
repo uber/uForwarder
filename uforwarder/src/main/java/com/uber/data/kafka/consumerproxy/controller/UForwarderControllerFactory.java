@@ -82,7 +82,8 @@ public class UForwarderControllerFactory {
       DynamicConfiguration dynamicConfiguration,
       AdminClient.Builder adminBuilder,
       Scope scope,
-      Scalar scalar)
+      Scalar scalar,
+      JobPodPlacementProvider jobPodPlacementProvider)
       throws IOException {
     switch (rebalancerConfiguration.getMode()) {
       case "StreamingRpcUriRebalancer":
@@ -99,6 +100,13 @@ public class UForwarderControllerFactory {
             new HibernatingJobRebalancer(rebalancerConfiguration),
             adminBuilder,
             dynamicConfiguration);
+      case "RpcJobColocatingRebalancer":
+        return new RpcJobColocatingRebalancer(
+            scope,
+            rebalancerConfiguration,
+            scalar,
+            new HibernatingJobRebalancer(rebalancerConfiguration),
+            jobPodPlacementProvider);
       default:
         return new Rebalancer() {};
     }
