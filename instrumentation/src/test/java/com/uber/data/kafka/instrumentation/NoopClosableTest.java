@@ -1,13 +1,12 @@
 package com.uber.data.kafka.instrumentation;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class NoopClosableTest extends FievelTestBase {
+public class NoopClosableTest {
   private NoopClosable noopClosable;
 
-  @Before
+  @BeforeEach
   public void setup() {
     this.noopClosable = new NoopClosable();
   }

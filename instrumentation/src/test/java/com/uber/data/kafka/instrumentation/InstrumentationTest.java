@@ -1,6 +1,5 @@
 package com.uber.data.kafka.instrumentation;
 
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Histogram;
 import com.uber.m3.tally.Scope;
@@ -18,14 +17,14 @@ import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import javax.annotation.Nullable;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class InstrumentationTest extends FievelTestBase {
+public class InstrumentationTest {
   private static final Logger logger = LoggerFactory.getLogger(InstrumentationTest.class);
   private Scope scope;
   private Counter counter;
@@ -33,7 +32,7 @@ public class InstrumentationTest extends FievelTestBase {
   private Tracer tracer;
   private Histogram histogram;
 
-  @Before
+  @BeforeEach
   public void setup() {
     scope = Mockito.mock(Scope.class);
     counter = Mockito.mock(Counter.class);
@@ -55,7 +54,7 @@ public class InstrumentationTest extends FievelTestBase {
     boolean got =
         Instrumentation.instrument.withException(
             logger, scope, tracer, () -> expected, r -> true, name, "key", "value");
-    Assert.assertEquals(expected, got);
+    Assertions.assertEquals(expected, got);
     assertMetricsWithResultChecker(name, true);
   }
 
@@ -68,7 +67,7 @@ public class InstrumentationTest extends FievelTestBase {
     boolean got =
         Instrumentation.instrument.withException(
             logger, scope, tracer, () -> expected, r -> false, name, "key", "value");
-    Assert.assertEquals(expected, got);
+    Assertions.assertEquals(expected, got);
     assertMetricsWithResultChecker(name, false);
   }
 
@@ -90,7 +89,7 @@ public class InstrumentationTest extends FievelTestBase {
             name,
             "key",
             "value");
-    Assert.assertEquals(expected, got);
+    Assertions.assertEquals(expected, got);
     assertMetricsWithResultChecker(name, null);
   }
 
@@ -101,7 +100,7 @@ public class InstrumentationTest extends FievelTestBase {
     boolean got =
         Instrumentation.instrument.withException(
             logger, scope, null, () -> expected, r -> true, name, "key", "value");
-    Assert.assertEquals(expected, got);
+    Assertions.assertEquals(expected, got);
     assertMetricsWithResultChecker(name, true);
   }
 
@@ -112,7 +111,7 @@ public class InstrumentationTest extends FievelTestBase {
     boolean got =
         Instrumentation.instrument.withException(
             logger, scope, null, () -> expected, r -> false, name, "key", "value");
-    Assert.assertEquals(expected, got);
+    Assertions.assertEquals(expected, got);
     assertMetricsWithResultChecker(name, false);
   }
 
@@ -132,7 +131,7 @@ public class InstrumentationTest extends FievelTestBase {
             name,
             "key",
             "value");
-    Assert.assertEquals(expected, got);
+    Assertions.assertEquals(expected, got);
     assertMetricsWithResultChecker(name, null);
   }
 
@@ -159,7 +158,7 @@ public class InstrumentationTest extends FievelTestBase {
     boolean got =
         Instrumentation.instrument.withException(
             logger, scope, tracer, () -> expected, name, "key", "value");
-    Assert.assertEquals(expected, got);
+    Assertions.assertEquals(expected, got);
     assertMetrics(name, null);
   }
 
@@ -170,7 +169,7 @@ public class InstrumentationTest extends FievelTestBase {
     boolean got =
         Instrumentation.instrument.withException(
             logger, scope, null, () -> expected, name, "key", "value");
-    Assert.assertEquals(expected, got);
+    Assertions.assertEquals(expected, got);
     assertMetrics(name, null);
   }
 
@@ -195,7 +194,7 @@ public class InstrumentationTest extends FievelTestBase {
     } catch (IOException e) {
       exceptionThrown = true;
     }
-    Assert.assertTrue(exceptionThrown);
+    Assertions.assertTrue(exceptionThrown);
     assertMetrics(name, expected);
   }
 
@@ -220,7 +219,7 @@ public class InstrumentationTest extends FievelTestBase {
     } catch (RuntimeException e) {
       exceptionThrown = true;
     }
-    Assert.assertTrue(exceptionThrown);
+    Assertions.assertTrue(exceptionThrown);
     assertMetrics(name, expected);
   }
 
@@ -242,7 +241,7 @@ public class InstrumentationTest extends FievelTestBase {
                 "value")
             .toCompletableFuture()
             .get();
-    Assert.assertEquals(expected, got);
+    Assertions.assertEquals(expected, got);
     assertMetrics(name, null);
   }
 
@@ -262,7 +261,7 @@ public class InstrumentationTest extends FievelTestBase {
                 "value")
             .toCompletableFuture()
             .get();
-    Assert.assertEquals(expected, got);
+    Assertions.assertEquals(expected, got);
     assertMetrics(name, null);
   }
 
@@ -285,7 +284,7 @@ public class InstrumentationTest extends FievelTestBase {
             name,
             "key",
             "value");
-    Assert.assertTrue(got.toCompletableFuture().isCompletedExceptionally());
+    Assertions.assertTrue(got.toCompletableFuture().isCompletedExceptionally());
     assertMetrics(name, expected);
   }
 
@@ -365,9 +364,7 @@ public class InstrumentationTest extends FievelTestBase {
         logger,
         scope,
         tracer,
-        (c, r, s) -> {
-          s.onError(new RuntimeException());
-        },
+        (c, r, s) -> s.onError(new RuntimeException()),
         clientCall,
         true,
         streamObserver,
@@ -409,9 +406,7 @@ public class InstrumentationTest extends FievelTestBase {
         logger,
         scope,
         tracer,
-        (c, r, s) -> {
-          s.onError(new RuntimeException());
-        },
+        (c, r, s) -> s.onError(new RuntimeException()),
         clientCall,
         true,
         streamObserver,
@@ -495,9 +490,7 @@ public class InstrumentationTest extends FievelTestBase {
         logger,
         scope,
         tracer,
-        (r, s) -> {
-          s.onError(new RuntimeException());
-        },
+        (r, s) -> s.onError(new RuntimeException()),
         true,
         streamObserver,
         name,
@@ -539,9 +532,7 @@ public class InstrumentationTest extends FievelTestBase {
         logger,
         scope,
         tracer,
-        (r, s) -> {
-          s.onError(new RuntimeException());
-        },
+        (r, s) -> s.onError(new RuntimeException()),
         true,
         streamObserver,
         name,
@@ -560,9 +551,7 @@ public class InstrumentationTest extends FievelTestBase {
         logger,
         scope,
         tracer,
-        (r, s) -> {
-          s.onError(Status.RESOURCE_EXHAUSTED.asRuntimeException());
-        },
+        (r, s) -> s.onError(Status.RESOURCE_EXHAUSTED.asRuntimeException()),
         true,
         streamObserver,
         name,

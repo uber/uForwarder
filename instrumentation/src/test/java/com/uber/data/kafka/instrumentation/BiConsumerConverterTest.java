@@ -1,12 +1,11 @@
 package com.uber.data.kafka.instrumentation;
 
-import static org.junit.Assert.*;
+import static org.junit.jupiter.api.Assertions.*;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class BiConsumerConverterTest extends FievelTestBase {
+public class BiConsumerConverterTest {
   @Test
   public void testUncheck() {
     ThrowingBiConsumer<Boolean, Boolean, IllegalArgumentException> inner =
@@ -15,11 +14,15 @@ public class BiConsumerConverterTest extends FievelTestBase {
     Mockito.verify(inner, Mockito.times(1)).accept(true, true);
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testUncheckThrowsException() {
-    ThrowingBiConsumer<Boolean, Boolean, IllegalArgumentException> inner =
-        Mockito.mock(ThrowingBiConsumer.class);
-    Mockito.doThrow(new IllegalArgumentException()).when(inner).accept(true, true);
-    BiConsumerConverter.uncheck(inner).accept(true, true);
+    assertThrows(
+        RuntimeException.class,
+        () -> {
+          ThrowingBiConsumer<Boolean, Boolean, IllegalArgumentException> inner =
+              Mockito.mock(ThrowingBiConsumer.class);
+          Mockito.doThrow(new IllegalArgumentException()).when(inner).accept(true, true);
+          BiConsumerConverter.uncheck(inner).accept(true, true);
+        });
   }
 }

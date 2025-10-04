@@ -1,22 +1,21 @@
 package com.uber.data.kafka.instrumentation;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
 // These tests are necessary for 100% test coverage, so we can enforce strict coverage rules
 // for core libraries to improve code quality.
-public class TagsTest extends FievelTestBase {
+public class TagsTest {
   @Test
   public void testKey() {
-    Assert.assertEquals("reason", Tags.Key.reason);
-    Assert.assertEquals("result", Tags.Key.result);
+    Assertions.assertEquals("reason", Tags.Key.reason);
+    Assertions.assertEquals("result", Tags.Key.result);
   }
 
   @Test
   public void testValue() {
-    Assert.assertEquals("success", Tags.Value.success);
-    Assert.assertEquals("failure", Tags.Value.failure);
+    Assertions.assertEquals("success", Tags.Value.success);
+    Assertions.assertEquals("failure", Tags.Value.failure);
   }
 
   @Test

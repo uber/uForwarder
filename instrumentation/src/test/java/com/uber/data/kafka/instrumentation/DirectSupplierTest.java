@@ -1,23 +1,27 @@
 package com.uber.data.kafka.instrumentation;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import java.util.concurrent.ExecutionException;
-import org.junit.Assert;
-import org.junit.Test;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
-public class DirectSupplierTest extends FievelTestBase {
+import java.util.concurrent.ExecutionException;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+
+public class DirectSupplierTest {
   @Test
   public void testSupply() throws Exception {
-    Assert.assertTrue(DirectSupplier.supply(() -> true).toCompletableFuture().get());
+    Assertions.assertTrue(DirectSupplier.supply(() -> true).toCompletableFuture().get());
   }
 
-  @Test(expected = ExecutionException.class)
-  public void testSupplyWithException() throws Exception {
-    DirectSupplier.supply(
-            () -> {
-              throw new RuntimeException();
-            })
-        .toCompletableFuture()
-        .get();
+  @Test
+  public void testSupplyWithException() {
+    assertThrows(
+        ExecutionException.class,
+        () ->
+            DirectSupplier.supply(
+                    () -> {
+                      throw new RuntimeException();
+                    })
+                .toCompletableFuture()
+                .get());
   }
 }
