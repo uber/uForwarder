@@ -9,6 +9,7 @@ plugins {
 test {
     minHeapSize = "1g"
     maxHeapSize = "2g"
+    maxParallelForks = 4
 }
 
 dependencies {

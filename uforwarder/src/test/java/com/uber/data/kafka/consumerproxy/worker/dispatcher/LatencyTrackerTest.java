@@ -200,6 +200,18 @@ public class LatencyTrackerTest extends FievelTestBase {
     Assert.assertEquals(true, stats.isMedianLatencyHigh());
   }
 
+  @Test
+  public void testGetMaxLatency_WithLargeThroughput() {
+    long maxLatency = LatencyTracker.getMaxLatency(10000, 1000);
+    Assert.assertEquals((long) (0.1 * TimeUnit.SECONDS.toNanos(1)), maxLatency);
+  }
+
+  @Test
+  public void testGetMaxLatency_WithLargeConcurrencyLimit() {
+    long maxLatency = LatencyTracker.getMaxLatency(4.9e-324, Integer.MAX_VALUE);
+    Assert.assertEquals(Long.MAX_VALUE, maxLatency);
+  }
+
   private double percentDiff(double v1, double v2) {
     return (v1 - v2) / v2;
   }

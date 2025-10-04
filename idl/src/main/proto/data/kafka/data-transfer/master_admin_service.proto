@@ -31,6 +31,8 @@ service MasterAdminService {
   // GetAllJobGroups is a server stream that returns all job groups.
   // We use streams b/c gRPC has a 1MB single payload limit for large clusters a unary request may not work.
   rpc GetAllJobGroups(GetAllJobGroupsRequest) returns (stream GetAllJobGroupsResponse);
+  // GetClusterScaleStatus returns the scale status for the entire cluster.
+  rpc GetClusterScaleStatus(GetClusterScaleStatusRequest) returns (GetClusterScaleStatusResponse);
 }
 
 // AddJobGroupRequest runs a new job group with job group definition and configuration provided in the request.
@@ -97,4 +99,23 @@ message GetAllJobGroupsResponse {
   JobGroup job_group = 1;
   JobState job_group_state = 2;
   ScaleStatus scale_status = 3;
+}
+
+// GetClusterScaleStatusRequest is sent to get the scale status of the cluster.
+message GetClusterScaleStatusRequest {}
+
+// GetClusterScaleStatusResponse is sent back with the scale status of the cluster.
+message GetClusterScaleStatusResponse {
+  // the total number of job groups in the cluster
+  uint32 total_jobgroup_count = 1;
+  // the total number of workers in the cluster
+  uint32 total_worker_count = 2;
+  // the combined messages per second of all the workers in the cluster
+  double total_allowed_messages_per_sec = 3;
+  // the combined bytes per second of all the workers in the cluster
+  double total_allowed_bytes_per_sec = 4;
+  // the combined messages per second of all the job groups in the cluster
+  double total_used_messages_per_sec = 5;
+  // the combined bytes per second of all the job groups in the cluster
+  double total_used_bytes_per_sec = 6;
 }
