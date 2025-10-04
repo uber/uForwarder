@@ -374,6 +374,12 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
         valueCaptor.getAllValues().toArray(new Double[] {}));
   }
 
+  @Test
+  public void testReportIssue() {
+    Job job = createConsumerJob(0, TOPIC, 0, GROUP, 2000, 1000, 1);
+    pipelineStateManager.reportIssue(job, PipelineHealthIssue.PERMISSION_DENIED);
+  }
+
   private Job createConsumerJob(
       long jobID,
       String topicName,

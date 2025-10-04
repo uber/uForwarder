@@ -9,7 +9,6 @@ import java.util.Set;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
-import org.mockito.Mockito;
 
 public class PipelineHealthManagerTest extends FievelTestBase {
   private PipelineHealthManager pipelineHealthManager;
@@ -33,7 +32,8 @@ public class PipelineHealthManagerTest extends FievelTestBase {
                     .build())
             .build();
     ticker = new TestUtils.TestTicker();
-    pipelineHealthManager = PipelineHealthManager.newBuilder().setTicker(ticker).build();
+    pipelineHealthManager = PipelineHealthManager.newBuilder().setTicker(ticker).build(job);
+    pipelineHealthManager.init(job);
   }
 
   @Test
@@ -44,6 +44,8 @@ public class PipelineHealthManagerTest extends FievelTestBase {
     Assert.assertEquals(
         Set.of(PipelineHealthIssue.INFLIGHT_MESSAGE_LIMITED, PipelineHealthIssue.PERMISSION_DENIED),
         PipelineHealthIssue.decode(value));
+    pipelineHealthManager.cancel(job);
+    Assert.assertEquals(0, pipelineHealthManager.getPipelineHealthStateValue(job));
   }
 
   @Test
@@ -59,6 +61,8 @@ public class PipelineHealthManagerTest extends FievelTestBase {
     value = pipelineHealthManager.getPipelineHealthStateValue(job);
     Assert.assertEquals(
         Set.of(PipelineHealthIssue.PERMISSION_DENIED), PipelineHealthIssue.decode(value));
+    pipelineHealthManager.cancelAll();
+    Assert.assertEquals(0, pipelineHealthManager.getPipelineHealthStateValue(job));
   }
 
   @Test
@@ -72,7 +76,20 @@ public class PipelineHealthManagerTest extends FievelTestBase {
 
   @Test
   public void testGetValueWithInvalidJob() {
-    int value = pipelineHealthManager.getPipelineHealthStateValue(Mockito.mock(Job.class));
+    Job job2 =
+        Job.newBuilder()
+            .setJobId(1)
+            .setKafkaConsumerTask(
+                KafkaConsumerTask.newBuilder()
+                    .setTopic("topic")
+                    .setCluster("cluster")
+                    .setConsumerGroup("group")
+                    .setPartition(2)
+                    .setStartOffset(-1)
+                    .setEndOffset(100)
+                    .build())
+            .build();
+    int value = pipelineHealthManager.getPipelineHealthStateValue(job2);
     Assert.assertEquals(0, value);
   }
 }
