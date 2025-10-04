@@ -3,6 +3,7 @@ package com.uber.data.kafka.consumerproxy.worker.processor;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.uber.data.kafka.consumer.DLQMetadata;
 import com.uber.data.kafka.consumerproxy.config.ProcessorConfiguration;
+import com.uber.data.kafka.consumerproxy.utils.RetryUtils;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherImpl;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherMessage;
 import com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResponse;
@@ -139,6 +140,7 @@ public class ProcessorImplTest extends ProcessorTestBase {
             filter,
             1,
             1,
+            RetryUtils.hasResqTopic(job),
             infra);
     processor.setNextStage(dispatcher);
     processor.setPipelineStateManager(pipelineStateManager);
