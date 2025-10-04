@@ -3,7 +3,7 @@ package com.uber.data.kafka.datatransfer.controller.autoscalar;
 import com.google.common.base.Ticker;
 import com.uber.data.kafka.datatransfer.common.MetricsConfiguration;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
-import com.uber.data.kafka.datatransfer.controller.rpc.JobThroughputSink;
+import com.uber.data.kafka.datatransfer.controller.rpc.JobWorkloadSink;
 import com.uber.m3.tally.Scope;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.annotation.Bean;
@@ -20,25 +20,25 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 public class AutoScalarAutoConfiguration {
 
   @Bean
-  public JobThroughputSink jobThroughputSink(
+  public JobWorkloadSink jobWorkloadSink(
       AutoScalarConfiguration autoScalarConfiguration, Scope scope) {
     if (autoScalarConfiguration.isEnabled()) {
-      return new JobThroughputMonitor(autoScalarConfiguration, Ticker.systemTicker(), scope);
+      return new JobWorkloadMonitor(autoScalarConfiguration, Ticker.systemTicker(), scope);
     } else {
-      return JobThroughputSink.NOOP;
+      return JobWorkloadMonitor.NOOP;
     }
   }
 
   @Bean
   public Scalar scalar(
       AutoScalarConfiguration autoScalarConfiguration,
-      JobThroughputSink jobThroughputSink,
+      JobWorkloadSink jobWorkloadSink,
       Scope scope,
       LeaderSelector leaderSelector) {
-    if (jobThroughputSink instanceof JobThroughputMonitor) {
+    if (jobWorkloadSink instanceof JobWorkloadMonitor) {
       return new AutoScalar(
           autoScalarConfiguration,
-          (JobThroughputMonitor) jobThroughputSink,
+          (JobWorkloadMonitor) jobWorkloadSink,
           Ticker.systemTicker(),
           scope,
           leaderSelector);

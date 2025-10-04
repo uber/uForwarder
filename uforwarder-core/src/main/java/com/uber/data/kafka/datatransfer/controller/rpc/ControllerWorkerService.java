@@ -53,7 +53,7 @@ public final class ControllerWorkerService
   private final Node master;
   private final LeaderSelector leaderSelector;
   private final CoreInfra infra;
-  private final JobThroughputSink jobThroughputSink;
+  private final JobWorkloadSink jobWorkloadSink;
 
   public ControllerWorkerService(
       CoreInfra infra,
@@ -62,14 +62,14 @@ public final class ControllerWorkerService
       ReadStore<Long, StoredJob> jobStore,
       Store<Long, StoredJobStatus> jobStatusStore,
       LeaderSelector leaderSelector,
-      JobThroughputSink jobThroughputSink) {
+      JobWorkloadSink jobWorkloadSink) {
     this.infra = infra;
     this.master = master;
     this.workerStore = workerStore;
     this.jobStore = jobStore;
     this.jobStatusStore = jobStatusStore;
     this.leaderSelector = leaderSelector;
-    this.jobThroughputSink = jobThroughputSink;
+    this.jobWorkloadSink = jobWorkloadSink;
   }
 
   private <Req, Res, E extends Exception> BiConsumer<Req, StreamObserver<Res>> withLeaderRedirect(
@@ -290,10 +290,12 @@ public final class ControllerWorkerService
                   jobStatus -> {
                     KafkaConsumerTask task = jobStatus.getJob().getKafkaConsumerTask();
                     KafkaConsumerTaskStatus taskStatus = jobStatus.getKafkaConsumerTaskStatus();
-                    jobThroughputSink.consume(
+                    jobWorkloadSink.consume(
                         jobStatus.getJob(),
-                        taskStatus.getMessagesPerSec(),
-                        taskStatus.getBytesPerSec());
+                        Workload.of(
+                            taskStatus.getMessagesPerSec(),
+                            taskStatus.getBytesPerSec(),
+                            taskStatus.getCpuUsage()));
                     StoredJobStatus storedJobStatus =
                         StoredJobStatus.newBuilder()
                             .setLastUpdated(timestamp)

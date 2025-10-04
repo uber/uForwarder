@@ -45,7 +45,7 @@ public class ControllerWorkerServiceTest extends FievelTestBase {
   private Store<Long, StoredJob> jobStore;
   private Store<Long, StoredJobStatus> jobStatusStore;
   private Node master;
-  private JobThroughputSink mockJobThroughputSink;
+  private JobWorkloadSink mockJobThroughputSink;
   private CoreInfra coreInfra;
 
   @Before
@@ -55,7 +55,7 @@ public class ControllerWorkerServiceTest extends FievelTestBase {
     this.jobStatusStore = Mockito.mock(Store.class);
     this.workerStore = Mockito.mock(Store.class);
     leaderSelector = Mockito.mock(LeaderSelector.class);
-    mockJobThroughputSink = Mockito.mock(JobThroughputSink.class);
+    mockJobThroughputSink = Mockito.mock(JobWorkloadSink.class);
     Mockito.when(leaderSelector.isLeader()).thenReturn(true);
     // master does not have ID, do not set it
     this.master = Node.newBuilder().setHost("localhost").setPort(8000).build();
@@ -268,8 +268,7 @@ public class ControllerWorkerServiceTest extends FievelTestBase {
                 .addAllCommands(commands.values())
                 .build());
     Mockito.verify(streamObserver).onCompleted();
-    Mockito.verify(mockJobThroughputSink)
-        .consume(Mockito.eq(job), Mockito.anyDouble(), Mockito.anyDouble());
+    Mockito.verify(mockJobThroughputSink).consume(Mockito.eq(job), Mockito.any(Workload.class));
 
     // second heartbeat from working state invokes put instead of putThrough
     controllerWorkerService.heartbeat(
