@@ -10,6 +10,7 @@ import com.uber.data.kafka.datatransfer.common.RoutingUtils;
 import com.uber.data.kafka.datatransfer.common.StructuredFields;
 import com.uber.data.kafka.datatransfer.common.StructuredLogging;
 import com.uber.data.kafka.datatransfer.common.StructuredTags;
+import com.uber.data.kafka.datatransfer.worker.common.CpuUsageMeter;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.instrumentation.Instrumentation;
 import com.uber.m3.tally.Scope;
@@ -61,12 +62,14 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
 
   private final PipelineHealthManager healthManager;
   private volatile FlowControl flowControl;
+  private final CpuUsageMeter cpuUsageMeter;
 
-  public KafkaPipelineStateManager(Job job, Scope scope) {
+  public KafkaPipelineStateManager(Job job, CpuUsageMeter cpuUsageMeter, Scope scope) {
     this.jobTemplate = job;
     this.scope = scope;
     this.flowControl = MINIMUM_VALID_FLOW;
     this.healthManager = PipelineHealthManager.newBuilder().setScope(scope).build(job);
+    this.cpuUsageMeter = cpuUsageMeter;
   }
 
   @Override
@@ -382,7 +385,11 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
 
   @Override
   public void publishMetrics() {
+    cpuUsageMeter.tick();
+    double cpuUsage = cpuUsageMeter.getUsage();
     synchronized (publishMetricsLock) {
+      int nJobs = expectedRunningJobMap.size();
+      double cpuUsagePerJob = cpuUsage / nJobs;
       for (Job job : expectedRunningJobMap.values()) {
         StructuredTags structuredTags =
             StructuredTags.builder()
@@ -406,6 +413,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
         jobScope
             .gauge(MetricNames.TOPIC_PARTITION_MAX_INFLIGHT_QUOTA)
             .update(job.getFlowControl().getMaxInflightMessages());
+        jobScope.gauge(MetricNames.TOPIC_PARTITION_CPU_USAGE).update(cpuUsagePerJob);
       }
     }
     healthManager.publishMetrics();
@@ -421,5 +429,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
         "pipeline.state-manager.topic.partition.byte-quota";
     static final String TOPIC_PARTITION_MAX_INFLIGHT_QUOTA =
         "pipeline.state-manager.topic.partition.max-inflight-quota";
+    static final String TOPIC_PARTITION_CPU_USAGE =
+        "pipeline.state-manager.topic.partition.cpu-usage";
   }
 }

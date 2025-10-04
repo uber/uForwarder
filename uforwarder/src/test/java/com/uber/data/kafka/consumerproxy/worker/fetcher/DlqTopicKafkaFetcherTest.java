@@ -7,6 +7,7 @@ import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
+import com.uber.data.kafka.datatransfer.worker.common.CpuUsageMeter;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
@@ -58,6 +59,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
   private CoreInfra infra;
   private Sink processor;
   private AbstractKafkaFetcherThread fetcherThread;
+  private CpuUsageMeter cpuUsageMeter;
 
   @Before
   public void setUp() {
@@ -84,6 +86,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
     ThroughputTracker throughputTracker = new ThroughputTracker();
     mockConsumer = Mockito.mock(KafkaConsumer.class);
     processor = Mockito.mock(Sink.class);
+    cpuUsageMeter = Mockito.mock(CpuUsageMeter.class);
     Mockito.when(processor.isRunning()).thenReturn(true);
     pipelineStateManager =
         new KafkaPipelineStateManager(
@@ -95,6 +98,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
                         .setPartition(0)
                         .build())
                 .build(),
+            cpuUsageMeter,
             scope);
     fetcherThread =
         new DlqTopicKafkaFetcher(

@@ -17,6 +17,17 @@ package com.uber.data.kafka.datatransfer.worker.common;
  * @since 1.0
  */
 public interface CpuUsageMeter {
+  CpuUsageMeter NOOP =
+      new CpuUsageMeter() {
+        @Override
+        public void tick() {}
+
+        @Override
+        public double getUsage() {
+          return 0;
+        }
+      };
+
   /**
    * Records a measurement point for CPU usage tracking.
    *

@@ -15,4 +15,9 @@ public class CoreInfraTest extends FievelTestBase {
   public void testGetZone() {
     Assert.assertEquals("_zone", CoreInfra.NOOP.getPlacement().getZone());
   }
+
+  @Test
+  public void getThreadMXBean() {
+    Assert.assertNotNull(CoreInfra.NOOP.getThreadMXBean());
+  }
 }
