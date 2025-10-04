@@ -98,7 +98,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
                         .setPartition(0)
                         .build())
                 .build(),
-            cpuUsageMeter,
+            cpuUsageMeter::getUsage,
             scope);
     fetcherThread =
         new DlqTopicKafkaFetcher(

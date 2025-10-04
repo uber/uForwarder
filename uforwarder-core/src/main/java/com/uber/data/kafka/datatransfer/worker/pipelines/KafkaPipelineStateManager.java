@@ -10,7 +10,6 @@ import com.uber.data.kafka.datatransfer.common.RoutingUtils;
 import com.uber.data.kafka.datatransfer.common.StructuredFields;
 import com.uber.data.kafka.datatransfer.common.StructuredLogging;
 import com.uber.data.kafka.datatransfer.common.StructuredTags;
-import com.uber.data.kafka.datatransfer.worker.common.CpuUsageMeter;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.instrumentation.Instrumentation;
 import com.uber.m3.tally.Scope;
@@ -22,6 +21,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Supplier;
 import javax.annotation.concurrent.ThreadSafe;
 import net.logstash.logback.argument.StructuredArgument;
 import net.logstash.logback.argument.StructuredArguments;
@@ -62,14 +62,14 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
 
   private final PipelineHealthManager healthManager;
   private volatile FlowControl flowControl;
-  private final CpuUsageMeter cpuUsageMeter;
+  private final Supplier<Double> cpuUsageSupplier;
 
-  public KafkaPipelineStateManager(Job job, CpuUsageMeter cpuUsageMeter, Scope scope) {
+  public KafkaPipelineStateManager(Job job, Supplier<Double> cpuUsageSupplier, Scope scope) {
     this.jobTemplate = job;
     this.scope = scope;
     this.flowControl = MINIMUM_VALID_FLOW;
     this.healthManager = PipelineHealthManager.newBuilder().setScope(scope).build(job);
-    this.cpuUsageMeter = cpuUsageMeter;
+    this.cpuUsageSupplier = cpuUsageSupplier;
   }
 
   @Override
@@ -385,8 +385,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
 
   @Override
   public void publishMetrics() {
-    cpuUsageMeter.tick();
-    double cpuUsage = cpuUsageMeter.getUsage();
+    double cpuUsage = cpuUsageSupplier.get();
     synchronized (publishMetricsLock) {
       int nJobs = expectedRunningJobMap.size();
       double cpuUsagePerJob = cpuUsage / nJobs;

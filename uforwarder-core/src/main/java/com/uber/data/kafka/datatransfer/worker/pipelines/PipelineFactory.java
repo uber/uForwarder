@@ -1,10 +1,12 @@
 package com.uber.data.kafka.datatransfer.worker.pipelines;
 
 import com.uber.data.kafka.datatransfer.Job;
+import java.util.function.Supplier;
 
 /** PipelineFactory is used by the DataTransferFramework PipelineManager to create Pipelines. */
 public interface PipelineFactory {
   String DELIMITER = "__";
+  Supplier<Double> NOOP_CPU_USAGE_SUPPLIER = () -> 0.0;
 
   /**
    * Create a new Pipeline.

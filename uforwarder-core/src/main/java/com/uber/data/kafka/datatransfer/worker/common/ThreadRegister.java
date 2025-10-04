@@ -1,9 +1,6 @@
 package com.uber.data.kafka.datatransfer.worker.common;
 
-import com.codahale.metrics.Clock;
-import com.codahale.metrics.Meter;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Ticker;
 import com.google.common.collect.ImmutableSet;
 import java.lang.management.ThreadMXBean;
 import java.util.Collection;
@@ -14,17 +11,17 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.TimeUnit;
 
 /**
  * A thread registry that tracks threads and provides CPU usage measurement capabilities.
  *
- * <p>This class implements {@link CpuUsageMeter} to provide CPU usage monitoring for registered
- * threads. It maintains a weak reference set of threads to allow garbage collection of terminated
- * threads, and provides a thread factory that automatically registers created threads.
+ * <p>This class provide CPU usage monitoring for registered threads. It maintains a weak reference
+ * set of threads to allow garbage collection of terminated threads, and provides a thread factory
+ * that automatically registers created threads.
  *
  * <p>The CPU usage measurement is only available when thread CPU time is enabled in the JVM. When
- * disabled, the meter will not record any CPU usage data.
+ * disabled, the meter will return {@link Double#NaN} to indicate that CPU time measurement is not
+ * available.
  *
  * <p>Key features:
  *
@@ -33,7 +30,7 @@ import java.util.concurrent.TimeUnit;
  *   <li>CPU usage monitoring and measurement
  *   <li>Thread factory integration for automatic registration
  *   <li>Thread-safe operations using concurrent collections
- *   <li>Configurable ticker for time-based measurements
+ *   <li>Automatic CPU time measurement on each usage query
  * </ul>
  *
  * <p>Usage example:
@@ -46,19 +43,18 @@ import java.util.concurrent.TimeUnit;
  * ThreadFactory monitoredFactory = register.asThreadFactory();
  * ExecutorService executor = Executors.newFixedThreadPool(10, monitoredFactory);
  *
- * // Periodically call tick() to update CPU usage measurements
- * register.tick();
+ * // Get CPU usage - automatically measures and returns current usage
  * double cpuUsage = register.getUsage();
  * }</pre>
  *
- * <p>This class is thread-safe and can be used in multi-threaded environments.
+ * <p>This class is thread-safe and can be used in multi-threaded environments. The CPU usage
+ * measurement is independent of the number of CPU cores in the machine.
  */
-public class ThreadRegister implements CpuUsageMeter {
+public class ThreadRegister {
   /** The default thread factory used for creating new threads. */
   private static final ThreadFactory BACKING_THREAD_FACTORY = Executors.defaultThreadFactory();
 
-  private static final long NANOS_PER_SECOND = TimeUnit.SECONDS.toNanos(1);
-  private final Meter cpuUsageMeter;
+  private final CpuUsageMeter cpuUsageMeter;
   private final ThreadMXBean threadMXBean;
 
   /**
@@ -72,18 +68,31 @@ public class ThreadRegister implements CpuUsageMeter {
   /**
    * Constructs a new ThreadRegister instance.
    *
-   * <p>Creates a new weak reference set for tracking registered threads.
+   * <p>Creates a new weak reference set for tracking registered threads and initializes CPU usage
+   * measurement capabilities. The CPU time measurement will only be enabled if the JVM supports
+   * thread CPU time tracking.
+   *
+   * @param threadMXBean the ThreadMXBean to use for CPU time measurements
    */
-  public ThreadRegister(ThreadMXBean threadMXBean, Ticker ticker) {
+  public ThreadRegister(ThreadMXBean threadMXBean) {
+    this(threadMXBean, new CpuUsageMeter());
+  }
+
+  /**
+   * Constructs a new ThreadRegister instance with a custom CPU usage meter.
+   *
+   * <p>This constructor is primarily used for testing purposes to inject a custom CPU usage meter.
+   *
+   * @param threadMXBean the ThreadMXBean to use for CPU time measurements
+   * @param cpuUsageMeter the custom CPU usage meter to use for measurements
+   */
+  @VisibleForTesting
+  ThreadRegister(ThreadMXBean threadMXBean, CpuUsageMeter cpuUsageMeter) {
     this.threads = Collections.synchronizedSet(Collections.newSetFromMap(new WeakHashMap<>()));
-    this.cpuUsageMeter = new Meter(new TickerClock(ticker));
+    this.cpuUsageMeter = cpuUsageMeter;
     this.threadMXBean = threadMXBean;
     this.threadToLastCpuTime = new ConcurrentHashMap<>();
     this.enabled = threadMXBean.isThreadCpuTimeEnabled();
-  }
-
-  public ThreadRegister(ThreadMXBean threadMXBean) {
-    this(threadMXBean, Ticker.systemTicker());
   }
 
   /**
@@ -91,6 +100,9 @@ public class ThreadRegister implements CpuUsageMeter {
    *
    * <p>The returned factory creates new threads that are automatically registered with the
    * ThreadRegister instance. This allows for easy monitoring and management of thread resources.
+   * Any threads created through this factory will be tracked for CPU usage measurement.
+   *
+   * @return a thread factory that automatically registers created threads
    */
   public ThreadFactory asThreadFactory() {
     return r -> {
@@ -120,13 +132,50 @@ public class ThreadRegister implements CpuUsageMeter {
     return thread;
   }
 
+  /**
+   * Returns a copy of the currently registered threads.
+   *
+   * <p>This method is primarily used for testing purposes to verify thread registration.
+   *
+   * @return an immutable collection of currently registered threads
+   */
   @VisibleForTesting
   protected Collection<Thread> getRegistered() {
     return ImmutableSet.copyOf(this.threads);
   }
 
-  @Override
-  public void tick() {
+  /**
+   * Gets the current CPU usage as a percentage.
+   *
+   * <p>This method automatically measures CPU usage for all registered threads and returns the
+   * current usage percentage. The measurement is performed by calculating the difference in CPU
+   * time for each registered thread since the last measurement.
+   *
+   * <p>If thread CPU time is not enabled in the JVM, this method returns {@link Double#NaN}.
+   * Otherwise, it returns a value between 0.0 and 1.0 representing the CPU usage percentage, where
+   * the measurement is independent of the number of CPU cores in the machine.
+   *
+   * @return the current CPU usage percentage as a double value in (0.0, 1.0], or 0.0 if thread CPU
+   *     time is not enabled
+   */
+  public double getUsage() {
+    if (!enabled) {
+      return 0.0;
+    }
+
+    tick();
+
+    return cpuUsageMeter.getUsage();
+  }
+
+  /**
+   * Performs CPU time measurement for all registered threads.
+   *
+   * <p>This method iterates through all registered threads, calculates the CPU time consumed by
+   * each thread since the last measurement, and records the total CPU time in the internal meter.
+   * The measurement is only performed if thread CPU time is enabled in the JVM.
+   */
+  private void tick() {
     if (!enabled) {
       return;
     }
@@ -140,27 +189,5 @@ public class ThreadRegister implements CpuUsageMeter {
       }
     }
     cpuUsageMeter.mark(localCpuTime);
-  }
-
-  @Override
-  public double getUsage() {
-    if (!enabled) {
-      return Double.NaN;
-    }
-
-    return cpuUsageMeter.getOneMinuteRate() / NANOS_PER_SECOND;
-  }
-
-  private static class TickerClock extends Clock {
-    private final Ticker ticker;
-
-    TickerClock(Ticker ticker) {
-      this.ticker = ticker;
-    }
-
-    @Override
-    public long getTick() {
-      return ticker.read();
-    }
   }
 }
