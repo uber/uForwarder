@@ -52,6 +52,7 @@ public class AbstractRpcUriRebalancerTest {
   Scope mockScope;
   Gauge mockSpareWorkerGauge;
   Gauge mockTargetWorkerGauge;
+  Gauge mockSystemLoadGauge;
   StoredJob jobOne;
   StoredJob jobTwo;
   StoredJob jobThree;
@@ -74,6 +75,7 @@ public class AbstractRpcUriRebalancerTest {
     mockSpareWorkerGauge = Mockito.mock(Gauge.class);
     mockTargetWorkerGauge = Mockito.mock(Gauge.class);
     scalar = Mockito.mock(Scalar.class);
+    mockSystemLoadGauge = Mockito.mock(Gauge.class);
     hibernatingJobRebalancer = Mockito.mock(HibernatingJobRebalancer.class);
     Mockito.doAnswer(
             invocation -> {
@@ -94,6 +96,7 @@ public class AbstractRpcUriRebalancerTest {
         .thenReturn(mockSpareWorkerGauge);
     Mockito.when(mockScope.gauge(AbstractRpcUriRebalancer.MetricNames.WORKERS_TARGET))
         .thenReturn(mockTargetWorkerGauge);
+    Mockito.when(mockScope.gauge("rebalancer.system.load")).thenReturn(mockSystemLoadGauge);
     rpcUriJobAssigner = new SimpleRpcUriAssigner(mockScope, config, scalar);
 
     StoredJob.Builder jobBuilder = StoredJob.newBuilder();
@@ -1033,6 +1036,50 @@ public class AbstractRpcUriRebalancerTest {
     Assertions.assertEquals(10, roundUpToNearestNumber(9, 5));
     Assertions.assertEquals(10, roundUpToNearestNumber(10, 5));
     Assertions.assertEquals(15, roundUpToNearestNumber(11, 5));
+  }
+
+  @Test
+  public void testPostProcessing() {
+    RebalancingJobGroup rebalancingJobGroup =
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 0));
+    Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
+    Map<String, RebalancingJobGroup> jobGroupMap = ImmutableMap.of("jobGroup", rebalancingJobGroup);
+    rpcUriJobAssigner.computeWorkerId(jobGroupMap, workerMap);
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(1L, 2L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    rpcUriJobAssigner.postProcess(jobGroupMap, workerMap);
+    Mockito.verify(scalar, Mockito.times(1)).onLoad(0.6);
+  }
+
+  @Test
+  public void testPostProcessingSKipNonRunningJobs() {
+    RebalancingJobGroup rebalancingJobGroup =
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 0), buildJob(2, 0));
+    RebalancingJobGroup failedJobGrroup =
+        buildRebalancingJobGroup("failedGroup", JobState.JOB_STATE_FAILED, buildJob(3, 0));
+    Map<Long, StoredWorker> workerMap = buildWorkerMap(1, 2);
+    Map<String, RebalancingJobGroup> jobGroupMap =
+        ImmutableMap.of("jobGroup", rebalancingJobGroup, "failedGroup", failedJobGrroup);
+    rpcUriJobAssigner.computeWorkerId(jobGroupMap, workerMap);
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(1L, 2L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    rpcUriJobAssigner.postProcess(jobGroupMap, workerMap);
+    Mockito.verify(scalar, Mockito.times(1)).onLoad(0.6);
+  }
+
+  @Test
+  public void testPostProcessingWithoutWorkerSkipReportLoad() {
+    RebalancingJobGroup rebalancingJobGroup =
+        buildRebalancingJobGroup(
+            "jobGroup", JobState.JOB_STATE_RUNNING, buildJob(1, 1), buildJob(2, 2));
+    Map<String, RebalancingJobGroup> jobGroupMap = ImmutableMap.of("jobGroup", rebalancingJobGroup);
+    rpcUriJobAssigner.computeWorkerId(jobGroupMap, Collections.emptyMap());
+    Assertions.assertTrue(rebalancingJobGroup.isChanged());
+    Assertions.assertEquals(ImmutableSet.of(0L), getWorkersIds(rebalancingJobGroup.getJobs()));
+    rpcUriJobAssigner.postProcess(jobGroupMap, Collections.emptyMap());
+    Mockito.verify(scalar, Mockito.never()).onLoad(0.6);
   }
 
   private class SimpleRpcUriAssigner extends AbstractRpcUriRebalancer {
