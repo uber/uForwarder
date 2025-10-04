@@ -6,6 +6,7 @@ import com.uber.data.kafka.datatransfer.Job;
 import java.time.Duration;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import org.apache.kafka.common.TopicPartition;
 
 /** PipelineHealthManager tracks and reports health issue of a pipeline. */
 public class PipelineHealthManager {
@@ -16,15 +17,17 @@ public class PipelineHealthManager {
   // TODO make this configurable
   private static final int windowCount = 3;
   private final Ticker ticker;
-  private final Map<Job, PipelineHealthState> stateMap;
+  private final Map<TopicPartition, PipelineHealthState> stateMap;
+  private final Job jobTemplate;
 
   /**
    * Instantiates a new Pipeline heath manager.
    *
    * @param ticker the ticker
    */
-  PipelineHealthManager(Ticker ticker) {
+  PipelineHealthManager(Ticker ticker, Job jobTemplate) {
     this.ticker = ticker;
+    this.jobTemplate = jobTemplate;
     this.stateMap = new ConcurrentHashMap<>();
   }
 
@@ -35,20 +38,45 @@ public class PipelineHealthManager {
    * @param issue the issue
    */
   public void reportIssue(Job job, PipelineHealthIssue issue) {
-    stateMap
-        .computeIfAbsent(
-            job, o -> new PipelineHealthState(ticker, stateWindowDuration, windowCount))
-        .recordIssue(issue);
+    TopicPartition tp =
+        new TopicPartition(
+            job.getKafkaConsumerTask().getTopic(), job.getKafkaConsumerTask().getPartition());
+    PipelineHealthState healthState = stateMap.get(tp);
+    if (healthState != null) {
+      healthState.recordIssue(issue);
+    }
   }
 
   @VisibleForTesting
   protected int getPipelineHealthStateValue(Job job) {
-    PipelineHealthState state = stateMap.get(job);
+    TopicPartition tp =
+        new TopicPartition(
+            job.getKafkaConsumerTask().getTopic(), job.getKafkaConsumerTask().getPartition());
+    PipelineHealthState state = stateMap.get(tp);
     if (state != null) {
       return state.getStateValue();
     } else {
       return 0;
     }
+  }
+
+  public void init(Job job) {
+    TopicPartition tp =
+        new TopicPartition(
+            job.getKafkaConsumerTask().getTopic(), job.getKafkaConsumerTask().getPartition());
+    stateMap.computeIfAbsent(
+        tp, o -> new PipelineHealthState(ticker, stateWindowDuration, windowCount));
+  }
+
+  public void cancel(Job job) {
+    TopicPartition tp =
+        new TopicPartition(
+            job.getKafkaConsumerTask().getTopic(), job.getKafkaConsumerTask().getPartition());
+    stateMap.remove(tp);
+  }
+
+  public void cancelAll() {
+    stateMap.clear();
   }
 
   public static Builder newBuilder() {
@@ -75,8 +103,8 @@ public class PipelineHealthManager {
      *
      * @return the pipeline heath manager
      */
-    public PipelineHealthManager build() {
-      return new PipelineHealthManager(ticker);
+    public PipelineHealthManager build(Job jobTemplate) {
+      return new PipelineHealthManager(ticker, jobTemplate);
     }
   }
 }

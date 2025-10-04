@@ -4,10 +4,12 @@ import com.google.common.collect.ImmutableList;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobStatus;
+import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineHealthIssue;
 import com.uber.fievel.testing.base.FievelTestBase;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
+import org.mockito.Mockito;
 
 public class PipelineStateManagerTest extends FievelTestBase {
   private PipelineStateManager pipelineStateManager;
@@ -56,5 +58,11 @@ public class PipelineStateManagerTest extends FievelTestBase {
   @Test
   public void testGetJobs() {
     Assert.assertEquals(0, pipelineStateManager.getJobs().size());
+  }
+
+  @Test
+  public void testReportIssue() {
+    pipelineStateManager.reportIssue(
+        Mockito.mock(Job.class), PipelineHealthIssue.PERMISSION_DENIED);
   }
 }

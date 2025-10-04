@@ -59,12 +59,14 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
 
   private final Scope scope;
 
+  private final PipelineHealthManager healthManager;
   private volatile FlowControl flowControl;
 
   public KafkaPipelineStateManager(Job job, Scope scope) {
     this.jobTemplate = job;
     this.scope = scope;
     this.flowControl = MINIMUM_VALID_FLOW;
+    this.healthManager = PipelineHealthManager.newBuilder().build(job);
   }
 
   @Override
@@ -182,6 +184,11 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
         instrumentationTags(job, command));
   }
 
+  @Override
+  public void reportIssue(Job job, PipelineHealthIssue issue) {
+    healthManager.reportIssue(job, issue);
+  }
+
   // TODO (T4367183): handle the case that the same job definition is assigned to multiple job_ids.
   @Override
   public CompletionStage<Void> run(Job job) {
@@ -189,6 +196,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
         job,
         "run",
         () -> {
+          healthManager.init(job);
           assertFlowPositive(job);
           assertValidConsumerGroup(job);
           synchronized (updateMapLock) {
@@ -223,6 +231,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
               }
             }
           }
+          healthManager.cancel(job);
         });
   }
 
@@ -255,6 +264,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
         () -> {
           CompletableFuture<Void> future = new CompletableFuture<>();
           try {
+            healthManager.cancelAll();
             synchronized (updateMapLock) {
               expectedRunningJobMap.clear();
               handleFlowChange();

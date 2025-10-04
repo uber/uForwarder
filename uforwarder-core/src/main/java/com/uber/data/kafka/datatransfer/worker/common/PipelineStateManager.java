@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobStatus;
+import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineHealthIssue;
 import java.util.Collection;
 import java.util.List;
 import java.util.Map;
@@ -22,7 +23,7 @@ public interface PipelineStateManager extends Controllable, MetricSource {
   default void updateActualRunningJobStatus(List<JobStatus> jobStatusList) {}
 
   /**
-   * Returns the map of expected running <job ID, jobs>, i.e., the expected running state.
+   * Returns the map of expected running {job ID, jobs}, i.e., the expected running state.
    *
    * <p>As job ID is the key of the map, we can guarantee that there will not be more than one job
    * having the same job ID.
@@ -34,8 +35,8 @@ public interface PipelineStateManager extends Controllable, MetricSource {
   /**
    * Determines whether a job is expected to be running or not.
    *
-   * <p>A job is expected running when this exact job is in the map of expected running <job ID,
-   * jobs>, but not its job ID is in the map. This avoids the case that when a job is replaced by a
+   * <p>A job is expected running when this exact job is in the map of expected running {job ID,
+   * jobs}, but not its job ID is in the map. This avoids the case that when a job is replaced by a
    * job with the same job ID, we falsely believe that the job is still expected to be running.
    */
   default boolean shouldJobBeRunning(Job job) {
@@ -69,4 +70,6 @@ public interface PipelineStateManager extends Controllable, MetricSource {
   default Collection<Job> getJobs() {
     return ImmutableList.copyOf(getExpectedRunningJobMap().values());
   }
+
+  default void reportIssue(Job job, PipelineHealthIssue issue) {}
 }
