@@ -47,12 +47,12 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
 
   @Test(expected = IllegalArgumentException.class)
   public void testNegativeCapacity1() {
-    new ArrayAckTrackingQueue(job, 0, scope);
+    new LinkedAckTrackingQueue(job, 0, scope);
   }
 
   @Test(expected = IllegalArgumentException.class)
   public void testNegativeCapacity2() {
-    new ArrayAckTrackingQueue(job, -5, scope);
+    new LinkedAckTrackingQueue(job, -5, scope);
   }
 
   @Test
@@ -484,29 +484,6 @@ public class LinkedAckTrackingQueueTest extends FievelTestBase {
           linkedQueue.receive(action.offset);
           break;
       }
-    }
-  }
-
-  @Test
-  public void testBehaviorConsistency() throws InterruptedException {
-    int capacity = 1000;
-    LinkedAckTrackingQueue linkedQueue = new LinkedAckTrackingQueue(job, capacity, scope);
-    ArrayAckTrackingQueue arrayQueue = new ArrayAckTrackingQueue(job, capacity, scope);
-    List<Action> actions = generateActions(capacity, 10000, false);
-    for (Action action : actions) {
-      switch (action.actionType) {
-        case Ack:
-          Assert.assertEquals(arrayQueue.ack(action.offset), linkedQueue.ack(action.offset));
-          break;
-        case Nack:
-          Assert.assertEquals(arrayQueue.nack(action.offset), linkedQueue.nack(action.offset));
-          break;
-        case Receive:
-          arrayQueue.receive(action.offset);
-          linkedQueue.receive(action.offset);
-          break;
-      }
-      Assert.assertEquals(arrayQueue.getState().toString(), linkedQueue.getState().toString());
     }
   }
 

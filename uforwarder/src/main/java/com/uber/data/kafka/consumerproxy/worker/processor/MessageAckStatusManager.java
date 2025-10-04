@@ -4,7 +4,6 @@ import com.google.common.annotations.VisibleForTesting;
 import com.uber.data.kafka.consumerproxy.common.MetricsUtils;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.common.StructuredTags;
-import com.uber.data.kafka.datatransfer.IsolationLevel;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.MetricSource;
@@ -23,26 +22,16 @@ public class MessageAckStatusManager implements MetricSource, BlockingQueue {
   protected final ConcurrentMap<TopicPartition, QueueAndScope> tpAckMap;
   protected final Scope scope;
   private final int ackTrackingQueueSize;
-  private final boolean useLinkedListAckTrackingQueue;
   private final HeadBlockingDetector headBlockingDetector;
 
-  MessageAckStatusManager(
-      int ackTrackingQueueSize, boolean useLinkedListAckTrackingQueue, Scope scope) {
-    this(
-        ackTrackingQueueSize,
-        useLinkedListAckTrackingQueue,
-        HeadBlockingDetector.newBuilder(),
-        scope);
+  MessageAckStatusManager(int ackTrackingQueueSize, Scope scope) {
+    this(ackTrackingQueueSize, HeadBlockingDetector.newBuilder(), scope);
   }
 
   @VisibleForTesting
   MessageAckStatusManager(
-      int ackTrackingQueueSize,
-      boolean useLinkedListAckTrackingQueue,
-      HeadBlockingDetector.Builder builder,
-      Scope scope) {
+      int ackTrackingQueueSize, HeadBlockingDetector.Builder builder, Scope scope) {
     this.ackTrackingQueueSize = ackTrackingQueueSize;
-    this.useLinkedListAckTrackingQueue = useLinkedListAckTrackingQueue;
     this.tpAckMap = new ConcurrentHashMap<>();
     this.scope = scope;
     this.headBlockingDetector = builder.build();
@@ -231,34 +220,21 @@ public class MessageAckStatusManager implements MetricSource, BlockingQueue {
 
     QueueAndScope(Job job) {
       this.jobScope = MetricsUtils.jobScope(scope, job);
-      // create LinkedAckTrackingQueue when isolation level is read_committed to prevent data
-      // loss caused by offset gaps
-      // TODO: replace ArrayAckTrackingQueue with LinkedAckTrackingQueue to reduce maintenance
-      // overhead
-      this.ackTrackingQueue =
-          job.getKafkaConsumerTask().getIsolationLevel()
-                      == IsolationLevel.ISOLATION_LEVEL_READ_COMMITTED
-                  || useLinkedListAckTrackingQueue
-              ? new LinkedAckTrackingQueue(job, ackTrackingQueueSize, jobScope)
-              : new ArrayAckTrackingQueue(job, ackTrackingQueueSize, jobScope);
+      this.ackTrackingQueue = new LinkedAckTrackingQueue(job, ackTrackingQueueSize, jobScope);
     }
   }
 
   public static class Builder {
     protected final int ackTrackingQueueSize;
-    protected final boolean useLinkedListAckTrackingQueue;
     protected final CoreInfra infra;
 
-    public Builder(
-        int ackTrackingQueueSize, boolean useLinkedListAckTrackingQueue, CoreInfra infra) {
+    public Builder(int ackTrackingQueueSize, CoreInfra infra) {
       this.ackTrackingQueueSize = ackTrackingQueueSize;
-      this.useLinkedListAckTrackingQueue = useLinkedListAckTrackingQueue;
       this.infra = infra;
     }
 
     MessageAckStatusManager build(Job job) {
-      return new MessageAckStatusManager(
-          ackTrackingQueueSize, useLinkedListAckTrackingQueue, infra.scope());
+      return new MessageAckStatusManager(ackTrackingQueueSize, infra.scope());
     }
   }
 
