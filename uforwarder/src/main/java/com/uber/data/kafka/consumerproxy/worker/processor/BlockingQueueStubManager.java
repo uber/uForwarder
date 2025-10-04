@@ -85,20 +85,35 @@ public class BlockingQueueStubManager extends StubManager {
   private final Set<BlockingQueue> blockingQueues;
   private final Scope scope;
   private final TokenLimiter tokenLimiter;
+  private final Optional<Rule> optRule;
   private BiConsumer<BlockingQueue.BlockingReason, CancelResult> cancelListener;
 
   /**
    * Instantiates a new Blocking queue stub manager. In dryRun mode, cancel doesn't actual impact
    * message processing
    *
+   * @param job the job template
    * @param scope the scope
    */
-  BlockingQueueStubManager(Scope scope) {
+  BlockingQueueStubManager(Job job, Scope scope) {
     super(scope);
     this.tpResolver = new ConcurrentHashMap<>();
     this.blockingQueues = new LinkedHashSet<>();
     this.tokenLimiter = WindowedTokenLimiter.newBuilder().build();
     this.scope = scope;
+    Rule jobRule = null;
+    if (!RetryUtils.isDLQTopic(job.getKafkaConsumerTask().getTopic(), job)) {
+      // messages in DLQ are not retriable thus should not support cancel
+      for (Rule rule : RULES) {
+        // find first matching rule
+        if (rule.matchingJob.test(job)) {
+          jobRule = rule;
+          break;
+        }
+      }
+    }
+
+    this.optRule = Optional.ofNullable(jobRule);
     this.cancelListener = NOOP_LISTENER;
   }
 
@@ -207,24 +222,10 @@ public class BlockingQueueStubManager extends StubManager {
   private class BlockingResolver {
     private final Job job;
     private final TopicPartition topicPartition;
-    private final Optional<Rule> optRule;
 
     private BlockingResolver(Job job, TopicPartition topicPartition) {
       this.job = job;
       this.topicPartition = topicPartition;
-      Rule jobRule = null;
-      if (!RetryUtils.isDLQTopic(job.getKafkaConsumerTask().getTopic(), job)) {
-        // messages in DLQ are not retriable thus should not support cancel
-        for (Rule rule : RULES) {
-          // find first matching rule
-          if (rule.matchingJob.test(job)) {
-            jobRule = rule;
-            break;
-          }
-        }
-      }
-
-      optRule = Optional.ofNullable(jobRule);
     }
 
     /** detects and mark blocking messages as canceled the method is threadsafe */

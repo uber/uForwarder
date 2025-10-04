@@ -1,9 +1,7 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
-import com.google.common.annotations.VisibleForTesting;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.worker.common.MetricSource;
-import com.uber.m3.tally.Scope;
 import java.util.Map;
 import org.apache.kafka.common.TopicPartition;
 import org.slf4j.Logger;
@@ -20,17 +18,6 @@ class AckManager implements MetricSource {
   private final UnprocessedMessageManager unprocessedMessageManager;
   private final BlockingQueueStubManager stubManager;
 
-  AckManager(
-      MessageAckStatusManager messageAckStatusManager,
-      UnprocessedMessageManager unprocessedMessageManager,
-      Scope rootScope) {
-    this(
-        messageAckStatusManager,
-        unprocessedMessageManager,
-        new BlockingQueueStubManager(rootScope));
-  }
-
-  @VisibleForTesting
   AckManager(
       MessageAckStatusManager messageAckStatusManager,
       UnprocessedMessageManager unprocessedMessageManager,
