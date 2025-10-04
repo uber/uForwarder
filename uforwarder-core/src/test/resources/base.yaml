@@ -68,6 +68,7 @@ master:
     cpuUsagePerWorker: 5.0
     scaleConverterMode: CPU
     shadowScaleConverterMode: THROUGHPUT
+    reactiveScaleWindowDuration: 10m
 # These are configurations for the worker.
 worker:
   controller:
