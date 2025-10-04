@@ -71,13 +71,16 @@ public class BatchRpcUriRebalancer extends AbstractRpcUriRebalancer {
       final Map<String, RebalancingJobGroup> jobGroups, final Map<Long, StoredWorker> workers)
       throws Exception {
     for (RebalancingJobGroup rebalancingJobGroup : jobGroups.values()) {
-      // although the job group will be eventually canceled, we check start and end timestamps here
-      // to make sure it happens early.
+      // Cancel job group early if start_timestamp == end_timestamp. We do this early in
+      // computeJobState to make sure it happens early.
       KafkaConsumerTaskGroup kafkaConsumerTaskGroup =
           rebalancingJobGroup.getJobGroup().getKafkaConsumerTaskGroup();
-      if (kafkaConsumerTaskGroup
-          .getStartTimestamp()
-          .equals(kafkaConsumerTaskGroup.getEndTimestamp())) {
+      // Only check timestamp equality if partition offsets are not provided
+      // When partition offsets are provided, they take precedence over timestamps
+      if (kafkaConsumerTaskGroup.getPartitionOffsetRanges().getPartitionOffsetRangeList().isEmpty()
+          && kafkaConsumerTaskGroup
+              .getStartTimestamp()
+              .equals(kafkaConsumerTaskGroup.getEndTimestamp())) {
         rebalancingJobGroup.updateJobGroupState(JobState.JOB_STATE_CANCELED);
       }
       JobState jobGroupState = rebalancingJobGroup.getJobGroupState();
