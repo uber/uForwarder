@@ -1,16 +1,31 @@
 # load('//tooling/codegen/proto:proto.bzl', 'uber_proto_java_library') instead if you want only proto
-load("//tooling/codegen/proto:proto.bzl", "uber_grpc_java_library", "uber_proto_java_library")
-
-PROTO_SRCS = glob(["**/*.proto"])
+load("//tooling/codegen/proto:proto.bzl", "uber_proto_java_library")
 
 uber_proto_java_library(
     name = "proto_main",
-    srcs = PROTO_SRCS,
-)
-
-# add this if you want grpc in addition to proto
-uber_grpc_java_library(
-    name = "grpc_main",
-    srcs = PROTO_SRCS,
-    proto_library = ":proto_main",
+    srcs = [
+        "dlq_metadata.proto",
+        "group_sub.proto",
+        "list_group.proto",
+        "offset_mapping.proto",
+        "offsets.proto",
+    ],
+    strip_import_prefix = "/idl/code.uber.internal/",
+    structs = [
+        "com.uber.data.kafka.consumer.ConsumerOffsetInfo",
+        "com.uber.data.kafka.consumer.ConsumerOffsetInfoRequest",
+        "com.uber.data.kafka.consumer.ConsumerOffsetInfoResponse",
+        "com.uber.data.kafka.consumer.ConsumerOffsetStore",
+        "com.uber.data.kafka.consumer.DLQMetadata",
+        "com.uber.data.kafka.consumer.GroupInfo",
+        "com.uber.data.kafka.consumer.GroupSubscriptionRequest",
+        "com.uber.data.kafka.consumer.GroupSubscriptionResponse",
+        "com.uber.data.kafka.consumer.ListGroupRequest",
+        "com.uber.data.kafka.consumer.ListGroupResponse",
+        "com.uber.data.kafka.consumer.MappingState",
+        "com.uber.data.kafka.consumer.OffsetInfo",
+        "com.uber.data.kafka.consumer.OffsetSyncRequest",
+        "com.uber.data.kafka.consumer.OffsetSyncResponse",
+        "com.uber.data.kafka.consumer.PartitionOffsetInfo",
+    ],
 )

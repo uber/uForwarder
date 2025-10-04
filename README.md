@@ -91,7 +91,7 @@ docker network create docker-network
 
 ```
 docker run --env ALLOW_ANONYMOUS_LOGIN=yes --network docker-network -p 2181:2181 --name zookeeper zookeeper:3.8.0
-docker run --env KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181 --env KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 --env KAFKA_LISTENERS=DOCKER://0.0.0.0:9092,HOSTER://0.0.0.0:9093 --env KAFKA_ADVERTISED_LISTENERS=DOCKER://kafka:9092,HOSTER://localhost:9093 -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=DOCKER:PLAINTEXT,HOSTER:PLAINTEXT -e KAFKA_INTER_BROKER_LISTENER_NAME=DOCKER --network docker-network -p 9093:9093 --name kafka confluentinc/cp-kafka:5.2.1
+docker run --env KAFKA_ZOOKEEPER_CONNECT=zookeeper:2181 --env KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR=1 --env KAFKA_LISTENERS=DOCKER://0.0.0.0:9092,HOSTER://0.0.0.0:9093 --env KAFKA_ADVERTISED_LISTENERS=DOCKER://kafka:9092,HOSTER://localhost:9093 -e KAFKA_LISTENER_SECURITY_PROTOCOL_MAP=DOCKER:PLAINTEXT,HOSTER:PLAINTEXT -e KAFKA_INTER_BROKER_LISTENER_NAME=DOCKER --network docker-network -p 9093:9093 --name kafka confluentinc/cp-kafka:7.6.1
 ```
 
 3. Run Uforwarder controller and worker
@@ -105,6 +105,20 @@ docker run --env UFORWARDER_PROFILE=uforwarder-worker --env UFORWARDER_KAFKA_CON
 
 ```
 ./gradlew uforwarder-sample-consumer:bootRun
+```
+
+5. Port uForwarder Changes to Microrepo
+Run the following command at monorepo root directory
+
+```
+./data/kafka/uforwarder-gradle-repo/uforwarder-microrepo-release-script.sh
+cd ../uForwarder
+```
+
+Examine the changes in the uForwarder microrepo and commit them by running the following command
+
+```
+git push origin uber_main
 ```
 
 ## Contributing
