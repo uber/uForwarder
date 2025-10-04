@@ -16,6 +16,7 @@ import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfig
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.SeekStartOffsetOption;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.ThroughputTracker;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
+import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadTracker;
 import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
@@ -84,7 +85,7 @@ public class OriginalTopicKafkaFetcherTest extends FievelTestBase {
                         .setPartition(0)
                         .build())
                 .build(),
-            () -> 0.0,
+            PipelineLoadTracker.NOOP,
             scope);
     fetcherThread =
         new OriginalTopicKafkaFetcher(

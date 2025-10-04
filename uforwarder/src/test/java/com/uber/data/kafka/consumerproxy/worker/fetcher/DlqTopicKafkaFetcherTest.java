@@ -7,7 +7,6 @@ import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.DynamicConfiguration;
-import com.uber.data.kafka.datatransfer.worker.common.CpuUsageMeter;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.AbstractKafkaFetcherThread;
@@ -18,6 +17,7 @@ import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcherConfig
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.SeekStartOffsetOption;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.ThroughputTracker;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
+import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadTracker;
 import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
@@ -59,7 +59,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
   private CoreInfra infra;
   private Sink processor;
   private AbstractKafkaFetcherThread fetcherThread;
-  private CpuUsageMeter cpuUsageMeter;
+  private PipelineLoadTracker pipelineLoadTracker;
 
   @Before
   public void setUp() {
@@ -86,7 +86,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
     ThroughputTracker throughputTracker = new ThroughputTracker();
     mockConsumer = Mockito.mock(KafkaConsumer.class);
     processor = Mockito.mock(Sink.class);
-    cpuUsageMeter = Mockito.mock(CpuUsageMeter.class);
+    pipelineLoadTracker = Mockito.mock(PipelineLoadTracker.class);
     Mockito.when(processor.isRunning()).thenReturn(true);
     pipelineStateManager =
         new KafkaPipelineStateManager(
@@ -98,7 +98,7 @@ public class DlqTopicKafkaFetcherTest extends FievelTestBase {
                         .setPartition(0)
                         .build())
                 .build(),
-            cpuUsageMeter::getUsage,
+            pipelineLoadTracker,
             scope);
     fetcherThread =
         new DlqTopicKafkaFetcher(

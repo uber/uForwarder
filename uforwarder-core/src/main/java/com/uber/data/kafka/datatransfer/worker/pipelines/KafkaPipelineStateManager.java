@@ -21,7 +21,6 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.function.Supplier;
 import javax.annotation.concurrent.ThreadSafe;
 import net.logstash.logback.argument.StructuredArgument;
 import net.logstash.logback.argument.StructuredArguments;
@@ -62,14 +61,14 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
 
   private final PipelineHealthManager healthManager;
   private volatile FlowControl flowControl;
-  private final Supplier<Double> cpuUsageSupplier;
+  private final PipelineLoadTracker loadTracker;
 
-  public KafkaPipelineStateManager(Job job, Supplier<Double> cpuUsageSupplier, Scope scope) {
+  public KafkaPipelineStateManager(Job job, PipelineLoadTracker loadTracker, Scope scope) {
     this.jobTemplate = job;
     this.scope = scope;
     this.flowControl = MINIMUM_VALID_FLOW;
     this.healthManager = PipelineHealthManager.newBuilder().setScope(scope).build(job);
-    this.cpuUsageSupplier = cpuUsageSupplier;
+    this.loadTracker = loadTracker;
   }
 
   @Override
@@ -120,6 +119,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
     }
     flowControl = MINIMUM_VALID_FLOW;
     actualRunningJobStatusList = ImmutableList.of();
+    loadTracker.close();
     LOGGER.info("cleared pipeline state manager");
   }
 
@@ -385,7 +385,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
 
   @Override
   public void publishMetrics() {
-    double cpuUsage = cpuUsageSupplier.get();
+    double cpuUsage = loadTracker.getLoad().getCoreCpuUsage();
     synchronized (publishMetricsLock) {
       int nJobs = expectedRunningJobMap.size();
       double cpuUsagePerJob = cpuUsage / nJobs;

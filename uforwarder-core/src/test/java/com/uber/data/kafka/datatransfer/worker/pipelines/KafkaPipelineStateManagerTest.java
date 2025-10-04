@@ -7,7 +7,6 @@ import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobStatus;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.MiscConfig;
-import com.uber.data.kafka.datatransfer.worker.common.CpuUsageMeter;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
@@ -41,7 +40,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
   private Gauge gauge;
 
   private PipelineHealthManager pipelineHealthManager;
-  private CpuUsageMeter cpuUsageMeter;
+  private PipelineLoadTracker pipelineLoadTracker;
 
   @Before
   public void setUp() {
@@ -65,7 +64,11 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
                 return pipelineHealthManager;
               }
             });
-    cpuUsageMeter = Mockito.mock(CpuUsageMeter.class);
+    pipelineLoadTracker = Mockito.mock(PipelineLoadTracker.class);
+    PipelineLoadTracker.PipelineLoad mockLoad =
+        Mockito.mock(PipelineLoadTracker.PipelineLoad.class);
+    Mockito.when(pipelineLoadTracker.getLoad()).thenReturn(mockLoad);
+
     scope = Mockito.mock(Scope.class);
     Counter counter = Mockito.mock(Counter.class);
     gauge = Mockito.mock(Gauge.class);
@@ -89,7 +92,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
                 .setMiscConfig(
                     MiscConfig.newBuilder().setOwnerServiceName(CONSUMER_SERVICE_NAME).build())
                 .build(),
-            cpuUsageMeter::getUsage,
+            pipelineLoadTracker,
             scope);
   }
 
@@ -405,7 +408,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
         },
         valueCaptor.getAllValues().toArray(new Double[] {}));
     Mockito.verify(pipelineHealthManager, Mockito.times(1)).publishMetrics();
-    Mockito.verify(cpuUsageMeter, Mockito.times(1)).getUsage();
+    Mockito.verify(pipelineLoadTracker, Mockito.times(1)).getLoad();
   }
 
   @Test
