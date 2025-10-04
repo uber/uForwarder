@@ -47,4 +47,16 @@ public class ProcessorFactoryTest extends FievelTestBase {
     ProcessorImpl processor = processorFactory.create(Job.newBuilder().build(), "processor-id");
     Assert.assertNotNull(processor);
   }
+
+  @Test
+  public void testGetMaxInboundCacheCount() {
+    int maxInboundCacheCount = processorFactory.getMaxInboundCacheCount();
+    Assert.assertEquals(config.getMaxInboundCacheCount(), maxInboundCacheCount);
+  }
+
+  @Test
+  public void testGetMaxAckCommitSkew() {
+    int maxAckCommitSkew = processorFactory.getMaxAckCommitSkew();
+    Assert.assertEquals(config.getMaxAckCommitSkew(), maxAckCommitSkew);
+  }
 }

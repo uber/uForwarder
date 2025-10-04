@@ -72,6 +72,8 @@ public class DispatcherImplTest extends FievelTestBase {
     latencyTracker = Mockito.mock(LatencyTracker.class);
     Mockito.when(latencyTracker.startSpan())
         .thenReturn(Mockito.mock(LatencyTracker.LatencySpan.class));
+    Mockito.when(latencyTracker.getSample())
+        .thenReturn(new LatencyTracker.Sample(1000, 100, 200, 200, 2000));
     dispatcher =
         new DispatcherImpl(
             coreInfra, grpcDispatcher, dlqProducer, Optional.of(resqProducer), latencyTracker);
@@ -341,17 +343,32 @@ public class DispatcherImplTest extends FievelTestBase {
   }
 
   @Test
-  public void testReportUnstableLatencyIssue() throws ExecutionException, InterruptedException {
+  public void testReportHighMedianLatencyIssue() throws ExecutionException, InterruptedException {
     Mockito.when(grpcDispatcher.submit(ItemAndJob.of(grpcDispatcherMessage.getGrpcMessage(), job)))
         .thenReturn(
             CompletableFuture.completedFuture(
                 GrpcResponse.of(Status.fromCode(Status.Code.OK), null, false)));
     Mockito.when(latencyTracker.getSample())
-        .thenReturn(Optional.of(new LatencyTracker.Sample(100, 2000)));
+        .thenReturn(new LatencyTracker.Sample(1000, 100, 50, 2000, 1000));
     Assert.assertEquals(
         DispatcherResponse.Code.COMMIT,
         dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
     Mockito.verify(pipelineStateManager, Mockito.times(1))
-        .reportIssue(job, KafkaPipelineIssue.RPC_LATENCY_UNSTABLE.getPipelineHealthIssue());
+        .reportIssue(job, KafkaPipelineIssue.MEDIAN_RPC_LATENCY_HIGH.getPipelineHealthIssue());
+  }
+
+  @Test
+  public void testReportHighMaxLatencyIssue() throws ExecutionException, InterruptedException {
+    Mockito.when(grpcDispatcher.submit(ItemAndJob.of(grpcDispatcherMessage.getGrpcMessage(), job)))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                GrpcResponse.of(Status.fromCode(Status.Code.OK), null, false)));
+    Mockito.when(latencyTracker.getSample())
+        .thenReturn(new LatencyTracker.Sample(1000, 100, 200, 2000, 1000));
+    Assert.assertEquals(
+        DispatcherResponse.Code.COMMIT,
+        dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
+    Mockito.verify(pipelineStateManager, Mockito.times(1))
+        .reportIssue(job, KafkaPipelineIssue.MAX_RPC_LATENCY_HIGH.getPipelineHealthIssue());
   }
 }

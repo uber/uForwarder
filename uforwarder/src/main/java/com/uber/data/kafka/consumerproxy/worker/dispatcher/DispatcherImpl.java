@@ -32,10 +32,8 @@ import org.slf4j.LoggerFactory;
 
 public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, DispatcherResponse> {
   private static final Logger LOGGER = LoggerFactory.getLogger(DispatcherImpl.class);
-  // maximum ratio of maximum latency to median latency, if the ratio is high, processor will more
-  // likely blocked by ack tracking
-  private static final int MAX_TO_MEDIAN_LATENCY_LIMIT = 10;
-  // request latency histogram window length in seconds
+  // minimum number of samples to consider the request latency histogram mature
+  private static final int MIN_LATENCY_SAMPLE_SIZE = 100;
   private final CoreInfra infra;
   private final GrpcDispatcher grpcDispatcher;
   private final KafkaDispatcher<byte[], byte[]> dlqProducer;
@@ -64,6 +62,7 @@ public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, Dis
   @Override
   public void setPipelineStateManager(PipelineStateManager pipelineStateManager) {
     this.pipelineStateManager = pipelineStateManager;
+    this.latencyTracker.setPipelineStateManager(pipelineStateManager);
   }
 
   public static DispatcherResponse dispatcherResponseFromGrpcStatus(GrpcResponse resp) {
@@ -249,10 +248,13 @@ public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, Dis
     } else if (statusCode == PERMISSION_DENIED || statusCode == UNAUTHENTICATED) {
       issue.set(KafkaPipelineIssue.PERMISSION_DENIED);
     } else {
-      Optional<LatencyTracker.Sample> sample = latencyTracker.getSample();
-      if (!sample.isEmpty()
-          && sample.get().getMax() > MAX_TO_MEDIAN_LATENCY_LIMIT * sample.get().getMedian()) {
-        issue.set(KafkaPipelineIssue.RPC_LATENCY_UNSTABLE);
+      LatencyTracker.Sample sample = latencyTracker.getSample();
+      if (sample.size() > MIN_LATENCY_SAMPLE_SIZE) {
+        if (sample.isMedianLatencyHigh()) {
+          issue.set(KafkaPipelineIssue.MEDIAN_RPC_LATENCY_HIGH);
+        } else if (sample.isMaxLatencyHigh()) {
+          issue.set(KafkaPipelineIssue.MAX_RPC_LATENCY_HIGH);
+        }
       }
     }
 

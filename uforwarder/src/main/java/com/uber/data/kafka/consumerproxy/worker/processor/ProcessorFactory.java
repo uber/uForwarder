@@ -46,4 +46,22 @@ public class ProcessorFactory {
         config.getMaxOutboundCacheCount(),
         coreInfra);
   }
+
+  /**
+   * Gets max inbound cache count.
+   *
+   * @return the max inbound cache count
+   */
+  public int getMaxInboundCacheCount() {
+    return config.getMaxInboundCacheCount();
+  }
+
+  /**
+   * Gets max ack commit skew.
+   *
+   * @return the max ack commit skew
+   */
+  public int getMaxAckCommitSkew() {
+    return config.getMaxAckCommitSkew();
+  }
 }
