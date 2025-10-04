@@ -74,7 +74,7 @@ public class ReactiveScaleWindowCalculator {
    * <p>Load thresholds and timing considerations are used to determine appropriate window size
    * adjustments. The goal is to balance responsiveness with stability in the auto-scaling system.
    *
-   * @param load system load indicator
+   * @param load relative load to threshold
    * @param stateTimeNano last modified time of down scale window duration
    * @param currentDownScaleWindowDuration last value of down scale window size
    * @return the calculated new down scale window duration
