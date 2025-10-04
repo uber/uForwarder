@@ -385,10 +385,18 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
 
   @Override
   public void publishMetrics() {
-    double cpuUsage = loadTracker.getLoad().getCoreCpuUsage();
+    PipelineLoadTracker.PipelineLoad load = loadTracker.getLoad();
+    double coreCpuUsage = load.getCoreCpuUsage(); // measured cpu usage
+    double cpuUsage = load.getCpuUsage(); // computed cpu usage
     synchronized (publishMetricsLock) {
       int nJobs = expectedRunningJobMap.size();
-      double cpuUsagePerJob = cpuUsage / nJobs;
+      double coreCpuUsagePerJob = 0;
+      double cpuUsagePerJob = 0;
+      if (nJobs != 0) {
+        coreCpuUsagePerJob = coreCpuUsage / nJobs;
+        cpuUsagePerJob = cpuUsage / nJobs;
+      }
+
       for (Job job : expectedRunningJobMap.values()) {
         StructuredTags structuredTags =
             StructuredTags.builder()
@@ -413,6 +421,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
             .gauge(MetricNames.TOPIC_PARTITION_MAX_INFLIGHT_QUOTA)
             .update(job.getFlowControl().getMaxInflightMessages());
         jobScope.gauge(MetricNames.TOPIC_PARTITION_CPU_USAGE).update(cpuUsagePerJob);
+        jobScope.gauge(MetricNames.TOPIC_PARTITION_CORE_CPU_USAGE).update(coreCpuUsagePerJob);
       }
     }
     healthManager.publishMetrics();
@@ -430,5 +439,7 @@ public class KafkaPipelineStateManager implements PipelineStateManager {
         "pipeline.state-manager.topic.partition.max-inflight-quota";
     static final String TOPIC_PARTITION_CPU_USAGE =
         "pipeline.state-manager.topic.partition.cpu-usage";
+    static final String TOPIC_PARTITION_CORE_CPU_USAGE =
+        "pipeline.state-manager.topic.partition.core-cpu-usage";
   }
 }

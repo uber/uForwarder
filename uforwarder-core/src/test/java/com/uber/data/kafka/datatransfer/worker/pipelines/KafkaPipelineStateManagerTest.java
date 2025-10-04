@@ -398,12 +398,13 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     pipelineStateManager.run(job).toCompletableFuture().get();
     pipelineStateManager.publishMetrics();
     ArgumentCaptor<Double> valueCaptor = ArgumentCaptor.forClass(Double.class);
-    Mockito.verify(gauge, Mockito.times(4)).update(valueCaptor.capture());
+    Mockito.verify(gauge, Mockito.times(5)).update(valueCaptor.capture());
     Assert.assertArrayEquals(
         new Double[] {
           job.getFlowControl().getMessagesPerSec(),
           job.getFlowControl().getBytesPerSec(),
           job.getFlowControl().getMaxInflightMessages(),
+          0.0,
           0.0,
         },
         valueCaptor.getAllValues().toArray(new Double[] {}));
