@@ -1,5 +1,6 @@
 package com.uber.data.kafka.consumerproxy.worker.processor;
 
+import com.google.common.util.concurrent.RateLimiter;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.uber.data.kafka.consumer.DLQMetadata;
 import com.uber.data.kafka.consumerproxy.config.ProcessorConfiguration;
@@ -24,6 +25,7 @@ import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.common.TracedConsumerRecord;
+import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineIssue;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Histogram;
@@ -52,6 +54,7 @@ import org.junit.Test;
 import org.junit.jupiter.api.Assertions;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
+import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.mockito.stubbing.Answer;
 
@@ -71,9 +74,11 @@ public class ProcessorImplTest extends ProcessorTestBase {
   private MessageAckStatusManager.Builder messageAckStatusManagerBuilder;
   private ProcessorConfiguration config;
   private Filter filter;
+  private RateLimiter rateLimiter;
 
   @Before
   public void setUp() throws Exception {
+    setupRateLimier(0.0);
     Scope scope = Mockito.mock(Scope.class);
     Timer timer = Mockito.mock(Timer.class);
     Stopwatch stopwatch = Mockito.mock(Stopwatch.class);
@@ -152,10 +157,18 @@ public class ProcessorImplTest extends ProcessorTestBase {
     dispatcherMessageArgumentCaptor = ArgumentCaptor.forClass(ItemAndJob.class);
   }
 
+  @SuppressWarnings({"CheckReturnValue"})
+  private void setupRateLimier(double returnValue) {
+    rateLimiter = Mockito.mock(RateLimiter.class);
+    Mockito.doReturn(0.0).when(rateLimiter).acquire();
+    Mockito.doReturn(0.0).when(rateLimiter).acquire(Mockito.anyInt());
+    MockedStatic<RateLimiter> staticContext = Mockito.mockStatic(RateLimiter.class);
+    staticContext.when(() -> RateLimiter.create(Mockito.anyDouble())).thenReturn(rateLimiter);
+  }
+
   @Test
   public void testQuotaLimit() {
-    Assert.assertEquals(1000, (int) processor.byteRateLimiter.getRate());
-    Assert.assertEquals(1000, (int) processor.messageRateLimiter.getRate());
+    Mockito.verify(rateLimiter, Mockito.times(2)).setRate(1000);
   }
 
   @Test
@@ -2112,5 +2125,24 @@ public class ProcessorImplTest extends ProcessorTestBase {
     processor.handlePermit(
         new DispatcherResponse(DispatcherResponse.Code.COMMIT), new RuntimeException(), permit);
     Mockito.verify(permit, Mockito.times(1)).complete();
+  }
+
+  @Test(timeout = 5000)
+  public void testSubmitRateLimited() throws Exception {
+    Mockito.doReturn(1.0).when(rateLimiter).acquire();
+    Mockito.doReturn(1.0).when(rateLimiter).acquire(Mockito.anyInt());
+    processor.start();
+    CompletableFuture<DispatcherResponse> dispatcherFuture = new CompletableFuture<>();
+    dispatcherFuture.complete(new DispatcherResponse(DispatcherResponse.Code.COMMIT));
+    Mockito.when(dispatcher.submit(Mockito.any())).thenReturn(dispatcherFuture);
+
+    CompletableFuture<Long> offsetFuture =
+        processor.submit(ItemAndJob.of(consumerRecord, job)).toCompletableFuture();
+    Assert.assertEquals(ProcessorTestBase.OFFSET, (long) offsetFuture.get());
+
+    Mockito.verify(pipelineStateManager, Mockito.times(1))
+        .reportIssue(job, KafkaPipelineIssue.MESSAGE_RATE_LIMITED.getPipelineHealthIssue());
+    Mockito.verify(pipelineStateManager, Mockito.times(1))
+        .reportIssue(job, KafkaPipelineIssue.BYTES_RATE_LIMITED.getPipelineHealthIssue());
   }
 }

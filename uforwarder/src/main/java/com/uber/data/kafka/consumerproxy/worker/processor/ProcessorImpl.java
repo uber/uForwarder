@@ -5,6 +5,7 @@ import static com.uber.data.kafka.consumerproxy.worker.dispatcher.DispatcherResp
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.math.DoubleMath;
 import com.google.common.util.concurrent.RateLimiter;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.utils.RetryUtils;
@@ -24,6 +25,7 @@ import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 import com.uber.data.kafka.datatransfer.worker.common.MetricSource;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
+import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineIssue;
 import com.uber.data.kafka.instrumentation.DirectSupplier;
 import com.uber.data.kafka.instrumentation.Instrumentation;
 import com.uber.data.kafka.instrumentation.Tags;
@@ -114,7 +116,7 @@ public class ProcessorImpl
   private static final Logger LOGGER = LoggerFactory.getLogger(ProcessorImpl.class);
   private static final double MINIMUM_VALID_RATE = 1.0;
   private static final int DEFAULT_ADPATIVE_INFLIGHT_VALUE = -1;
-
+  private static final double EPSILON = 0.000001;
   private static final Buckets E2E_DURATION_BUCKETS =
       new DurationBuckets(
           new Duration[] {
@@ -1352,9 +1354,18 @@ public class ProcessorImpl
   }
 
   private void acquireQuota(Job job, ProcessorMessage processorMessage) {
-    messageRateLimiter.acquire();
+    Preconditions.checkNotNull(pipelineStateManager, "pipeline config manager required");
+    double secondsWaited = messageRateLimiter.acquire();
+    if (DoubleMath.fuzzyCompare(secondsWaited, 0, EPSILON) > 0) {
+      pipelineStateManager.reportIssue(
+          job, KafkaPipelineIssue.MESSAGE_RATE_LIMITED.getPipelineHealthIssue());
+    }
     if (processorMessage.getValueByteSize() > 0) {
-      byteRateLimiter.acquire(processorMessage.getValueByteSize());
+      secondsWaited = byteRateLimiter.acquire(processorMessage.getValueByteSize());
+      if (DoubleMath.fuzzyCompare(secondsWaited, 0, EPSILON) > 0) {
+        pipelineStateManager.reportIssue(
+            job, KafkaPipelineIssue.BYTES_RATE_LIMITED.getPipelineHealthIssue());
+      }
     } else {
       LOGGER.error(
           "received empty message",

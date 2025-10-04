@@ -63,6 +63,6 @@ public class PipelineStateManagerTest extends FievelTestBase {
   @Test
   public void testReportIssue() {
     pipelineStateManager.reportIssue(
-        Mockito.mock(Job.class), PipelineHealthIssue.PERMISSION_DENIED);
+        Mockito.mock(Job.class), Mockito.mock(PipelineHealthIssue.class));
   }
 }

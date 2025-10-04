@@ -71,5 +71,11 @@ public interface PipelineStateManager extends Controllable, MetricSource {
     return ImmutableList.copyOf(getExpectedRunningJobMap().values());
   }
 
+  /**
+   * Reports a pipeline health issue.
+   *
+   * @param job the job
+   * @param issue the issue
+   */
   default void reportIssue(Job job, PipelineHealthIssue issue) {}
 }
