@@ -94,8 +94,7 @@ public class UForwarderWorkerFactory {
   @Bean
   public MessageAckStatusManager.Builder messageAckStatusManagerBuilder(
       CoreInfra coreInfra, ProcessorConfiguration config) {
-    return new MessageAckStatusManager.Builder(
-        config.getMaxAckCommitSkew(), config.getUseLinkedListAckTrackingQueue(), coreInfra);
+    return new MessageAckStatusManager.Builder(config.getMaxAckCommitSkew(), coreInfra);
   }
 
   @Bean

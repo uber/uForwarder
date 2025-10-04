@@ -43,9 +43,6 @@ public class ProcessorConfiguration {
   // use experimental limiter
   private boolean experimentalLimiterEnabled = false;
 
-  // use LinkedAckTrackingQueue for both READ_COMMITTED and READ_UNCOMMITTED for ISOLATION_LEVEL.
-  private boolean useLinkedListAckTrackingQueue = false;
-
   public int getThreadPoolSize() {
     return threadPoolSize;
   }
@@ -116,13 +113,5 @@ public class ProcessorConfiguration {
 
   public void setMaxProcessorInBoundCacheCount(int maxProcessorInBoundCacheCount) {
     this.maxProcessorInBoundCacheCount = maxProcessorInBoundCacheCount;
-  }
-
-  public boolean getUseLinkedListAckTrackingQueue() {
-    return this.useLinkedListAckTrackingQueue;
-  }
-
-  public void setUseLinkedListAckTrackingQueue(boolean useLinkedListAckTrackingQueue) {
-    this.useLinkedListAckTrackingQueue = useLinkedListAckTrackingQueue;
   }
 }

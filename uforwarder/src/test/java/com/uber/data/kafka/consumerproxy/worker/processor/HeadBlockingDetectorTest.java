@@ -32,7 +32,7 @@ public class HeadBlockingDetectorTest extends FievelTestBase {
     topicPartition =
         new TopicPartition(
             job.getKafkaConsumerTask().getTopic(), job.getKafkaConsumerTask().getPartition());
-    ackTrackingQueue = new ArrayAckTrackingQueue(job, 100, scope);
+    ackTrackingQueue = new LinkedAckTrackingQueue(job, 100, scope);
     detector = HeadBlockingDetector.newBuilder().setCritical(0.9).setMinAckPercent(-0.001).build();
   }
 
