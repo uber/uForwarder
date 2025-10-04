@@ -183,6 +183,7 @@ public class GrpcDispatcherTest extends FievelTestBase {
     }
   }
 
+  @SuppressWarnings({"CheckReturnValue"})
   @Test
   public void testCancelDispatch() {
     MockedStatic<Context> staticContext = Mockito.mockStatic(Context.class);

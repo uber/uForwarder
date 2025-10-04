@@ -10,8 +10,7 @@ uber_proto_java_library(
         "offset_mapping.proto",
         "offsets.proto",
     ],
-    strip_import_prefix = "/idl/code.uber.internal/",
-    structs = [
+    java_classes = [
         "com.uber.data.kafka.consumer.ConsumerOffsetInfo",
         "com.uber.data.kafka.consumer.ConsumerOffsetInfoRequest",
         "com.uber.data.kafka.consumer.ConsumerOffsetInfoResponse",
@@ -28,4 +27,5 @@ uber_proto_java_library(
         "com.uber.data.kafka.consumer.OffsetSyncResponse",
         "com.uber.data.kafka.consumer.PartitionOffsetInfo",
     ],
+    strip_import_prefix = "/idl/code.uber.internal/",
 )

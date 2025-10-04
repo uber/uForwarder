@@ -12,8 +12,7 @@ uber_proto_java_library(
         "master_worker_service.proto",
         "worker.proto",
     ],
-    strip_import_prefix = "/idl/code.uber.internal/",
-    structs = [
+    java_classes = [
         "com.uber.data.kafka.datatransfer.AddJobGroupRequest",
         "com.uber.data.kafka.datatransfer.AddJobGroupResponse",
         "com.uber.data.kafka.datatransfer.AuditConfig",
@@ -91,6 +90,7 @@ uber_proto_java_library(
         "com.uber.data.kafka.datatransfer.UpdateJobGroupStateResponse",
         "com.uber.data.kafka.datatransfer.WorkerState",
     ],
+    strip_import_prefix = "/idl/code.uber.internal/",
     visibility = [
         "//data/kafka/...",
     ],
@@ -108,11 +108,11 @@ uber_grpc_java_library(
         "master_worker_service.proto",
         "worker.proto",
     ],
-    proto_library = ":proto_main",
-    services = [
+    java_classes = [
         "com.uber.data.kafka.datatransfer.MasterAdminServiceGrpc",
         "com.uber.data.kafka.datatransfer.MasterWorkerServiceGrpc",
     ],
+    proto_library = ":proto_main",
     visibility = [
         "//data/kafka/...",
     ],
