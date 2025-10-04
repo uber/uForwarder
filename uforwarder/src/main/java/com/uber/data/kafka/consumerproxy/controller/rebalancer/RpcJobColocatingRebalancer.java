@@ -115,7 +115,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
       handleJobsOnStaleWorkers(toBeMovedStaleJobs, rebalancingWorkerTable);
 
       // step 3: adjust the workload of each worker one by one
-      ensureWorkersLoadBalanced(rebalancingWorkerTable);
+      ensureWorkersLoadBalanced(rebalancingWorkerTable, podAwareRebalanceGroup.getPod());
 
       // step 4: convert to the final result
       for (RebalancingWorkerWithSortedJobs worker : rebalancingWorkerTable.getAllWorkers()) {
@@ -279,7 +279,8 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
         .update(totalStaleJobs);
   }
 
-  private void ensureWorkersLoadBalanced(RebalancingWorkerTable rebalancingWorkerTable) {
+  private void ensureWorkersLoadBalanced(
+      RebalancingWorkerTable rebalancingWorkerTable, String pod) {
     for (long partitionIdx : rebalancingWorkerTable.getAllPartitions()) {
       List<RebalancingWorkerWithSortedJobs> allWorkersInPartition =
           rebalancingWorkerTable.getAllWorkersForPartition(partitionIdx);
@@ -330,7 +331,7 @@ public class RpcJobColocatingRebalancer extends AbstractRpcUriRebalancer {
 
       scope
           .subScope(COLOCATING_REBALANCER_SUB_SCOPE)
-          .tagged(ImmutableMap.of(VIRTUAL_PARTITION_TAG, Long.toString(partitionIdx)))
+          .tagged(ImmutableMap.of(VIRTUAL_PARTITION_TAG, Long.toString(partitionIdx), POD_TAG, pod))
           .gauge(MetricNames.HIT_WORKLOAD_HARDLIMIT_WORKER)
           .update(numberOfWorkerHittingWorkloadHardLimit);
     }
