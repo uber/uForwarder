@@ -287,8 +287,8 @@ public final class KafkaPartitionExpansionWatcher {
 
   private String getJobPod(TopicPartitionInfo topicPartitionInfo) {
     String brokerPod = "";
-    if (topicPartitionInfo.leader() != null && topicPartitionInfo.leader().hasRack()) {
-      brokerPod = PodUtils.podOf(topicPartitionInfo.leader().rack());
+    if (topicPartitionInfo.leader() != null && topicPartitionInfo.leader().pod() != null) {
+      brokerPod = topicPartitionInfo.leader().pod();
     }
 
     return brokerPod;
