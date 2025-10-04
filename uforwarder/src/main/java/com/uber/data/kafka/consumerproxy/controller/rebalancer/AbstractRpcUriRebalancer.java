@@ -13,6 +13,7 @@ import com.google.common.collect.Sets;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
 import com.uber.data.kafka.consumerproxy.config.RebalancerConfiguration;
 import com.uber.data.kafka.datatransfer.JobState;
+import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.common.WorkerUtils;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.Scalar;
@@ -198,22 +199,26 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
   public void postProcess(
       final Map<String, RebalancingJobGroup> jobGroups, final Map<Long, StoredWorker> workers) {
     // demand
-    double demand =
+    List<StoredJob> jobs =
         jobGroups.values().stream()
-            .mapToDouble(
-                jobGroup ->
-                    jobGroup.getJobs().values().stream()
-                        .filter(job -> job.getState() == JobState.JOB_STATE_RUNNING)
-                        .mapToDouble(job -> Math.min(job.getScale(), capacity_per_worker))
-                        .sum())
+            .flatMap(jobGroup -> jobGroup.getJobs().values().stream())
+            .collect(Collectors.toList());
+    double systemLoad = calculateLoad(jobs, workers.values());
+    scalar.onLoad(systemLoad);
+    scope.gauge(MetricNames.REBALANCER_SYSTEM_LOAD).update(systemLoad);
+  }
+
+  protected double calculateLoad(Collection<StoredJob> jobs, Collection<StoredWorker> workers) {
+    if (workers.isEmpty()) {
+      return 0.0;
+    }
+    double demand =
+        jobs.stream()
+            .filter(job -> job.getState() == JobState.JOB_STATE_RUNNING)
+            .mapToDouble(job -> Math.min(job.getScale(), capacity_per_worker))
             .sum();
     double capacity = workers.size() * capacity_per_worker;
-    if (capacity > capacity_per_worker) {
-      // if there is no worker, skip feedback loop, as it's not a typical capacity problem
-      double systemLoad = demand / capacity;
-      scalar.onLoad(systemLoad);
-      scope.gauge(MetricNames.REBALANCER_SYSTEM_LOAD).update(systemLoad);
-    }
+    return demand / capacity;
   }
 
   /**
