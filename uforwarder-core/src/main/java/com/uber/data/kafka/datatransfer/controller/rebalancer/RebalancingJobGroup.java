@@ -7,6 +7,7 @@ import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
 import com.uber.data.kafka.datatransfer.common.StructuredLogging;
+import com.uber.data.kafka.datatransfer.controller.autoscalar.Throughput;
 import java.util.Collections;
 import java.util.Map;
 import java.util.Optional;
@@ -86,6 +87,20 @@ public final class RebalancingJobGroup {
   public synchronized Optional<Double> getScale() {
     return storedJobGroup.hasScaleStatus()
         ? Optional.of(storedJobGroup.getScaleStatus().getScale())
+        : Optional.empty();
+  }
+
+  /**
+   * Gets the throughput of the job group
+   *
+   * @return the throughput
+   */
+  public synchronized Optional<Throughput> getThroughput() {
+    return storedJobGroup.hasScaleStatus()
+        ? Optional.of(
+            new Throughput(
+                storedJobGroup.getScaleStatus().getTotalMessagesPerSec(),
+                storedJobGroup.getScaleStatus().getTotalBytesPerSec()))
         : Optional.empty();
   }
 
@@ -172,11 +187,16 @@ public final class RebalancingJobGroup {
    * @param newScale the new scale
    * @return the boolean
    */
-  public synchronized boolean updateScale(double newScale) {
+  public synchronized boolean updateScale(double newScale, Throughput throughput) {
     if (storedJobGroup.hasScaleStatus() && newScale == storedJobGroup.getScaleStatus().getScale()) {
       return false;
     }
-    ScaleStatus scaleStatus = ScaleStatus.newBuilder().setScale(newScale).build();
+    ScaleStatus scaleStatus =
+        ScaleStatus.newBuilder()
+            .setScale(newScale)
+            .setTotalMessagesPerSec(throughput.getMessagesPerSecond())
+            .setTotalBytesPerSec(throughput.getBytesPerSecond())
+            .build();
     storedJobGroup = StoredJobGroup.newBuilder(storedJobGroup).setScaleStatus(scaleStatus).build();
     changed.set(true);
     return true;

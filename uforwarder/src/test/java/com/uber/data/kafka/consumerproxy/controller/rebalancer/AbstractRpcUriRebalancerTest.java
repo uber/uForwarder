@@ -18,6 +18,7 @@ import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.Scalar;
+import com.uber.data.kafka.datatransfer.controller.autoscalar.Throughput;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
 import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
@@ -79,7 +80,7 @@ public class AbstractRpcUriRebalancerTest extends FievelTestBase {
             invocation -> {
               RebalancingJobGroup rebalancingJobGroup = invocation.getArgument(0);
               double defualtScale = invocation.getArgument(1);
-              rebalancingJobGroup.updateScale(defualtScale);
+              rebalancingJobGroup.updateScale(defualtScale, Throughput.ZERO);
               return null;
             })
         .when(scalar)

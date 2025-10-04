@@ -242,6 +242,7 @@ public final class ControllerAdminService
                     GetAllJobGroupsResponse.newBuilder()
                         .setJobGroup(versionedJobGroup.model().getJobGroup())
                         .setJobGroupState(versionedJobGroup.model().getState())
+                        .setScaleStatus(versionedJobGroup.model().getScaleStatus())
                         .build());
               }
               resW.onCompleted();

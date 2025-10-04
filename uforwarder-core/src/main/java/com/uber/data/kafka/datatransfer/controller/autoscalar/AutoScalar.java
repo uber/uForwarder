@@ -165,7 +165,7 @@ public class AutoScalar implements Scalar {
         .gauge(MetricNames.AUTOSCALAR_APPLIED_SCALE)
         .update(newScale);
 
-    if (rebalancingJobGroup.updateScale(newScale)) {
+    if (rebalancingJobGroup.updateScale(newScale, scaleToThroughput(newScale))) {
       logger.info(
           String.format("update jobGroup scale to %.2f", newScale),
           StructuredLogging.jobGroupId(jobGroup.getJobGroupId()),
@@ -185,6 +185,19 @@ public class AutoScalar implements Scalar {
     return Math.max(
         throughput.getMessagesPerSecond() / config.getMessagesPerSecPerWorker(),
         throughput.getBytesPerSecond() / config.getBytesPerSecPerWorker());
+  }
+
+  /**
+   * Converts computed scale to computed throughput. This throughput represents the controller's
+   * view of the throughput of the job group. It is not the same as the actual throughput of the job
+   * group, but will be useful by another controller for job group scaling.
+   *
+   * @param scale the scale
+   * @return the throughput
+   */
+  private Throughput scaleToThroughput(double scale) {
+    return new Throughput(
+        scale * config.getMessagesPerSecPerWorker(), scale * config.getBytesPerSecPerWorker());
   }
 
   @VisibleForTesting
