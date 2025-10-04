@@ -49,6 +49,8 @@ public class AutoScalarConfigurationTest extends FievelTestBase {
     Assert.assertEquals(ScaleConverterMode.CPU, autoScalarConfiguration.getScaleConverterMode());
     Assert.assertEquals(
         ScaleConverterMode.THROUGHPUT, autoScalarConfiguration.getShadowScaleConverterMode().get());
+    Assert.assertEquals(
+        Duration.ofMinutes(10), autoScalarConfiguration.getReactiveScaleWindowDuration());
   }
 
   @Test

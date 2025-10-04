@@ -21,6 +21,7 @@ public class AutoScalarConfiguration {
   private static final long DEFAULT_MESSAGES_PER_SECOND_PER_WORKER = 4000;
   private static final long DEFAULT_BYTES_PER_SECOND_PER_WORKER = 16 * 1024 * 1024; // 16MB/s
   private static final double DEFAULT_CPU_USAGE_PER_WORKER = 3.0; // 3 CPU cores
+  private static final Duration DEFAULT_REACTIVE_WINDOW_SCALE_DURATION = Duration.ofMinutes(5);
 
   // scale window duration for up scale
   private Duration upScaleWindowDuration = DEFAULT_UP_SCALE_WINDOW_DURATION;
@@ -79,6 +80,8 @@ public class AutoScalarConfiguration {
   // optional shadow converter, enable only for convert mode migration
   private Optional<ScaleConverterMode> shadowScaleConverterMode =
       Optional.of(ScaleConverterMode.CPU);
+
+  private Duration reactiveScaleWindowDuration = DEFAULT_REACTIVE_WINDOW_SCALE_DURATION;
 
   /**
    * Gets up scale window duration.
@@ -429,6 +432,14 @@ public class AutoScalarConfiguration {
    */
   public void setShadowScaleConverterMode(ScaleConverterMode shadowScaleConverterMode) {
     this.shadowScaleConverterMode = Optional.of(shadowScaleConverterMode);
+  }
+
+  public Duration getReactiveScaleWindowDuration() {
+    return reactiveScaleWindowDuration;
+  }
+
+  public void setReactiveScaleWindowDuration(Duration reactiveScaleWindowDuration) {
+    this.reactiveScaleWindowDuration = reactiveScaleWindowDuration;
   }
 
   private static void validateRange(double value, double min, double max, String name) {
