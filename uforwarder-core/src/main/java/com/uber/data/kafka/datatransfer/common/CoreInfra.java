@@ -7,6 +7,7 @@ import com.uber.m3.tally.Scope;
 import io.opentracing.Tracer;
 import io.opentracing.noop.NoopTracerFactory;
 import java.lang.management.ManagementFactory;
+import java.lang.management.OperatingSystemMXBean;
 import java.lang.management.ThreadMXBean;
 import java.util.Map;
 
@@ -29,6 +30,7 @@ public class CoreInfra {
   private final Placement placement;
   private final Node node;
   private final ThreadMXBean threadMXBean;
+  private final OperatingSystemMXBean operatingSystemMXBean;
 
   /** Instantiates a new Core infra. */
   private CoreInfra(Builder builder) {
@@ -39,6 +41,7 @@ public class CoreInfra {
     this.placement = builder.placement;
     this.node = builder.node;
     this.threadMXBean = builder.threadMXBean;
+    this.operatingSystemMXBean = builder.operatingSystemMXBean;
   }
 
   /**
@@ -139,6 +142,15 @@ public class CoreInfra {
   }
 
   /**
+   * Gets the OperatingSystemMXBean
+   *
+   * @return
+   */
+  public OperatingSystemMXBean getOperatingSystemMXBean() {
+    return operatingSystemMXBean;
+  }
+
+  /**
    * Builder builder.
    *
    * @return the builder
@@ -156,6 +168,8 @@ public class CoreInfra {
     private Placement placement = Placement.DEFAULT;
     private Node node = Node.getDefaultInstance();
     private ThreadMXBean threadMXBean = ManagementFactory.getThreadMXBean();
+    private OperatingSystemMXBean operatingSystemMXBean =
+        ManagementFactory.getOperatingSystemMXBean();
 
     /**
      * Sets scope.
@@ -231,6 +245,17 @@ public class CoreInfra {
      */
     public Builder withThreadMXBean(ThreadMXBean threadMXBean) {
       this.threadMXBean = threadMXBean;
+      return this;
+    }
+
+    /**
+     * Sets operatingSystemMXBean
+     *
+     * @param operatingSystemMXBean
+     * @return
+     */
+    public Builder withOperatingSystemMXBean(OperatingSystemMXBean operatingSystemMXBean) {
+      this.operatingSystemMXBean = operatingSystemMXBean;
       return this;
     }
 
