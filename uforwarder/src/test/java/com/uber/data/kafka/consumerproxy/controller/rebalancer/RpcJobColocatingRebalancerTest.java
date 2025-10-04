@@ -270,6 +270,77 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
 
   @MethodSource("data")
   @ParameterizedTest
+  public void testJsonDataWorkloadReducedInOneVirtualPartitionInTotal(
+      String jobDataPath, String workerDataPath) throws Exception {
+    initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
+    RebalancerConfiguration config = new RebalancerConfiguration();
+    config.setNumWorkersPerUri(2);
+    config.setMessagesPerSecPerWorker(4000);
+    config.setNumberOfVirtualPartitions(1);
+    config.setWorkerToReduceRatio(1.0);
+    JobPodPlacementProvider jobPodPlacementProvider =
+        new JobPodPlacementProvider(
+            job -> "",
+            worker -> "",
+            ImmutableMap.of(),
+            ImmutableMap.of(),
+            config.getNumberOfVirtualPartitions());
+    RpcJobColocatingRebalancer rebalancer =
+        new RpcJobColocatingRebalancer(
+            mockScope, config, scalar, hibernatingJobRebalancer, jobPodPlacementProvider);
+
+    Map<String, RebalancingJobGroup> jobs = new HashMap<>(jsonJobs);
+    Map<Long, StoredWorker> workers = new HashMap<>(jsonWorkers);
+    int allWorkerCount = workers.size();
+    runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 2);
+    Set<Long> usedWorkers = usedWorkers(jobs, workers);
+    Set<Long> idleWorkerIds = new HashSet<>(workers.keySet());
+    idleWorkerIds.removeAll(usedWorkers);
+    Assertions.assertEquals(
+        allWorkerCount, rebalancer.getRebalancingTable().get("").getAllWorkers().size());
+
+    double newTotalWorkload = 0.0;
+    for (Map.Entry<String, RebalancingJobGroup> jobGroupEntry : jobs.entrySet()) {
+      jobGroupEntry
+          .getValue()
+          .updateScale(
+              jobGroupEntry.getValue().getScale().get() / 10.0, new Throughput(100d, 100d));
+      for (Map.Entry<Long, StoredJob> entry : jobGroupEntry.getValue().getJobs().entrySet()) {
+        newTotalWorkload += (entry.getValue().getScale() / 10.0);
+        jobGroupEntry
+            .getValue()
+            .updateJob(
+                entry.getKey(),
+                StoredJob.newBuilder(entry.getValue())
+                    .setScale(entry.getValue().getScale() / 10.0)
+                    .build());
+      }
+    }
+
+    Map<Long, Long> jobToWorkerId =
+        jobToWorkerId(
+            jobs.values().stream()
+                .flatMap(s -> s.getJobs().values().stream())
+                .collect(Collectors.toList()));
+
+    runRebalanceToConverge(rebalancer::computeWorkerId, jobs, workers, 2);
+    Map<Long, Long> prevJobToWorkerId = jobToWorkerId;
+    jobToWorkerId =
+        jobToWorkerId(
+            jobs.values().stream()
+                .flatMap(s -> s.getJobs().values().stream())
+                .collect(Collectors.toList()));
+    Assertions.assertEquals(0, deletedJob(prevJobToWorkerId, jobToWorkerId).size());
+
+    usedWorkers = usedWorkers(jobs, workers);
+    Set<Long> allAvailableWorkers = workers.keySet();
+    allAvailableWorkers.removeAll(usedWorkers);
+    Assertions.assertEquals(
+        allWorkerCount, rebalancer.getRebalancingTable().get("").getAllWorkers().size());
+  }
+
+  @MethodSource("data")
+  @ParameterizedTest
   public void testJsonDataAddWorker(String jobDataPath, String workerDataPath) throws Exception {
     initRpcJobColocatingRebalancerTest(jobDataPath, workerDataPath);
     RebalancerConfiguration config = new RebalancerConfiguration();

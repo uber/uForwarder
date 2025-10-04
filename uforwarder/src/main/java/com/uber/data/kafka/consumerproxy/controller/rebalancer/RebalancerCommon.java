@@ -249,6 +249,11 @@ class RebalancerCommon {
       int numberOfPartition,
       RebalancerConfiguration rebalancerConfiguration,
       List<Long> availableWorkers) {
+    if (numberOfPartition <= 1) {
+      // we don't need to free extra workers when there is one virtual partition
+      return;
+    }
+
     for (int parititionIdx = 0; parititionIdx < numberOfPartition; parititionIdx++) {
       // for partitions that have more workers than expected, we gradually reduce in batch of 10%
       int diff =
@@ -284,6 +289,12 @@ class RebalancerCommon {
       RpcJobColocatingRebalancer.RebalancingWorkerTable rebalancingWorkerTable,
       List<Long> newWorkers,
       int numberOfPartition) {
+    // if there is only one virtual partitions, we add all the new workers to the virtual partitions
+    if (numberOfPartition == 1) {
+      newWorkers.forEach(worker -> rebalancingWorkerTable.put(worker, 0));
+      return;
+    }
+
     int partitionIdx = 0;
     int idleWorkerIdx = 0;
     while (idleWorkerIdx < newWorkers.size() && totalNumberOfWorkersNeeded > 0) {
