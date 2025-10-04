@@ -1,6 +1,11 @@
 package com.uber.data.kafka.consumerproxy.worker.dispatcher;
 
+import static io.grpc.Status.Code.INTERNAL;
 import static io.grpc.Status.Code.PERMISSION_DENIED;
+import static io.grpc.Status.Code.UNAUTHENTICATED;
+import static io.grpc.Status.Code.UNAVAILABLE;
+import static io.grpc.Status.Code.UNIMPLEMENTED;
+import static io.grpc.Status.Code.UNKNOWN;
 
 import com.google.common.base.Preconditions;
 import com.uber.data.kafka.consumerproxy.common.StructuredLogging;
@@ -16,6 +21,7 @@ import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcher;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineIssue;
+import io.grpc.Status;
 import java.util.Optional;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
@@ -219,10 +225,20 @@ public class DispatcherImpl implements Configurable, Sink<DispatcherMessage, Dis
     if (!resp.code().isEmpty()) {
       return;
     }
-    if (resp.status().getCode() == PERMISSION_DENIED) {
+    Status.Code statusCode = resp.status().getCode();
+    KafkaPipelineIssue issue = null;
+
+    if (statusCode == UNAVAILABLE
+        || statusCode == UNKNOWN
+        || statusCode == UNIMPLEMENTED
+        || statusCode == INTERNAL) {
+      issue = KafkaPipelineIssue.INVALID_RESPONSE_RECEIVED;
+    } else if (statusCode == PERMISSION_DENIED || statusCode == UNAUTHENTICATED) {
+      issue = KafkaPipelineIssue.PERMISSION_DENIED;
+    }
+    if (issue != null) {
       Preconditions.checkNotNull(pipelineStateManager, "pipeline config manager required");
-      pipelineStateManager.reportIssue(
-          job, KafkaPipelineIssue.PERMISSION_DENIED.getPipelineHealthIssue());
+      pipelineStateManager.reportIssue(job, issue.getPipelineHealthIssue());
     }
   }
 

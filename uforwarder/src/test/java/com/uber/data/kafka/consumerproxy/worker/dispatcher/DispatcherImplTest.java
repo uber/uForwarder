@@ -320,4 +320,17 @@ public class DispatcherImplTest extends FievelTestBase {
     Mockito.verify(pipelineStateManager, Mockito.times(1))
         .reportIssue(job, KafkaPipelineIssue.PERMISSION_DENIED.getPipelineHealthIssue());
   }
+
+  @Test
+  public void testReportInvalidResponseIssue() throws ExecutionException, InterruptedException {
+    Mockito.when(grpcDispatcher.submit(ItemAndJob.of(grpcDispatcherMessage.getGrpcMessage(), job)))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                GrpcResponse.of(Status.fromCode(Status.Code.UNAVAILABLE), null, false)));
+    Assert.assertEquals(
+        DispatcherResponse.Code.INVALID,
+        dispatcher.submit(ItemAndJob.of(grpcDispatcherMessage, job)).get().getCode());
+    Mockito.verify(pipelineStateManager, Mockito.times(1))
+        .reportIssue(job, KafkaPipelineIssue.INVALID_RESPONSE_RECEIVED.getPipelineHealthIssue());
+  }
 }
