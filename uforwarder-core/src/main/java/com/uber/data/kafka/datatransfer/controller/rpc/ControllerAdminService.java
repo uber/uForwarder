@@ -122,17 +122,15 @@ public final class ControllerAdminService
                 logger.debug(
                     "JobGroup doesn't exist, will create.",
                     StructuredLogging.jobGroupId(jobGroup.getJobGroupId()));
+                StoredJobGroup.Builder newJobGroupBuilder =
+                    StoredJobGroup.newBuilder().setJobGroup(jobGroup);
+                if (req.hasScaleStatus()) {
+                  newJobGroupBuilder.setScaleStatus(req.getScaleStatus());
+                }
                 storedJobGroup =
-                    jobGroupStore.create(
-                        StoredJobGroup.newBuilder()
-                            .setJobGroup(jobGroup)
-                            .setScaleStatus(req.getScaleStatus())
-                            .build(),
-                        JobUtils::withJobGroupId);
-
+                    jobGroupStore.create(newJobGroupBuilder.build(), JobUtils::withJobGroupId);
                 StoredJobGroup runningJobGroup =
                     StoredJobGroup.newBuilder(storedJobGroup.model())
-                        .setScaleStatus(req.getScaleStatus())
                         .setState(req.getJobGroupState())
                         .build();
                 jobGroupStore.put(

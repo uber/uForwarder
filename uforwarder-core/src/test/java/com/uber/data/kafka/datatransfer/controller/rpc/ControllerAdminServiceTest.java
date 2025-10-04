@@ -110,14 +110,14 @@ public class ControllerAdminServiceTest extends FievelTestBase {
   public void addJobGroupSuccessWhenJobGroupNotExist() throws Exception {
     StoredJobGroup.Builder builder = StoredJobGroup.newBuilder();
     builder.getJobGroupBuilder().setJobGroupId("/dst/src");
-    StoredJobGroup createdJobGroup = builder.build();
-    JobGroup jobGroupToCreate = createdJobGroup.getJobGroup();
     ScaleStatus scaleStatus =
         ScaleStatus.newBuilder()
             .setScale(1.0)
             .setTotalMessagesPerSec(1000.0)
             .setTotalBytesPerSec(100000.0)
             .build();
+    StoredJobGroup createdJobGroup = builder.setScaleStatus(scaleStatus).build();
+    JobGroup jobGroupToCreate = createdJobGroup.getJobGroup();
     StoredJobGroup runningJobGroup =
         StoredJobGroup.newBuilder(createdJobGroup).setState(JobState.JOB_STATE_RUNNING).build();
     Mockito.when(jobGroupStore.get(Mockito.any())).thenThrow(new NoSuchElementException());
@@ -143,6 +143,37 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     Mockito.verify(streamObserver).onNext(responseCaptor.capture());
     Assert.assertEquals(jobGroupToCreate, responseCaptor.getValue().getGroup().getJobGroup());
     Assert.assertEquals(scaleStatus, jobGroupCaptor.getValue().model().getScaleStatus());
+    Mockito.verify(streamObserver).onCompleted();
+  }
+
+  @Test
+  public void addJobGroupSuccessWithNoScaleStatusSet() throws Exception {
+    StoredJobGroup.Builder builder = StoredJobGroup.newBuilder();
+    builder.getJobGroupBuilder().setJobGroupId("/dst/src");
+    StoredJobGroup createdJobGroup = builder.build();
+    JobGroup jobGroupToCreate = createdJobGroup.getJobGroup();
+    Mockito.when(jobGroupStore.get(Mockito.any())).thenThrow(new NoSuchElementException());
+    Mockito.when(jobGroupStore.create(Mockito.any(), Mockito.any()))
+        .thenReturn(VersionedProto.from(createdJobGroup, 0));
+    StreamObserver<AddJobGroupResponse> streamObserver = Mockito.mock(StreamObserver.class);
+    controllerAdminService.addJobGroup(
+        AddJobGroupRequest.newBuilder()
+            .setJobGroup(jobGroupToCreate)
+            .setJobGroupState(JobState.JOB_STATE_RUNNING)
+            .build(),
+        streamObserver);
+    ArgumentCaptor<String> groupIdCaptor = ArgumentCaptor.forClass(String.class);
+    ArgumentCaptor<Versioned<StoredJobGroup>> jobGroupCaptor =
+        ArgumentCaptor.forClass(Versioned.class);
+    Mockito.verify(jobGroupStore, Mockito.times(1)).create(Mockito.any(), Mockito.any());
+    Mockito.verify(jobGroupStore, Mockito.times(1)).get(Mockito.any());
+    Mockito.verify(jobGroupStore).put(groupIdCaptor.capture(), jobGroupCaptor.capture());
+    Assert.assertEquals(jobGroupToCreate, jobGroupCaptor.getValue().model().getJobGroup());
+    ArgumentCaptor<AddJobGroupResponse> responseCaptor =
+        ArgumentCaptor.forClass(AddJobGroupResponse.class);
+    Mockito.verify(streamObserver).onNext(responseCaptor.capture());
+    Assert.assertEquals(jobGroupToCreate, responseCaptor.getValue().getGroup().getJobGroup());
+    Assert.assertFalse(jobGroupCaptor.getValue().model().hasScaleStatus());
     Mockito.verify(streamObserver).onCompleted();
   }
 
