@@ -1,6 +1,8 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
 import com.google.common.collect.ImmutableMap;
+import com.google.protobuf.MessageOrBuilder;
+import com.uber.data.kafka.datatransfer.AutoScalarSnapshot;
 import com.uber.data.kafka.datatransfer.FlowControl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobGroup;
@@ -454,5 +456,19 @@ public class AutoScalarTest extends FievelTestBase {
         3200, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
     Assert.assertEquals(
         80000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
+  }
+
+  @Test
+  public void testSnapshot() {
+    autoScalar.apply(rebalancingJobGroup, 0.0d);
+    testTicker.add(Duration.ofSeconds(5));
+    jobThroughputMonitor.consume(job, 4000, 10000);
+    MessageOrBuilder snapshot = autoScalar.snapshot();
+    Assert.assertNotNull(snapshot);
+    Assert.assertTrue(snapshot instanceof AutoScalarSnapshot);
+    Assert.assertEquals(1, ((AutoScalarSnapshot) snapshot).getJobGroupScalarList().size());
+    Assert.assertEquals(
+        JobGroupKey.of(job).getGroup(),
+        ((AutoScalarSnapshot) snapshot).getJobGroupScalarList().get(0).getConsumerGroup());
   }
 }

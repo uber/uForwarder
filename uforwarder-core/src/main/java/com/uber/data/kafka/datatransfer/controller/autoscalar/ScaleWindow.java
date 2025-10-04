@@ -1,6 +1,7 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
 import com.google.common.base.Ticker;
+import com.uber.data.kafka.datatransfer.WindowSnapshot;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -58,6 +59,15 @@ public class ScaleWindow {
    */
   public boolean isMature() {
     return nSamples >= minSamples && (ticker.read() - startTimeNano) > minDurationNano;
+  }
+
+  public WindowSnapshot snapshot() {
+    return WindowSnapshot.newBuilder()
+        .setSizeInSeconds(TimeUnit.NANOSECONDS.toSeconds(ticker.read() - startTimeNano))
+        .setMinSizeInSeconds(TimeUnit.NANOSECONDS.toSeconds(minDurationNano))
+        .setSizeInSamples(nSamples)
+        .setMinSizeInSamples(minSamples)
+        .build();
   }
 
   /**

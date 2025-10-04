@@ -1,7 +1,9 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
 import com.google.api.core.InternalApi;
+import com.google.protobuf.MessageOrBuilder;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
+import io.grpc.binarylog.v1.Message;
 
 /**
  * Scalar applies scale to job Group. default scalar applies default scale to jobGroup autoscalar
@@ -20,5 +22,14 @@ public interface Scalar {
    */
   default void apply(RebalancingJobGroup rebalancingJobGroup, double defaultScale) {
     rebalancingJobGroup.updateScale(defaultScale, Throughput.ZERO);
+  }
+
+  /**
+   * Takes a dump of internal state of scalar for data analysis
+   *
+   * @return a snapshot of scalar
+   */
+  default MessageOrBuilder snapshot() {
+    return Message.getDefaultInstance();
   }
 }

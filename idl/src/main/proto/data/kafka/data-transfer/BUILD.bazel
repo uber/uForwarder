@@ -3,6 +3,7 @@ load("//tooling/codegen/proto:proto.bzl", "uber_grpc_java_library", "uber_proto_
 uber_proto_java_library(
     name = "proto_main",
     srcs = [
+        "auto_scalar.proto",
         "debug.proto",
         "job.proto",
         "job_group.proto",
@@ -101,6 +102,13 @@ uber_proto_java_library(
         "com.uber.data.kafka.datatransfer.PartitionOffsetRanges",
         "com.uber.data.kafka.datatransfer.GetClusterScaleStatusRequest",
         "com.uber.data.kafka.datatransfer.GetClusterScaleStatusResponse",
+        "com.uber.data.kafka.datatransfer.AutoScalarProto",
+        "com.uber.data.kafka.datatransfer.AutoScalarSnapshot",
+        "com.uber.data.kafka.datatransfer.JobGroupScalarSnapshot",
+        "com.uber.data.kafka.datatransfer.ScaleComputerSnapshot",
+        "com.uber.data.kafka.datatransfer.ScaleStateSnapshot",
+        "com.uber.data.kafka.datatransfer.WindowSnapshot",
+        "com.uber.data.kafka.datatransfer.WindowedComputerSnapshot",
     ],
     strip_import_prefix = "/idl/code.uber.internal/",
     visibility = [
@@ -112,6 +120,7 @@ uber_proto_java_library(
 uber_grpc_java_library(
     name = "grpc_main",
     srcs = [
+        "auto_scalar.proto",
         "debug.proto",
         "job.proto",
         "job_group.proto",
