@@ -229,6 +229,7 @@ public class RpcJobColocatingRebalancerTest extends AbstractRpcUriRebalancerTest
     RebalancerConfiguration config = new RebalancerConfiguration();
     config.setMessagesPerSecPerWorker(4000);
     config.setWorkerToReduceRatio(0.9);
+    config.setWorkerToReduceRatio(0.9);
     JobPodPlacementProvider jobPodPlacementProvider =
         new JobPodPlacementProvider(
             job -> "",

@@ -8,6 +8,7 @@ import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.ReadStore;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.AutoScalarAutoConfiguration;
+import com.uber.data.kafka.datatransfer.controller.autoscalar.AutoScalarConfiguration;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
 import com.uber.data.kafka.datatransfer.controller.storage.StoreAutoConfiguration;
@@ -58,7 +59,15 @@ public class RpcAutoConfiguration {
       CoreInfra coreInfra,
       Store<String, StoredJobGroup> jobGroupStore,
       Store<Long, StoredJobStatus> jobStatusStore,
+      Store<Long, StoredWorker> workerReadStore,
+      AutoScalarConfiguration autoScalarConfiguration,
       LeaderSelector leaderSelector) {
-    return new ControllerAdminService(coreInfra, jobGroupStore, jobStatusStore, leaderSelector);
+    return new ControllerAdminService(
+        coreInfra,
+        jobGroupStore,
+        jobStatusStore,
+        workerReadStore,
+        autoScalarConfiguration,
+        leaderSelector);
   }
 }

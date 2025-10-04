@@ -7,6 +7,7 @@ import com.uber.data.kafka.datatransfer.StoredJobStatus;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.ReadStore;
+import com.uber.data.kafka.datatransfer.controller.autoscalar.AutoScalarConfiguration;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
 import com.uber.data.kafka.datatransfer.utils.UForwarderSpringJUnit4ClassRunner;
@@ -36,6 +37,7 @@ public class RpcAutoConfigurationTest extends FievelTestBase {
   @MockBean Store<Long, StoredJobStatus> jobStatusStore;
   @MockBean Store<String, StoredJobGroup> jobGroupStore;
   @MockBean ReadStore<Long, StoredJob> jobStore;
+  @MockBean AutoScalarConfiguration autoScalarConfiguration;
   @MockBean LeaderSelector leaderSelector;
 
   @Autowired ControllerWorkerService controllerWorkerService;
