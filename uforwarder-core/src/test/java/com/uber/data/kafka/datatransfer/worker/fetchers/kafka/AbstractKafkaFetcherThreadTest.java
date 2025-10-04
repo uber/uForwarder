@@ -39,6 +39,7 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.clients.consumer.OffsetCommitCallback;
+import org.apache.kafka.common.KafkaException;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.TopicPartition;
@@ -890,6 +891,15 @@ public class AbstractKafkaFetcherThreadTest extends FievelTestBase {
     pipelineStateManager.run(job).toCompletableFuture().get();
 
     Mockito.doThrow(new RuntimeException()).when(mockConsumer).poll(any());
+    fetcherThread.doWork();
+  }
+
+  @Test
+  public void testPollException() throws ExecutionException, InterruptedException {
+    Job job = createConsumerJob(1, TOPIC_NAME, 0, CONSUMER_GROUP, 1000, 1000);
+    pipelineStateManager.run(job).toCompletableFuture().get();
+
+    Mockito.doThrow(new KafkaException()).when(mockConsumer).poll(any());
     fetcherThread.doWork();
   }
 
