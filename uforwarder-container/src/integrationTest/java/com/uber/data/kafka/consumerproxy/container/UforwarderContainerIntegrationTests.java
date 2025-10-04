@@ -66,7 +66,6 @@ public class UforwarderContainerIntegrationTests extends FievelTestBase {
   private static String TEST_GROUP_NAME = "test-group";
   // Common settings
   private static String DOCKER_HOST_INTERNAL_ADDRESS = "host.docker.internal";
-  private static int TEST_SERVICE_GRPC_PORT = 8085;
   private static int NUMBER_OF_MESSAGES = 5;
   private static Server mockConsumerServer;
   private static GenericContainer zkServer;
@@ -85,7 +84,6 @@ public class UforwarderContainerIntegrationTests extends FievelTestBase {
     mockConsumerServer =
         MockConsumerServiceStarter.startTestService(
             TEST_GROUP_NAME,
-            TEST_SERVICE_GRPC_PORT,
             ImmutableList.of(
                 // Simple consumer
                 ConsumerBytesServerMethodDefinition.of(
@@ -217,7 +215,10 @@ public class UforwarderContainerIntegrationTests extends FievelTestBase {
                 .setRpcDispatcherTaskGroup(
                     RpcDispatcherTaskGroup.newBuilder()
                         .setUri(
-                            "dns:///" + DOCKER_HOST_INTERNAL_ADDRESS + ":" + TEST_SERVICE_GRPC_PORT)
+                            "dns:///"
+                                + DOCKER_HOST_INTERNAL_ADDRESS
+                                + ":"
+                                + mockConsumerServer.getPort())
                         .setRpcTimeoutMs(1000)
                         .setProcedure(procedureName)
                         .setDlqCluster(TEST_CLUSTER_NAME)

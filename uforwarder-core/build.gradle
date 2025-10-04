@@ -52,9 +52,12 @@ dependencies {
     implementation project(':idl')
     testImplementation project(':fievel-common')
     testImplementation 'junit:junit'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
     testImplementation 'org.apache.curator:curator-test'
     testImplementation 'org.awaitility:awaitility'
     testImplementation 'org.mockito:mockito-inline'
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'uk.org.webcompere:system-stubs-core'
+    testImplementation 'uk.org.webcompere:system-stubs-jupiter'
     testRuntimeOnly "org.junit.vintage:junit-vintage-engine"
 }

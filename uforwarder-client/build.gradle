@@ -18,5 +18,6 @@ dependencies {
     implementation 'org.slf4j:slf4j-api'
     testImplementation project(':fievel-common')
     testImplementation 'junit:junit'
+    testImplementation 'org.junit.jupiter:junit-jupiter'
     testRuntimeOnly "org.junit.vintage:junit-vintage-engine"
 }

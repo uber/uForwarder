@@ -23,6 +23,8 @@ public class UForwarderStarter {
         0,
         new String[] {
           "--worker.dispatcher.kafka.bootstrapServers=" + bootstrapServers,
+          "--worker.dispatcher.kafka.compressionType=gzip", // switch to gzip due to issue
+          // https://github.com/tulios/kafkajs/issues/1033
           "--worker.fetcher.kafka.bootstrapServers=" + bootstrapServers,
           "--server.port=0",
           "--system.port=0",
