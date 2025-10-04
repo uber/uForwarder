@@ -14,6 +14,7 @@ import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobGroup;
 import com.uber.data.kafka.datatransfer.JobSnapshot;
 import com.uber.data.kafka.datatransfer.JobState;
+import com.uber.data.kafka.datatransfer.ScaleStatus;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
 import com.uber.data.kafka.datatransfer.UpdateJobGroupRequest;
@@ -100,6 +101,12 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     builder.getJobGroupBuilder().setJobGroupId("/dst/src");
     StoredJobGroup createdJobGroup = builder.build();
     JobGroup jobGroupToCreate = createdJobGroup.getJobGroup();
+    ScaleStatus scaleStatus =
+        ScaleStatus.newBuilder()
+            .setScale(1.0)
+            .setTotalMessagesPerSec(1000.0)
+            .setTotalBytesPerSec(100000.0)
+            .build();
     StoredJobGroup runningJobGroup =
         StoredJobGroup.newBuilder(createdJobGroup).setState(JobState.JOB_STATE_RUNNING).build();
     Mockito.when(jobGroupStore.get(Mockito.any())).thenThrow(new NoSuchElementException());
@@ -109,6 +116,7 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     controllerAdminService.addJobGroup(
         AddJobGroupRequest.newBuilder()
             .setJobGroup(jobGroupToCreate)
+            .setScaleStatus(scaleStatus)
             .setJobGroupState(JobState.JOB_STATE_RUNNING)
             .build(),
         streamObserver);
@@ -123,6 +131,7 @@ public class ControllerAdminServiceTest extends FievelTestBase {
         ArgumentCaptor.forClass(AddJobGroupResponse.class);
     Mockito.verify(streamObserver).onNext(responseCaptor.capture());
     Assert.assertEquals(jobGroupToCreate, responseCaptor.getValue().getGroup().getJobGroup());
+    Assert.assertEquals(scaleStatus, jobGroupCaptor.getValue().model().getScaleStatus());
     Mockito.verify(streamObserver).onCompleted();
   }
 

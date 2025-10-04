@@ -113,11 +113,15 @@ public final class ControllerAdminService
                     StructuredLogging.jobGroupId(jobGroup.getJobGroupId()));
                 storedJobGroup =
                     jobGroupStore.create(
-                        StoredJobGroup.newBuilder().setJobGroup(jobGroup).build(),
+                        StoredJobGroup.newBuilder()
+                            .setJobGroup(jobGroup)
+                            .setScaleStatus(req.getScaleStatus())
+                            .build(),
                         JobUtils::withJobGroupId);
 
                 StoredJobGroup runningJobGroup =
                     StoredJobGroup.newBuilder(storedJobGroup.model())
+                        .setScaleStatus(req.getScaleStatus())
                         .setState(req.getJobGroupState())
                         .build();
                 jobGroupStore.put(
