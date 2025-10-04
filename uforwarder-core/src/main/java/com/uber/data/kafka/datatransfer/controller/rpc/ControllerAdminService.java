@@ -8,6 +8,7 @@ import com.uber.data.kafka.datatransfer.DeleteJobGroupRequest;
 import com.uber.data.kafka.datatransfer.DeleteJobGroupResponse;
 import com.uber.data.kafka.datatransfer.GetAllJobGroupsRequest;
 import com.uber.data.kafka.datatransfer.GetAllJobGroupsResponse;
+import com.uber.data.kafka.datatransfer.GetClusterScaleStatusResponse;
 import com.uber.data.kafka.datatransfer.GetJobGroupRequest;
 import com.uber.data.kafka.datatransfer.GetJobGroupResponse;
 import com.uber.data.kafka.datatransfer.JobGroup;
@@ -15,14 +16,17 @@ import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.MasterAdminServiceGrpc;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
+import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.UpdateJobGroupRequest;
 import com.uber.data.kafka.datatransfer.UpdateJobGroupResponse;
 import com.uber.data.kafka.datatransfer.UpdateJobGroupStateRequest;
 import com.uber.data.kafka.datatransfer.UpdateJobGroupStateResponse;
+import com.uber.data.kafka.datatransfer.WorkerState;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.JobUtils;
 import com.uber.data.kafka.datatransfer.common.StructuredLogging;
 import com.uber.data.kafka.datatransfer.common.VersionedProto;
+import com.uber.data.kafka.datatransfer.controller.autoscalar.AutoScalarConfiguration;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
 import com.uber.data.kafka.instrumentation.BiConsumerConverter;
@@ -32,6 +36,7 @@ import io.grpc.Metadata;
 import io.grpc.Status;
 import io.grpc.protobuf.ProtoUtils;
 import io.grpc.stub.StreamObserver;
+import java.util.Collection;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.function.BiConsumer;
@@ -46,16 +51,22 @@ public final class ControllerAdminService
   private final CoreInfra infra;
   private final Store<String, StoredJobGroup> jobGroupStore;
   private final Store<Long, StoredJobStatus> jobStatusStore;
+  private final Store<Long, StoredWorker> workerStore;
+  private final AutoScalarConfiguration autoScalarConfiguration;
   private final LeaderSelector leaderSelector;
 
   public ControllerAdminService(
       CoreInfra infra,
       Store<String, StoredJobGroup> jobGroupStore,
       Store<Long, StoredJobStatus> jobStatusStore,
+      Store<Long, StoredWorker> workerStore,
+      AutoScalarConfiguration autoScalarConfiguration,
       LeaderSelector leaderSelector) {
     this.infra = infra;
     this.jobGroupStore = jobGroupStore;
     this.jobStatusStore = jobStatusStore;
+    this.workerStore = workerStore;
+    this.autoScalarConfiguration = autoScalarConfiguration;
     this.leaderSelector = leaderSelector;
   }
 
@@ -250,5 +261,69 @@ public final class ControllerAdminService
         request,
         responseObserver,
         "masteradminservice.getalljobgroups");
+  }
+
+  /**
+   * Gets the current cluster scale status.
+   *
+   * <p>This includes total job group count, total worker count, total allowed messages per second,
+   * total used bytes per second, and total used messages per second. NOTE 1: Currently worker does
+   * not set a BPS limit, so we don't populate this field. NOTE 2: We cap the QPS at worker limit to
+   * prevent over-calculation of total allowed messages per second.
+   */
+  @Override
+  public void getClusterScaleStatus(
+      com.uber.data.kafka.datatransfer.GetClusterScaleStatusRequest request,
+      StreamObserver<GetClusterScaleStatusResponse> responseObserver) {
+    Instrumentation.instrument.withStreamObserver(
+        logger,
+        infra.scope(),
+        infra.tracer(),
+        (req, resW) -> {
+          try {
+            long messagesPerSecPerWorker = autoScalarConfiguration.getMessagesPerSecPerWorker();
+            long bytesPerSecPerWorker = autoScalarConfiguration.getBytesPerSecPerWorker();
+            Map<Long, Versioned<StoredWorker>> allWorkers =
+                workerStore.getAll(worker -> worker.getState() == WorkerState.WORKER_STATE_WORKING);
+            Collection<Versioned<StoredJobGroup>> allJobGroups =
+                jobGroupStore
+                    .getAll(jobGroup -> jobGroup.getState().equals(JobState.JOB_STATE_RUNNING))
+                    .values();
+            double totalUsedBytesPerSec =
+                allJobGroups.stream()
+                    .mapToDouble(
+                        jobGroup -> jobGroup.model().getScaleStatus().getTotalBytesPerSec())
+                    .sum();
+            double totalUsedMessagesPerSec =
+                allJobGroups.stream()
+                    .mapToDouble(
+                        jobGroup -> jobGroup.model().getScaleStatus().getTotalMessagesPerSec())
+                    .map(qps -> qps > messagesPerSecPerWorker ? messagesPerSecPerWorker : qps)
+                    .sum();
+
+            GetClusterScaleStatusResponse response =
+                GetClusterScaleStatusResponse.newBuilder()
+                    .setTotalJobgroupCount(allJobGroups.size())
+                    .setTotalWorkerCount(allWorkers.size())
+                    .setTotalAllowedMessagesPerSec(
+                        allWorkers.size() * (double) messagesPerSecPerWorker)
+                    .setTotalAllowedBytesPerSec(allWorkers.size() * (double) bytesPerSecPerWorker)
+                    .setTotalUsedBytesPerSec(totalUsedBytesPerSec)
+                    .setTotalUsedMessagesPerSec(totalUsedMessagesPerSec)
+                    .build();
+            resW.onNext(response);
+            resW.onCompleted();
+          } catch (Exception e) {
+            logger.error("Failed to get cluster scale status", e);
+            resW.onError(
+                Status.INTERNAL
+                    .withDescription("Failed to get cluster scale status")
+                    .withCause(e)
+                    .asRuntimeException());
+          }
+        },
+        request,
+        responseObserver,
+        "clusterscalestatusservice.getclusterscalestatus");
   }
 }

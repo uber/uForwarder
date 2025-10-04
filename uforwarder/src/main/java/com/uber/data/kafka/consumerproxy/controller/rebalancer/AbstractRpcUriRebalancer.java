@@ -128,12 +128,12 @@ abstract class AbstractRpcUriRebalancer implements Rebalancer {
    *
    * @param jobGroups is a list of RebalancingJobGroup.
    * @param workerMap is a map of current workers.
-   *     <p>The fundamental abstraction is a Guava Table<Long,Long,RebalancingJob>, which contains a
-   *     tuple (job_id, worker_id, job). This data structure contains the current assignment as a
-   *     (job_id, worker_id) pair. To ensure extensibility of assignment logic, this is the shared
-   *     data structure that is passed between helper methods. Any change to the assignment must be
-   *     reflected as an update to the (job_id, worker_id) pair in this table. Note: the table must
-   *     contain exactly one tuple for each job_id pair.
+   *     <p>The fundamental abstraction is a Guava Table< Long, Long, RebalancingJob >, which
+   *     contains a tuple (job_id, worker_id, job). This data structure contains the current
+   *     assignment as a (job_id, worker_id) pair. To ensure extensibility of assignment logic, this
+   *     is the shared data structure that is passed between helper methods. Any change to the
+   *     assignment must be reflected as an update to the (job_id, worker_id) pair in this table.
+   *     Note: the table must contain exactly one tuple for each job_id pair.
    */
   private Map<String, SortedSet<RebalancingWorker>> computeWorkerIdOfRunningJobs(
       final List<RebalancingJobGroup> jobGroups, final Map<Long, StoredWorker> workerMap) {

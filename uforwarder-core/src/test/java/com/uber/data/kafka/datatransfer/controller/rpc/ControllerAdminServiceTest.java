@@ -17,12 +17,14 @@ import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.ScaleStatus;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredJobStatus;
+import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.UpdateJobGroupRequest;
 import com.uber.data.kafka.datatransfer.UpdateJobGroupResponse;
 import com.uber.data.kafka.datatransfer.UpdateJobGroupStateRequest;
 import com.uber.data.kafka.datatransfer.UpdateJobGroupStateResponse;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.VersionedProto;
+import com.uber.data.kafka.datatransfer.controller.autoscalar.AutoScalarConfiguration;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
 import com.uber.fievel.testing.base.FievelTestBase;
@@ -39,6 +41,8 @@ import org.mockito.Mockito;
 public class ControllerAdminServiceTest extends FievelTestBase {
   private Store<String, StoredJobGroup> jobGroupStore;
   private Store<Long, StoredJobStatus> jobStatusStore;
+  private Store<Long, StoredWorker> workerStore;
+  private AutoScalarConfiguration autoScalarConfiguration = new AutoScalarConfiguration();
   private ControllerAdminService controllerAdminService;
   private LeaderSelector leaderSelector;
 
@@ -47,10 +51,17 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     jobGroupStore = Mockito.mock(Store.class);
     jobStatusStore = Mockito.mock(Store.class);
     leaderSelector = Mockito.mock(LeaderSelector.class);
+    workerStore = Mockito.mock(Store.class);
     Mockito.when(leaderSelector.isLeader()).thenReturn(true);
     Mockito.doReturn("host:1234").when(leaderSelector).getLeaderId();
     controllerAdminService =
-        new ControllerAdminService(CoreInfra.NOOP, jobGroupStore, jobStatusStore, leaderSelector);
+        new ControllerAdminService(
+            CoreInfra.NOOP,
+            jobGroupStore,
+            jobStatusStore,
+            workerStore,
+            autoScalarConfiguration,
+            leaderSelector);
   }
 
   private static JobSnapshot buildJobSnapshot(long jobId, Job job) {
@@ -317,5 +328,86 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     controllerAdminService.deleteJobGroup(
         DeleteJobGroupRequest.newBuilder().build(), streamObserver);
     Mockito.verify(streamObserver).onError(Mockito.any());
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testGetClusterScaleStatus() throws Exception {
+    autoScalarConfiguration.setMessagesPerSecPerWorker(4000L);
+    StoredWorker workingWorker =
+        StoredWorker.newBuilder()
+            .setState(com.uber.data.kafka.datatransfer.WorkerState.WORKER_STATE_WORKING)
+            .build();
+    Mockito.when(workerStore.getAll(Mockito.any()))
+        .thenReturn(ImmutableMap.of(1L, VersionedProto.from(workingWorker, 0)));
+    StoredJobGroup runningJobGroup =
+        StoredJobGroup.newBuilder()
+            .setState(JobState.JOB_STATE_RUNNING)
+            .setScaleStatus(
+                com.uber.data.kafka.datatransfer.ScaleStatus.newBuilder()
+                    .setTotalBytesPerSec(123.0)
+                    .setTotalMessagesPerSec(456.0)
+                    .build())
+            .build();
+    Mockito.when(jobGroupStore.getAll(Mockito.any()))
+        .thenReturn(ImmutableMap.of("g1", VersionedProto.from(runningJobGroup, 0)));
+    StreamObserver<com.uber.data.kafka.datatransfer.GetClusterScaleStatusResponse> streamObserver =
+        Mockito.mock(StreamObserver.class);
+    controllerAdminService.getClusterScaleStatus(
+        com.uber.data.kafka.datatransfer.GetClusterScaleStatusRequest.newBuilder().build(),
+        streamObserver);
+    ArgumentCaptor<com.uber.data.kafka.datatransfer.GetClusterScaleStatusResponse> responseCaptor =
+        ArgumentCaptor.forClass(
+            com.uber.data.kafka.datatransfer.GetClusterScaleStatusResponse.class);
+    Mockito.verify(streamObserver).onNext(responseCaptor.capture());
+    com.uber.data.kafka.datatransfer.GetClusterScaleStatusResponse response =
+        responseCaptor.getValue();
+    Assert.assertEquals(1, response.getTotalWorkerCount());
+    Assert.assertEquals(1, response.getTotalJobgroupCount());
+    Assert.assertEquals(4000.0, response.getTotalAllowedMessagesPerSec(), 0.0001);
+    Assert.assertEquals(123.0, response.getTotalUsedBytesPerSec(), 0.0001);
+    Assert.assertEquals(456.0, response.getTotalUsedMessagesPerSec(), 0.0001);
+    Mockito.verify(streamObserver).onCompleted();
+    Mockito.verify(streamObserver, Mockito.never()).onError(Mockito.any());
+
+    autoScalarConfiguration.setMessagesPerSecPerWorker(Long.MAX_VALUE);
+    Mockito.when(workerStore.getAll(Mockito.any()))
+        .thenReturn(
+            ImmutableMap.of(
+                1L,
+                VersionedProto.from(workingWorker, 0),
+                2L,
+                VersionedProto.from(workingWorker, 0)));
+    controllerAdminService.getClusterScaleStatus(
+        com.uber.data.kafka.datatransfer.GetClusterScaleStatusRequest.newBuilder().build(),
+        streamObserver);
+    Mockito.verify(streamObserver, Mockito.times(2)).onNext(responseCaptor.capture());
+    response = responseCaptor.getValue();
+    Assert.assertEquals(1.8446744073709552E19, response.getTotalAllowedMessagesPerSec(), 0.0001);
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  public void testGetClusterScaleStatusWithException() throws Exception {
+    Mockito.when(workerStore.getAll(Mockito.any()))
+        .thenThrow(new RuntimeException("Failed to get workers"));
+    StreamObserver<com.uber.data.kafka.datatransfer.GetClusterScaleStatusResponse> streamObserver =
+        Mockito.mock(StreamObserver.class);
+    controllerAdminService.getClusterScaleStatus(
+        com.uber.data.kafka.datatransfer.GetClusterScaleStatusRequest.newBuilder().build(),
+        streamObserver);
+    Mockito.verify(streamObserver, Mockito.never()).onNext(Mockito.any());
+    Mockito.verify(streamObserver, Mockito.never()).onCompleted();
+    Mockito.verify(streamObserver)
+        .onError(
+            Mockito.argThat(
+                t ->
+                    t instanceof io.grpc.StatusRuntimeException
+                        && ((io.grpc.StatusRuntimeException) t).getStatus().getCode()
+                            == io.grpc.Status.Code.INTERNAL
+                        && ((io.grpc.StatusRuntimeException) t)
+                            .getStatus()
+                            .getDescription()
+                            .equals("Failed to get cluster scale status")));
   }
 }
