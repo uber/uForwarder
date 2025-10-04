@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
+import com.google.common.base.Preconditions;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
@@ -18,6 +19,8 @@ public class AutoScalarConfiguration {
   private static final double DEFAULT_DOWN_SCALE_MAX_FACTOR = 0.8;
   private static final long DEFAULT_MESSAGES_PER_SECOND_PER_WORKER = 4000;
   private static final long DEFAULT_BYTES_PER_SECOND_PER_WORKER = 16 * 1024 * 1024; // 16MB/s
+  private static final double DEFAULT_CPU_USAGE_PER_WORKER =
+      0.0; // 0 indicates CPU usage scaling is disabled
 
   // scale window duration for up scale
   private Duration upScaleWindowDuration = DEFAULT_UP_SCALE_WINDOW_DURATION;
@@ -52,6 +55,7 @@ public class AutoScalarConfiguration {
   // bytes per second per worker
   private long bytesPerSecPerWorker = DEFAULT_BYTES_PER_SECOND_PER_WORKER;
 
+  private double cpuUsagePerWorker = DEFAULT_CPU_USAGE_PER_WORKER;
   // expiration time of through reported by worker
   private Duration throughputTTL = Duration.ofSeconds(60); // 60 seconds
 
@@ -324,6 +328,7 @@ public class AutoScalarConfiguration {
    * @param messagesPerSecPerWorker the messages per sec per worker
    */
   public void setMessagesPerSecPerWorker(long messagesPerSecPerWorker) {
+    Preconditions.checkArgument(messagesPerSecPerWorker > 0, "messagesPerSecPerWorker must be > 0");
     this.messagesPerSecPerWorker = messagesPerSecPerWorker;
   }
 
@@ -342,7 +347,26 @@ public class AutoScalarConfiguration {
    * @param bytesPerSecPerWorker the bytes per sec per worker
    */
   public void setBytesPerSecPerWorker(long bytesPerSecPerWorker) {
+    Preconditions.checkArgument(messagesPerSecPerWorker > 0, "bytesPerSecPerWorker must be > 0");
     this.bytesPerSecPerWorker = bytesPerSecPerWorker;
+  }
+
+  /**
+   * Gets Cpu Usage per worker
+   *
+   * @return
+   */
+  public double getCpuUsagePerWorker() {
+    return cpuUsagePerWorker;
+  }
+
+  /**
+   * Sets Cpu Usage per worker, it will be used to compute workload scale
+   *
+   * @param cpuUsagePerWorker
+   */
+  public void setCpuUsagePerWorker(double cpuUsagePerWorker) {
+    this.cpuUsagePerWorker = cpuUsagePerWorker;
   }
 
   /**

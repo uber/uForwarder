@@ -35,6 +35,7 @@ import org.springframework.scheduling.annotation.Scheduled;
 public class AutoScalar implements Scalar {
 
   private static final Logger logger = LoggerFactory.getLogger(AutoScalar.class);
+  private static final double ZERO = 0.0;
   // in-memory auto-scalar status store
   private final Cache<JobGroupKey, JobGroupScaleStatus> autoScalarStatusStore;
   private final AutoScalarConfiguration config;
@@ -198,15 +199,31 @@ public class AutoScalar implements Scalar {
   }
 
   /**
-   * Coverts observed workload to scale
+   * /** Converts the observed workload metrics to a recommended scale (number of workers).
    *
-   * @param workload
-   * @return
+   * <p>This method determines the required scale based on the provided {@link Workload} object. If
+   * {@code cpuUsagePerWorker} is configured (non-zero), the scale is computed as the ratio of
+   * observed CPU usage to the CPU usage per worker. If not, the scale is determined by the maximum
+   * of the message rate and byte rate per worker.
+   *
+   * @param workload the observed workload containing messages per second, bytes per second, and CPU
+   *     usage
+   * @return the recommended scale (number of workers) as a double
    */
   private double workloadToScale(Workload workload) {
-    return Math.max(
-        workload.getMessagesPerSecond() / config.getMessagesPerSecPerWorker(),
-        workload.getBytesPerSecond() / config.getBytesPerSecPerWorker());
+    double cpuUsagePerWorker = config.getCpuUsagePerWorker();
+    if (cpuUsagePerWorker != ZERO) {
+      if (workload.getMessagesPerSecond() == ZERO) {
+        // If there are no messages being processed, the scale should be 0.
+        return ZERO;
+      } else {
+        return workload.getCpuUsage() / cpuUsagePerWorker;
+      }
+    } else {
+      return Math.max(
+          workload.getMessagesPerSecond() / config.getMessagesPerSecPerWorker(),
+          workload.getBytesPerSecond() / config.getBytesPerSecPerWorker());
+    }
   }
 
   /**
