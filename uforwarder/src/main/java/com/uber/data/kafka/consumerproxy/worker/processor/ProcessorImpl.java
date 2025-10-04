@@ -310,7 +310,18 @@ public class ProcessorImpl
                           () -> {
                             // block on the dispatch semaphore, which limits the concurrency of
                             // gRPC dispatches.
-                            return outboundMessageLimiter.acquirePermitAsync(processorMessage);
+                            CompletableFuture<InflightLimiter.Permit> futurePermit =
+                                outboundMessageLimiter.acquirePermitAsync(processorMessage);
+                            if (!futurePermit.isDone()) {
+                              Preconditions.checkNotNull(
+                                  pipelineStateManager, "pipeline config manager required");
+                              // future permit is not completed indicates blocking
+                              pipelineStateManager.reportIssue(
+                                  job,
+                                  KafkaPipelineIssue.INFLIGHT_MESSAGE_LIMITED
+                                      .getPipelineHealthIssue());
+                            }
+                            return futurePermit;
                           },
                           "processor.prefetch.outbound-cache.insert",
                           tags)
