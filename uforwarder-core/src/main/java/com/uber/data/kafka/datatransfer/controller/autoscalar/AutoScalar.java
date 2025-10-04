@@ -159,6 +159,13 @@ public class AutoScalar implements Scalar {
     JobGroupKey jobGroupKey = JobGroupKey.of(jobGroup);
     final SignatureAndScale quota = new SignatureAndScale(jobGroup.getFlowControl());
     final Optional<Double> scale = rebalancingJobGroup.getScale();
+    if (!scale.isPresent()) {
+      logger.info(
+          String.format("Initialize job group scale state with quota"),
+          StructuredLogging.kafkaTopic(jobGroupKey.getTopic()),
+          StructuredLogging.kafkaCluster(jobGroupKey.getCluster()),
+          StructuredLogging.kafkaGroup(jobGroupKey.getGroup()));
+    }
     double newScale =
         statusStore
             .asMap()
