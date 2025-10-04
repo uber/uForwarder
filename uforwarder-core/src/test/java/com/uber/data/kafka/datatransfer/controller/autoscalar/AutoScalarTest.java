@@ -36,6 +36,7 @@ public class AutoScalarTest extends FievelTestBase {
   private String GROUP = "group";
   private String CLUSTER = "cluster";
   private RebalancingJobGroup rebalancingJobGroup;
+  private ScaleWindowManager scaleWindowManager;
 
   @Before
   public void setup() {
@@ -56,8 +57,15 @@ public class AutoScalarTest extends FievelTestBase {
     jobWorkloadMonitor = new JobWorkloadMonitor(config, testTicker, new NoopScope());
     leaderSelector = Mockito.mock(LeaderSelector.class);
     Mockito.when(leaderSelector.isLeader()).thenReturn(true);
+    scaleWindowManager = new ScaleWindowManager(config);
     autoScalar =
-        new AutoScalar(config, jobWorkloadMonitor, testTicker, new NoopScope(), leaderSelector);
+        new AutoScalar(
+            config,
+            jobWorkloadMonitor,
+            scaleWindowManager,
+            testTicker,
+            new NoopScope(),
+            leaderSelector);
     job =
         Job.newBuilder()
             .setKafkaConsumerTask(
@@ -116,7 +124,13 @@ public class AutoScalarTest extends FievelTestBase {
   public void testScaleUpAboveMaxFactorWithCpuUsage() {
     config.setScaleConverterMode(ScaleConverterMode.CPU);
     autoScalar =
-        new AutoScalar(config, jobWorkloadMonitor, testTicker, new NoopScope(), leaderSelector);
+        new AutoScalar(
+            config,
+            jobWorkloadMonitor,
+            scaleWindowManager,
+            testTicker,
+            new NoopScope(),
+            leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     Assert.assertEquals(
@@ -161,7 +175,13 @@ public class AutoScalarTest extends FievelTestBase {
   public void testScaleUpBelowMinFactorWithCpuUsage() {
     config.setScaleConverterMode(ScaleConverterMode.CPU);
     autoScalar =
-        new AutoScalar(config, jobWorkloadMonitor, testTicker, new NoopScope(), leaderSelector);
+        new AutoScalar(
+            config,
+            jobWorkloadMonitor,
+            scaleWindowManager,
+            testTicker,
+            new NoopScope(),
+            leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     Assert.assertEquals(
@@ -206,7 +226,13 @@ public class AutoScalarTest extends FievelTestBase {
   public void testScaleUp20PercentWIthCpuUsage() {
     config.setScaleConverterMode(ScaleConverterMode.CPU);
     autoScalar =
-        new AutoScalar(config, jobWorkloadMonitor, testTicker, new NoopScope(), leaderSelector);
+        new AutoScalar(
+            config,
+            jobWorkloadMonitor,
+            scaleWindowManager,
+            testTicker,
+            new NoopScope(),
+            leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     Assert.assertEquals(
@@ -346,7 +372,13 @@ public class AutoScalarTest extends FievelTestBase {
   public void testHibernatingAndBootstrapWithCpuUsage() {
     config.setScaleConverterMode(ScaleConverterMode.CPU);
     autoScalar =
-        new AutoScalar(config, jobWorkloadMonitor, testTicker, new NoopScope(), leaderSelector);
+        new AutoScalar(
+            config,
+            jobWorkloadMonitor,
+            scaleWindowManager,
+            testTicker,
+            new NoopScope(),
+            leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     Assert.assertEquals(

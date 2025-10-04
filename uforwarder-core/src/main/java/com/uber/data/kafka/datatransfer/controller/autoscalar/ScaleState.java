@@ -64,6 +64,7 @@ abstract class ScaleState {
   /** ScalarState Builder */
   public static class Builder {
     private AutoScalarConfiguration config = new AutoScalarConfiguration();
+    private ScaleWindowManager scaleWindowManager = new ScaleWindowManager();
     private Ticker ticker = Ticker.systemTicker();
 
     /**
@@ -74,6 +75,11 @@ abstract class ScaleState {
      */
     Builder withConfig(AutoScalarConfiguration config) {
       this.config = config;
+      return this;
+    }
+
+    Builder withWindowManager(ScaleWindowManager scaleWindowManager) {
+      this.scaleWindowManager = scaleWindowManager;
       return this;
     }
 
@@ -130,7 +136,8 @@ abstract class ScaleState {
       listBuilder.add(
           new WindowedScaleComputer(
               ScaleWindow.newBuilder()
-                  .withMinDurationNano(builder.config.getUpScaleWindowDuration().toNanos())
+                  .withWindowDurationSupplier(
+                      () -> builder.scaleWindowManager.getUpScaleWindowDuration().toNanos())
                   .withTicker(builder.ticker),
               scale,
               ONE,
@@ -143,7 +150,8 @@ abstract class ScaleState {
         listBuilder.add(
             new WindowedScaleComputer(
                 ScaleWindow.newBuilder()
-                    .withMinDurationNano(builder.config.getDownScaleWindowDuration().toNanos())
+                    .withWindowDurationSupplier(
+                        () -> builder.scaleWindowManager.getDownScaleWindowDuration().toNanos())
                     .withTicker(builder.ticker),
                 scale,
                 builder.config.getDownScaleMinFactor(),
@@ -170,7 +178,8 @@ abstract class ScaleState {
       return builder.config.isHibernatingEnabled()
           ? new WindowedScaleComputer(
               ScaleWindow.newBuilder()
-                  .withMinDurationNano(builder.config.getHibernateWindowDuration().toNanos())
+                  .withWindowDurationSupplier(
+                      () -> builder.scaleWindowManager.getHibernateWindowDuration().toNanos())
                   .withTicker(builder.ticker),
               scale,
               Scalar.ZERO,
@@ -210,7 +219,8 @@ abstract class ScaleState {
       bootstrapComputer =
           new WindowedScaleComputer(
               ScaleWindow.newBuilder()
-                  .withMinDurationNano(builder.config.getUpScaleWindowDuration().toNanos())
+                  .withWindowDurationSupplier(
+                      () -> builder.scaleWindowManager.getUpScaleWindowDuration().toNanos())
                   .withTicker(builder.ticker),
               BOOTSTRAP_SCALE,
               Scalar.ZERO,

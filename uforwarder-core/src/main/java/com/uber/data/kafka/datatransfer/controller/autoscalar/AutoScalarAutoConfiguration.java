@@ -30,15 +30,22 @@ public class AutoScalarAutoConfiguration {
   }
 
   @Bean
+  public ScaleWindowManager scaleWindowManager(AutoScalarConfiguration autoScalarConfiguration) {
+    return new ScaleWindowManager(autoScalarConfiguration);
+  }
+
+  @Bean
   public Scalar scalar(
       AutoScalarConfiguration autoScalarConfiguration,
       JobWorkloadSink jobWorkloadSink,
+      ScaleWindowManager scaleWindowManager,
       Scope scope,
       LeaderSelector leaderSelector) {
     if (jobWorkloadSink instanceof JobWorkloadMonitor) {
       return new AutoScalar(
           autoScalarConfiguration,
           (JobWorkloadMonitor) jobWorkloadSink,
+          scaleWindowManager,
           Ticker.systemTicker(),
           scope,
           leaderSelector);

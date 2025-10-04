@@ -17,7 +17,7 @@ public class ScaleWindowTest extends FievelTestBase {
     ticker = new TestUtils.TestTicker();
     scaleWindow =
         ScaleWindow.newBuilder()
-            .withMinDurationNano(TimeUnit.MINUTES.toNanos(5))
+            .withWindowDurationSupplier(() -> TimeUnit.MINUTES.toNanos(5))
             .withMinSamples(10)
             .withTicker(ticker)
             .withNBuckets(100)
@@ -66,7 +66,7 @@ public class ScaleWindowTest extends FievelTestBase {
   public void testGetP99Zero() {
     scaleWindow =
         ScaleWindow.newBuilder()
-            .withMinDurationNano(TimeUnit.MINUTES.toNanos(5))
+            .withWindowDurationSupplier(() -> TimeUnit.MINUTES.toNanos(5))
             .withMinSamples(10)
             .withTicker(ticker)
             .withNBuckets(100)
