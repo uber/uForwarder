@@ -297,6 +297,13 @@ public class ProcessorImpl
                   subScope.histogram(
                       MetricNames.RESPONSE_DISTRIBUTION, responseCodeDistributionBuckets);
 
+              if (outboundMessageLimiter.getStats().isCloseToFull()) {
+                Preconditions.checkNotNull(
+                    pipelineStateManager, "pipeline config manager required");
+                pipelineStateManager.reportIssue(
+                    job, KafkaPipelineIssue.INFLIGHT_MESSAGE_LIMITED.getPipelineHealthIssue());
+              }
+
               // Activate the span for dispatch.
               // The span(s) will track gRPC calls and retries.
               // Scope will be closed automatically on concurrent thread to prevent memory leak.
@@ -310,18 +317,7 @@ public class ProcessorImpl
                           () -> {
                             // block on the dispatch semaphore, which limits the concurrency of
                             // gRPC dispatches.
-                            CompletableFuture<InflightLimiter.Permit> futurePermit =
-                                outboundMessageLimiter.acquirePermitAsync(processorMessage);
-                            if (!futurePermit.isDone()) {
-                              Preconditions.checkNotNull(
-                                  pipelineStateManager, "pipeline config manager required");
-                              // future permit is not completed indicates blocking
-                              pipelineStateManager.reportIssue(
-                                  job,
-                                  KafkaPipelineIssue.INFLIGHT_MESSAGE_LIMITED
-                                      .getPipelineHealthIssue());
-                            }
-                            return futurePermit;
+                            return outboundMessageLimiter.acquirePermitAsync(processorMessage);
                           },
                           "processor.prefetch.outbound-cache.insert",
                           tags)
