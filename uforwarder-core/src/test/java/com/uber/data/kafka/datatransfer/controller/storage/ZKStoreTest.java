@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.controller.storage;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -11,7 +12,6 @@ import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.VersionedProto;
 import com.uber.data.kafka.datatransfer.common.WorkerUtils;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -22,6 +22,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executor;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReentrantLock;
 import org.apache.curator.framework.CuratorFramework;
@@ -37,16 +38,17 @@ import org.apache.curator.x.async.modeled.cached.ModeledCacheListener;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
 import org.apache.zookeeper.KeeperException;
 import org.apache.zookeeper.data.Stat;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mockito.Mockito;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.stubbing.Answer;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ZKStoreTest extends FievelTestBase {
+public class ZKStoreTest {
 
   private static Logger logger = LoggerFactory.getLogger(ZKStoreTest.class);
   private ZKStore<Long, StoredWorker> zkStore;
@@ -55,7 +57,7 @@ public class ZKStoreTest extends FievelTestBase {
   private StoredWorker item1;
   private StoredWorker item2;
 
-  @Before
+  @BeforeEach
   public void setup() {
     mockModeledCache = mock(ModeledCache.class);
     mockCachedModeledFramework = mock(CachedModeledFramework.class);
@@ -101,8 +103,8 @@ public class ZKStoreTest extends FievelTestBase {
 
     CompletableFuture<Map<Long, Versioned<StoredWorker>>> future = zkStore.initialized();
     zkStore.start();
-    Assert.assertFalse(future.isDone());
-    Assert.assertEquals(1, listeners.size());
+    Assertions.assertFalse(future.isDone());
+    Assertions.assertEquals(1, listeners.size());
 
     when(mockCachedModeledFramework.cache()).thenReturn(mockModeledCache);
     when(mockModeledCache.currentChildren(ZPath.root))
@@ -113,13 +115,13 @@ public class ZKStoreTest extends FievelTestBase {
     for (ModeledCacheListener<StoredWorker> listener : listeners) {
       listener.initialized();
     }
-    Assert.assertTrue(future.isDone());
+    Assertions.assertTrue(future.isDone());
     Map<Long, Versioned<StoredWorker>> jobs = future.get();
-    Assert.assertEquals(2, jobs.size());
-    Assert.assertEquals(item1, jobs.get(1L).model());
-    Assert.assertEquals(item2, jobs.get(2L).model());
+    Assertions.assertEquals(2, jobs.size());
+    Assertions.assertEquals(item1, jobs.get(1L).model());
+    Assertions.assertEquals(item2, jobs.get(2L).model());
 
-    Assert.assertTrue(zkStore.isRunning());
+    Assertions.assertTrue(zkStore.isRunning());
     // validate that zkstore gracefully handles zk client close exception.
     doThrow(new RuntimeException()).when(mockCachedModeledFramework).close();
     zkStore.stop();
@@ -127,12 +129,13 @@ public class ZKStoreTest extends FievelTestBase {
 
   @Test
   public void getAllWithException() throws Exception {
-    Assert.assertEquals(0, zkStore.getAll().size());
+    Assertions.assertEquals(0, zkStore.getAll().size());
     verify(mockModeledCache).currentChildren(ZPath.root);
   }
 
   @SuppressWarnings("LockNotBeforeTry")
-  @Test(timeout = 10000)
+  @Test
+  @Timeout(value = 10000, unit = TimeUnit.MILLISECONDS)
   public void getAllConcurrently() throws Exception {
     Lock testSynchronizationLock = new ReentrantLock();
     testSynchronizationLock.lock();
@@ -183,7 +186,7 @@ public class ZKStoreTest extends FievelTestBase {
     CompletableFuture.allOf(future1, future2);
 
     // Both the future should have 2 items.
-    Assert.assertTrue(future1.get().size() == 2 || future2.get().size() == 2);
+    Assertions.assertTrue(future1.get().size() == 2 || future2.get().size() == 2);
   }
 
   @Test
@@ -200,9 +203,9 @@ public class ZKStoreTest extends FievelTestBase {
 
     Map<Long, Versioned<StoredWorker>> list = zkStore.getAll();
 
-    Assert.assertEquals(2, list.size());
-    Assert.assertEquals(VersionedProto.from(item1, 1), list.get(1L));
-    Assert.assertEquals(VersionedProto.from(item2, 2), list.get(2L));
+    Assertions.assertEquals(2, list.size());
+    Assertions.assertEquals(VersionedProto.from(item1, 1), list.get(1L));
+    Assertions.assertEquals(VersionedProto.from(item2, 2), list.get(2L));
   }
 
   @Test
@@ -215,21 +218,21 @@ public class ZKStoreTest extends FievelTestBase {
 
     Map<Long, Versioned<StoredWorker>> list = zkStore.getAll(j -> j.getNode().getId() == 1);
 
-    Assert.assertEquals(1, list.size());
-    Assert.assertEquals(1, list.get(1L).version());
-    Assert.assertEquals(item1, list.get(1L).model());
+    Assertions.assertEquals(1, list.size());
+    Assertions.assertEquals(1, list.get(1L).version());
+    Assertions.assertEquals(item1, list.get(1L).model());
   }
 
   @Test
   public void get() throws Exception {
     when(mockModeledCache.currentData(ZPath.parse("/workers/1")))
         .thenReturn(Optional.of(new MockZNode(item1, ZPath.parse("/workers/1"), 1)));
-    Assert.assertEquals(VersionedProto.from(item1, 1), zkStore.get(1L));
+    Assertions.assertEquals(VersionedProto.from(item1, 1), zkStore.get(1L));
   }
 
-  @Test(expected = NoSuchElementException.class)
+  @Test
   public void getWithException() throws Exception {
-    zkStore.get(1L);
+    assertThrows(NoSuchElementException.class, () -> zkStore.get(1L));
   }
 
   @Test
@@ -241,7 +244,7 @@ public class ZKStoreTest extends FievelTestBase {
         .thenReturn(mockCachedModeledFramework);
     when(mockCachedModeledFramework.readThroughAsZNode()).thenReturn(dataAsyncStage);
     when(dataAsyncStage.toCompletableFuture()).thenReturn(dataCompletableFuture);
-    Assert.assertEquals(VersionedProto.from(item1, 1), zkStore.getThrough(1L));
+    Assertions.assertEquals(VersionedProto.from(item1, 1), zkStore.getThrough(1L));
   }
 
   @Test
@@ -276,7 +279,7 @@ public class ZKStoreTest extends FievelTestBase {
           }
         });
 
-    Assert.assertEquals(
+    Assertions.assertEquals(
         VersionedProto.from(item1, 0), zkStore.create(item1, WorkerUtils::withWorkerId));
   }
 
@@ -318,7 +321,7 @@ public class ZKStoreTest extends FievelTestBase {
             Collections.singletonMap(
                 ZPath.parse("/workers/1"), new MockZNode(item1, ZPath.parse("/workers/1"), 1)))
         .thenReturn(Collections.<ZPath, ZNode<StoredWorker>>emptyMap());
-    Assert.assertEquals(1, zkStore.getAll().size());
+    Assertions.assertEquals(1, zkStore.getAll().size());
 
     AsyncStage<Void> removeAsyncStage = mock(AsyncStage.class);
     when(removeAsyncStage.toCompletableFuture())
@@ -327,7 +330,7 @@ public class ZKStoreTest extends FievelTestBase {
     when(mockCachedModeledFramework.withPath(ZPath.parse("/workers/1")))
         .thenReturn(mockCachedModeledFramework);
     zkStore.remove(1L);
-    Assert.assertEquals(0, zkStore.getAll().size());
+    Assertions.assertEquals(0, zkStore.getAll().size());
   }
 
   @Test
@@ -342,16 +345,21 @@ public class ZKStoreTest extends FievelTestBase {
     zkStore.remove(1L);
   }
 
-  @Test(expected = ExecutionException.class)
+  @Test
   public void removeRethrowOtherExceptions() throws Exception {
-    when(mockCachedModeledFramework.withPath(ZPath.parse("/workers/1")))
-        .thenReturn(mockCachedModeledFramework);
-    AsyncStage<Void> removeAsyncStage = mock(AsyncStage.class);
-    when(mockCachedModeledFramework.delete()).thenReturn(removeAsyncStage);
-    CompletableFuture<Void> removeCompletableFuture = new CompletableFuture<>();
-    removeCompletableFuture.completeExceptionally(new KeeperException.ConnectionLossException());
-    when(removeAsyncStage.toCompletableFuture()).thenReturn(removeCompletableFuture);
-    zkStore.remove(1L);
+    assertThrows(
+        ExecutionException.class,
+        () -> {
+          when(mockCachedModeledFramework.withPath(ZPath.parse("/workers/1")))
+              .thenReturn(mockCachedModeledFramework);
+          AsyncStage<Void> removeAsyncStage = mock(AsyncStage.class);
+          when(mockCachedModeledFramework.delete()).thenReturn(removeAsyncStage);
+          CompletableFuture<Void> removeCompletableFuture = new CompletableFuture<>();
+          removeCompletableFuture.completeExceptionally(
+              new KeeperException.ConnectionLossException());
+          when(removeAsyncStage.toCompletableFuture()).thenReturn(removeCompletableFuture);
+          zkStore.remove(1L);
+        });
   }
 
   private static class MockZNode<T> implements ZNode<T> {

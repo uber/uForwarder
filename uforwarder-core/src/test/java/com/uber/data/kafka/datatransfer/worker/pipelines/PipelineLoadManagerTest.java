@@ -1,27 +1,26 @@
 package com.uber.data.kafka.datatransfer.worker.pipelines;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertNotSame;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
 import com.sun.management.OperatingSystemMXBean;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
 import com.uber.data.kafka.datatransfer.worker.common.ThreadRegister;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.lang.management.ThreadMXBean;
 import java.time.Duration;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
 import org.mockito.Mockito;
 
-public class PipelineLoadManagerTest extends FievelTestBase {
+public class PipelineLoadManagerTest {
 
   private CoreInfra coreInfra;
   private PipelineLoadManager pipelineLoadManager;
@@ -29,7 +28,7 @@ public class PipelineLoadManagerTest extends FievelTestBase {
   private ThreadMXBean threadMXBean;
   private OperatingSystemMXBean operatingSystemMXBean;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     coreInfra = Mockito.mock(CoreInfra.class);
     ticker = new TestUtils.TestTicker();
@@ -49,19 +48,19 @@ public class PipelineLoadManagerTest extends FievelTestBase {
     String pipelineId = "test-pipeline-1";
     PipelineLoadManager.LoadTracker tracker = pipelineLoadManager.createTracker(pipelineId);
 
-    assertNotNull("Tracker should not be null", tracker);
-    assertEquals("Pipeline ID should match", pipelineId, tracker.pipelineId());
-    assertNotNull("Thread register should be created", tracker.getThreadRegister());
+    assertNotNull(tracker, "Tracker should not be null");
+    assertEquals(pipelineId, tracker.pipelineId(), "Pipeline ID should match");
+    assertNotNull(tracker.getThreadRegister(), "Thread register should be created");
 
     // Test creating the same tracker again (should return the same instance)
     PipelineLoadManager.LoadTracker sameTracker = pipelineLoadManager.createTracker(pipelineId);
-    assertSame("Should return the same tracker instance", tracker, sameTracker);
+    assertSame(tracker, sameTracker, "Should return the same tracker instance");
 
     // Test creating a different tracker
     String pipelineId2 = "test-pipeline-2";
     PipelineLoadManager.LoadTracker tracker2 = pipelineLoadManager.createTracker(pipelineId2);
-    assertNotNull("Second tracker should not be null", tracker2);
-    assertEquals("Second pipeline ID should match", pipelineId2, tracker2.pipelineId());
+    assertNotNull(tracker2, "Second tracker should not be null");
+    assertEquals(pipelineId2, tracker2.pipelineId(), "Second pipeline ID should match");
   }
 
   @Test
@@ -70,7 +69,7 @@ public class PipelineLoadManagerTest extends FievelTestBase {
     PipelineLoadManager.LoadTracker tracker = pipelineLoadManager.createTracker(pipelineId);
 
     ThreadRegister threadRegister = tracker.getThreadRegister();
-    assertNotNull("Thread register should not be null", threadRegister);
+    assertNotNull(threadRegister, "Thread register should not be null");
   }
 
   @Test
@@ -83,16 +82,16 @@ public class PipelineLoadManagerTest extends FievelTestBase {
 
     // Test initial load (should be 0 since no CPU time has been recorded)
     PipelineLoadTracker.PipelineLoad load = tracker.getLoad();
-    assertNotNull("Load should not be null", load);
-    assertEquals("Core thread usage should be 0 initially", 0.0, load.getCoreCpuUsage(), 0.001);
-    assertEquals("Shared system usage should be 0 initially", 0.0, load.getCpuUsage(), 0.001);
+    assertNotNull(load, "Load should not be null");
+    assertEquals(0.0, load.getCoreCpuUsage(), 0.001, "Core thread usage should be 0 initially");
+    assertEquals(0.0, load.getCpuUsage(), 0.001, "Shared system usage should be 0 initially");
 
     // Test with non-zero system load
     when(operatingSystemMXBean.getSystemLoadAverage()).thenReturn(1.5);
     PipelineLoadTracker.PipelineLoad load2 = tracker.getLoad();
-    assertEquals("Core thread usage should still be 0", 0.0, load2.getCoreCpuUsage(), 0.001);
+    assertEquals(0.0, load2.getCoreCpuUsage(), 0.001, "Core thread usage should still be 0");
     assertEquals(
-        "Shared system usage should be 0 when share is 0", 0.0, load2.getCpuUsage(), 0.001);
+        0.0, load2.getCpuUsage(), 0.001, "Shared system usage should be 0 when share is 0");
   }
 
   @Test
@@ -107,10 +106,10 @@ public class PipelineLoadManagerTest extends FievelTestBase {
     PipelineLoadTracker.PipelineLoad load1 = tracker1.getLoad();
     PipelineLoadTracker.PipelineLoad load2 = tracker2.getLoad();
 
-    assertEquals("First tracker core usage should be 0", 0.0, load1.getCoreCpuUsage(), 0.001);
-    assertEquals("First tracker shared usage should be 0", 0.0, load1.getCpuUsage(), 0.001);
-    assertEquals("Second tracker core usage should be 0", 0.0, load2.getCoreCpuUsage(), 0.001);
-    assertEquals("Second tracker shared usage should be 0", 0.0, load2.getCpuUsage(), 0.001);
+    assertEquals(0.0, load1.getCoreCpuUsage(), 0.001, "First tracker core usage should be 0");
+    assertEquals(0.0, load1.getCpuUsage(), 0.001, "First tracker shared usage should be 0");
+    assertEquals(0.0, load2.getCoreCpuUsage(), 0.001, "Second tracker core usage should be 0");
+    assertEquals(0.0, load2.getCpuUsage(), 0.001, "Second tracker shared usage should be 0");
   }
 
   @Test
@@ -128,7 +127,7 @@ public class PipelineLoadManagerTest extends FievelTestBase {
         when(operatingSystemMXBean.getProcessCpuTime()).thenReturn(ticker.read());
         tracker.getLoad();
       }
-      Assert.assertEquals(1.0, tracker.getLoad().getCpuUsage(), 0.0000001);
+      Assertions.assertEquals(1.0, tracker.getLoad().getCpuUsage(), 0.0000001);
     }
   }
 
@@ -149,8 +148,8 @@ public class PipelineLoadManagerTest extends FievelTestBase {
         when(operatingSystemMXBean.getProcessCpuTime()).thenReturn(ticker.read());
         tracker1.getLoad();
       }
-      Assert.assertEquals(0.6, tracker1.getLoad().getCpuUsage(), 0.0000001);
-      Assert.assertEquals(0.4, tracker2.getLoad().getCpuUsage(), 0.0000001);
+      Assertions.assertEquals(0.6, tracker1.getLoad().getCpuUsage(), 0.0000001);
+      Assertions.assertEquals(0.4, tracker2.getLoad().getCpuUsage(), 0.0000001);
     }
   }
 
@@ -161,15 +160,15 @@ public class PipelineLoadManagerTest extends FievelTestBase {
 
     // Test first close (should succeed)
     boolean firstClose = tracker.close();
-    assertTrue("First close should return true", firstClose);
+    assertTrue(firstClose, "First close should return true");
 
     // Test second close (should fail)
     boolean secondClose = tracker.close();
-    assertFalse("Second close should return false", secondClose);
+    assertFalse(secondClose, "Second close should return false");
 
     // Verify tracker is removed from the manager
     PipelineLoadManager.LoadTracker newTracker = pipelineLoadManager.createTracker(pipelineId);
-    assertNotNull("New tracker should be created after close", newTracker);
-    assertNotSame("New tracker should be different instance", tracker, newTracker);
+    assertNotNull(newTracker, "New tracker should be created after close");
+    assertNotSame(tracker, newTracker, "New tracker should be different instance");
   }
 }

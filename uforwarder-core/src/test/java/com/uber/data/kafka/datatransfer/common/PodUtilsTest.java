@@ -1,11 +1,10 @@
 package com.uber.data.kafka.datatransfer.common;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class PodUtilsTest extends FievelTestBase {
+public class PodUtilsTest {
   @Test
   public void testGetPod() {
     String pod = PodUtils.podOf("pod-1::rack-1");

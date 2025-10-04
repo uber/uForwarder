@@ -8,7 +8,6 @@ import com.uber.data.kafka.datatransfer.JobStatus;
 import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.MiscConfig;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Histogram;
@@ -16,17 +15,16 @@ import com.uber.m3.tally.Scope;
 import com.uber.m3.tally.Stopwatch;
 import com.uber.m3.tally.Timer;
 import java.util.concurrent.ExecutionException;
-import org.junit.After;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 
-public class KafkaPipelineStateManagerTest extends FievelTestBase {
+public class KafkaPipelineStateManagerTest {
 
   private MockedStatic<PipelineHealthManager> staticContext;
 
@@ -42,7 +40,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
   private PipelineHealthManager pipelineHealthManager;
   private PipelineLoadTracker pipelineLoadTracker;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     pipelineHealthManager = Mockito.mock(PipelineHealthManager.class);
     staticContext = Mockito.mockStatic(PipelineHealthManager.class);
@@ -100,7 +98,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
   public void testUpdateActualRunningJobStatus() {
     ImmutableList<JobStatus> jobStatusList = ImmutableList.of(JobStatus.newBuilder().build());
     pipelineStateManager.updateActualRunningJobStatus(jobStatusList);
-    Assert.assertEquals(jobStatusList, pipelineStateManager.getJobStatus());
+    Assertions.assertEquals(jobStatusList, pipelineStateManager.getJobStatus());
   }
 
   @Test
@@ -112,9 +110,9 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
             .setMiscConfig(
                 MiscConfig.newBuilder().setOwnerServiceName(CONSUMER_SERVICE_NAME).build())
             .build();
-    Assert.assertEquals(jobDefinitionTemplate, pipelineStateManager.getJobTemplate());
+    Assertions.assertEquals(jobDefinitionTemplate, pipelineStateManager.getJobTemplate());
     validateMap(0);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         FlowControl.newBuilder()
             .setMessagesPerSec(1.0)
             .setBytesPerSec(Double.MAX_VALUE)
@@ -125,24 +123,24 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
 
   @Test
   public void testShouldJobBeRunning() throws ExecutionException, InterruptedException {
-    Assert.assertFalse(pipelineStateManager.shouldJobBeRunning(Job.getDefaultInstance()));
+    Assertions.assertFalse(pipelineStateManager.shouldJobBeRunning(Job.getDefaultInstance()));
     pipelineStateManager
         .run(createConsumerJob(1, TOPIC, 0, GROUP, 1000, 1000, 1))
         .toCompletableFuture()
         .get();
-    Assert.assertTrue(
+    Assertions.assertTrue(
         pipelineStateManager.shouldJobBeRunning(
             createConsumerJob(1, TOPIC, 0, GROUP, 1000, 1000, 1)));
   }
 
   @Test
   public void testGetExpectedJob() throws ExecutionException, InterruptedException {
-    Assert.assertFalse(pipelineStateManager.getExpectedJob(1).isPresent());
+    Assertions.assertFalse(pipelineStateManager.getExpectedJob(1).isPresent());
     pipelineStateManager
         .run(createConsumerJob(1, TOPIC, 0, GROUP, 1000, 1000, 1))
         .toCompletableFuture()
         .get();
-    Assert.assertEquals(
+    Assertions.assertEquals(
         createConsumerJob(1, TOPIC, 0, GROUP, 1000, 1000, 1),
         pipelineStateManager.getExpectedJob(1).get());
   }
@@ -152,7 +150,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     Job job = createConsumerJob(1, TOPIC, 0, GROUP, 1000, 1000, 1);
     pipelineStateManager.run(job).toCompletableFuture().get();
     validateMap(1);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         FlowControl.newBuilder()
             .setMessagesPerSec(1000)
             .setBytesPerSec(1000)
@@ -161,17 +159,17 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
         pipelineStateManager.getFlowControl());
     pipelineStateManager.updateActualRunningJobStatus(
         ImmutableList.of(JobStatus.getDefaultInstance()));
-    Assert.assertEquals(1, pipelineStateManager.getJobStatus().size());
+    Assertions.assertEquals(1, pipelineStateManager.getJobStatus().size());
     pipelineStateManager.clear();
     validateMap(0);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         FlowControl.newBuilder()
             .setMessagesPerSec(1.0)
             .setBytesPerSec(Double.MAX_VALUE)
             .setMaxInflightMessages(1.0)
             .build(),
         pipelineStateManager.getFlowControl());
-    Assert.assertEquals(0, pipelineStateManager.getJobStatus().size());
+    Assertions.assertEquals(0, pipelineStateManager.getJobStatus().size());
   }
 
   @Test
@@ -179,9 +177,9 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     Job job0 = createConsumerJob(1, TOPIC, 0, "", 1000, 1000, 1);
     try {
       pipelineStateManager.run(job0).toCompletableFuture().get();
-      Assert.fail("run should failed because of it belong to a different consumer group");
+      Assertions.fail("run should failed because of it belong to a different consumer group");
     } catch (ExecutionException e) {
-      Assert.assertEquals(
+      Assertions.assertEquals(
           "java.lang.RuntimeException: consumer group for task is  doesn't match "
               + "consumer group for fetcher thread group",
           e.getMessage());
@@ -191,9 +189,9 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     Job job1 = createConsumerJob(1, TOPIC, 0, GROUP2, 1000, 1000, 1);
     try {
       pipelineStateManager.run(job1).toCompletableFuture().get();
-      Assert.fail("run should failed because of it belong to a different consumer group");
+      Assertions.fail("run should failed because of it belong to a different consumer group");
     } catch (ExecutionException e) {
-      Assert.assertEquals(
+      Assertions.assertEquals(
           "java.lang.RuntimeException: consumer group for task is group2 doesn't match "
               + "consumer group for fetcher thread group",
           e.getMessage());
@@ -205,10 +203,8 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     ExecutionException e3 =
         Assertions.assertThrows(
             ExecutionException.class,
-            () -> {
-              pipelineStateManager.run(job2).toCompletableFuture().get();
-            });
-    Assert.assertEquals(
+            () -> pipelineStateManager.run(job2).toCompletableFuture().get());
+    Assertions.assertEquals(
         "java.lang.RuntimeException: flow control for job 2 is not positive", e3.getMessage());
     validateMap(0);
 
@@ -217,10 +213,8 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     ExecutionException e0 =
         Assertions.assertThrows(
             ExecutionException.class,
-            () -> {
-              pipelineStateManager.run(job3).toCompletableFuture().get();
-            });
-    Assert.assertEquals(
+            () -> pipelineStateManager.run(job3).toCompletableFuture().get());
+    Assertions.assertEquals(
         "java.lang.RuntimeException: flow control for job 3 is not positive", e0.getMessage());
     validateMap(0);
 
@@ -246,9 +240,9 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     Job job1 = createConsumerJob(1, TOPIC, 0, GROUP2, 1000, 1000, 1);
     try {
       pipelineStateManager.update(job1).toCompletableFuture().get();
-      Assert.fail("update should failed because of it belong to a different consumer group");
+      Assertions.fail("update should failed because of it belong to a different consumer group");
     } catch (ExecutionException e) {
-      Assert.assertEquals(
+      Assertions.assertEquals(
           "java.lang.RuntimeException: consumer group for task is group2 doesn't match "
               + "consumer group for fetcher thread group",
           e.getMessage());
@@ -259,10 +253,8 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     ExecutionException e2 =
         Assertions.assertThrows(
             ExecutionException.class,
-            () -> {
-              pipelineStateManager.update(job2).toCompletableFuture().get();
-            });
-    Assert.assertEquals(
+            () -> pipelineStateManager.update(job2).toCompletableFuture().get());
+    Assertions.assertEquals(
         "java.lang.RuntimeException: flow control for job 2 is not positive", e2.getMessage());
     validateMap(0);
 
@@ -271,10 +263,8 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     ExecutionException e1 =
         Assertions.assertThrows(
             ExecutionException.class,
-            () -> {
-              pipelineStateManager.update(job3).toCompletableFuture().get();
-            });
-    Assert.assertEquals(
+            () -> pipelineStateManager.update(job3).toCompletableFuture().get());
+    Assertions.assertEquals(
         "java.lang.RuntimeException: flow control for job 3 is not positive", e1.getMessage());
     validateMap(0);
 
@@ -286,7 +276,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     validateMap(1);
     pipelineStateManager.update(job4).toCompletableFuture().get();
     validateMap(1);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         1000,
         ((Job) pipelineStateManager.getExpectedRunningJobMap().values().toArray()[0])
             .getFlowControl()
@@ -297,7 +287,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     Job job5 = createConsumerJob(4, TOPIC, 0, GROUP, 100, 1000, 1);
     pipelineStateManager.update(job5).toCompletableFuture().get();
     validateMap(1);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100,
         ((Job) pipelineStateManager.getExpectedRunningJobMap().values().toArray()[0])
             .getFlowControl()
@@ -320,9 +310,9 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     Job job1 = createConsumerJob(1, TOPIC, 0, GROUP2, 1000, 1000, 1);
     try {
       pipelineStateManager.cancel(job1).toCompletableFuture().get();
-      Assert.fail("cancel should failed because of it belong to a different consumer group");
+      Assertions.fail("cancel should failed because of it belong to a different consumer group");
     } catch (ExecutionException e) {
-      Assert.assertEquals(
+      Assertions.assertEquals(
           "java.lang.RuntimeException: consumer group for task is group2 doesn't match "
               + "consumer group for fetcher thread group",
           e.getMessage());
@@ -371,25 +361,29 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     Job job2 = createConsumerJob(1, TOPIC, 1, GROUP, 200, 100, 2);
     pipelineStateManager.run(job1).toCompletableFuture().get();
     pipelineStateManager.run(job2).toCompletableFuture().get();
-    Assert.assertEquals(1100, (int) pipelineStateManager.getFlowControl().getBytesPerSec());
-    Assert.assertEquals(2200, (int) pipelineStateManager.getFlowControl().getMessagesPerSec());
-    Assert.assertEquals(3, (int) pipelineStateManager.getFlowControl().getMaxInflightMessages());
+    Assertions.assertEquals(1100, (int) pipelineStateManager.getFlowControl().getBytesPerSec());
+    Assertions.assertEquals(2200, (int) pipelineStateManager.getFlowControl().getMessagesPerSec());
+    Assertions.assertEquals(
+        3, (int) pipelineStateManager.getFlowControl().getMaxInflightMessages());
 
     pipelineStateManager.run(job1).toCompletableFuture().get();
-    Assert.assertEquals(1100, (int) pipelineStateManager.getFlowControl().getBytesPerSec());
-    Assert.assertEquals(2200, (int) pipelineStateManager.getFlowControl().getMessagesPerSec());
-    Assert.assertEquals(3, (int) pipelineStateManager.getFlowControl().getMaxInflightMessages());
+    Assertions.assertEquals(1100, (int) pipelineStateManager.getFlowControl().getBytesPerSec());
+    Assertions.assertEquals(2200, (int) pipelineStateManager.getFlowControl().getMessagesPerSec());
+    Assertions.assertEquals(
+        3, (int) pipelineStateManager.getFlowControl().getMaxInflightMessages());
 
     pipelineStateManager.cancel(job1).toCompletableFuture().get();
-    Assert.assertEquals(100, (int) pipelineStateManager.getFlowControl().getBytesPerSec());
-    Assert.assertEquals(200, (int) pipelineStateManager.getFlowControl().getMessagesPerSec());
-    Assert.assertEquals(2, (int) pipelineStateManager.getFlowControl().getMaxInflightMessages());
+    Assertions.assertEquals(100, (int) pipelineStateManager.getFlowControl().getBytesPerSec());
+    Assertions.assertEquals(200, (int) pipelineStateManager.getFlowControl().getMessagesPerSec());
+    Assertions.assertEquals(
+        2, (int) pipelineStateManager.getFlowControl().getMaxInflightMessages());
 
     pipelineStateManager.cancelAll().toCompletableFuture().get();
-    Assert.assertEquals(
+    Assertions.assertEquals(
         Double.MAX_VALUE, pipelineStateManager.getFlowControl().getBytesPerSec(), 0.000001);
-    Assert.assertEquals(1, (int) pipelineStateManager.getFlowControl().getMessagesPerSec());
-    Assert.assertEquals(1, (int) pipelineStateManager.getFlowControl().getMaxInflightMessages());
+    Assertions.assertEquals(1, (int) pipelineStateManager.getFlowControl().getMessagesPerSec());
+    Assertions.assertEquals(
+        1, (int) pipelineStateManager.getFlowControl().getMaxInflightMessages());
   }
 
   @Test
@@ -399,7 +393,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
     pipelineStateManager.publishMetrics();
     ArgumentCaptor<Double> valueCaptor = ArgumentCaptor.forClass(Double.class);
     Mockito.verify(gauge, Mockito.times(5)).update(valueCaptor.capture());
-    Assert.assertArrayEquals(
+    Assertions.assertArrayEquals(
         new Double[] {
           job.getFlowControl().getMessagesPerSec(),
           job.getFlowControl().getBytesPerSec(),
@@ -420,7 +414,7 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
 
   @Test
   public void testGetLoadTracker() {
-    Assert.assertEquals(pipelineLoadTracker, pipelineStateManager.getLoadTracker());
+    Assertions.assertEquals(pipelineLoadTracker, pipelineStateManager.getLoadTracker());
   }
 
   private Job createConsumerJob(
@@ -450,10 +444,11 @@ public class KafkaPipelineStateManagerTest extends FievelTestBase {
   }
 
   private void validateMap(int jobRunningMapSize) {
-    Assert.assertEquals(jobRunningMapSize, pipelineStateManager.getExpectedRunningJobMap().size());
+    Assertions.assertEquals(
+        jobRunningMapSize, pipelineStateManager.getExpectedRunningJobMap().size());
   }
 
-  @After
+  @AfterEach
   public void tearDownMocks() {
     if (staticContext != null) {
       staticContext.closeOnDemand();

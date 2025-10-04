@@ -1,21 +1,20 @@
 package com.uber.data.kafka.datatransfer.common;
 
 import com.uber.data.kafka.datatransfer.common.utils.PodIsolationStatus;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.HashMap;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class DynamicConfigurationTest extends FievelTestBase {
+public class DynamicConfigurationTest {
   @Test
   public void test() throws Exception {
-    Assert.assertEquals(
+    Assertions.assertEquals(
         DynamicConfiguration.DEFAULT.getPodIsolationStatus(), PodIsolationStatus.DISABLED);
-    Assert.assertTrue(DynamicConfiguration.DEFAULT.isOffsetCommittingEnabled());
-    Assert.assertFalse(DynamicConfiguration.DEFAULT.isZoneIsolationDisabled());
-    Assert.assertFalse(DynamicConfiguration.DEFAULT.isHeaderAllowed(new HashMap<>()));
-    Assert.assertFalse(DynamicConfiguration.DEFAULT.isNettyEnabled(new HashMap<>()));
-    Assert.assertFalse(
+    Assertions.assertTrue(DynamicConfiguration.DEFAULT.isOffsetCommittingEnabled());
+    Assertions.assertFalse(DynamicConfiguration.DEFAULT.isZoneIsolationDisabled());
+    Assertions.assertFalse(DynamicConfiguration.DEFAULT.isHeaderAllowed(new HashMap<>()));
+    Assertions.assertFalse(DynamicConfiguration.DEFAULT.isNettyEnabled(new HashMap<>()));
+    Assertions.assertFalse(
         DynamicConfiguration.DEFAULT.isAuthClientInterceptorEnabled(new HashMap<>()));
   }
 }

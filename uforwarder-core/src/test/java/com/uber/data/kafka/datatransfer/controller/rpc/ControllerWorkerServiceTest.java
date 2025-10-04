@@ -22,21 +22,20 @@ import com.uber.data.kafka.datatransfer.common.VersionedProto;
 import com.uber.data.kafka.datatransfer.common.ZKUtils;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
-import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.stub.StreamObserver;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeoutException;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-public class ControllerWorkerServiceTest extends FievelTestBase {
+public class ControllerWorkerServiceTest {
   private static Logger logger = LoggerFactory.getLogger(ControllerWorkerServiceTest.class);
 
   private LeaderSelector leaderSelector;
@@ -48,7 +47,7 @@ public class ControllerWorkerServiceTest extends FievelTestBase {
   private JobWorkloadSink mockJobThroughputSink;
   private CoreInfra coreInfra;
 
-  @Before
+  @BeforeEach
   public void setup() {
     this.coreInfra = CoreInfra.NOOP;
     this.jobStore = Mockito.mock(Store.class);

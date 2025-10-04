@@ -1,24 +1,25 @@
 package com.uber.data.kafka.datatransfer.controller.storage;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.common.VersionedProto;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.List;
 import java.util.Map;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class JobStoreTest extends FievelTestBase {
+public class JobStoreTest {
   private Store<String, StoredJobGroup> jobGroupStore;
   private JobStore jobStore;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     jobGroupStore = Mockito.mock(Store.class);
     jobStore = new JobStore(jobGroupStore);
@@ -32,33 +33,33 @@ public class JobStoreTest extends FievelTestBase {
 
   @Test
   public void getAll() throws Exception {
-    Assert.assertEquals(15, jobStore.getAll().size());
+    Assertions.assertEquals(15, jobStore.getAll().size());
   }
 
   @Test
   public void getAllSelector() throws Exception {
     List<Long> jobIds = ImmutableList.of(5L, 6L, 7L);
-    Assert.assertEquals(3, jobStore.getAll(j -> jobIds.contains(j.getJob().getJobId())).size());
+    Assertions.assertEquals(3, jobStore.getAll(j -> jobIds.contains(j.getJob().getJobId())).size());
   }
 
   @Test
   public void getSuccess() throws Exception {
-    Assert.assertEquals(9L, jobStore.get(9L).model().getJob().getJobId());
+    Assertions.assertEquals(9L, jobStore.get(9L).model().getJob().getJobId());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void getFailure() throws Exception {
-    jobStore.get(1L);
+    assertThrows(IllegalArgumentException.class, () -> jobStore.get(1L));
   }
 
   @Test
   public void getThroughSuccess() throws Exception {
-    Assert.assertEquals(11L, jobStore.get(11L).model().getJob().getJobId());
+    Assertions.assertEquals(11L, jobStore.get(11L).model().getJob().getJobId());
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void getThroughFailure() throws Exception {
-    jobStore.get(2L);
+    assertThrows(IllegalArgumentException.class, () -> jobStore.get(2L));
   }
 
   private static StoredJobGroup newJobGroup(String groupId, int jobIdStart, int jobIdEnd) {

@@ -6,14 +6,13 @@ import static org.mockito.Mockito.when;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class TranslatingPushPushProcessorTest extends FievelTestBase {
+public class TranslatingPushPushProcessorTest {
   @Test
   public void enqueue() {
     Sink<String, Void> mockSink = mock(Sink.class);
@@ -25,6 +24,6 @@ public class TranslatingPushPushProcessorTest extends FievelTestBase {
     processor.setNextStage(mockSink);
     CompletionStage<Void> enqueueFuture =
         processor.submit(ItemAndJob.of(0, Job.newBuilder().build()));
-    Assert.assertTrue(enqueueFuture.toCompletableFuture().isDone());
+    Assertions.assertTrue(enqueueFuture.toCompletableFuture().isDone());
   }
 }

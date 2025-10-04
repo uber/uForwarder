@@ -1,16 +1,15 @@
 package com.uber.data.kafka.datatransfer.worker.common;
 
 import com.uber.data.kafka.datatransfer.Job;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ControllableTest extends FievelTestBase {
+public class ControllableTest {
   private Job job;
   private Controllable controllable;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     job = Job.newBuilder().build();
     controllable = new Controllable() {};
@@ -18,31 +17,31 @@ public class ControllableTest extends FievelTestBase {
 
   @Test
   public void run() throws Exception {
-    Assert.assertTrue(controllable.run(job).toCompletableFuture().isDone());
+    Assertions.assertTrue(controllable.run(job).toCompletableFuture().isDone());
   }
 
   @Test
   public void cancel() {
-    Assert.assertTrue(controllable.cancel(job).toCompletableFuture().isDone());
+    Assertions.assertTrue(controllable.cancel(job).toCompletableFuture().isDone());
   }
 
   @Test
   public void update() {
-    Assert.assertTrue(controllable.update(job).toCompletableFuture().isDone());
+    Assertions.assertTrue(controllable.update(job).toCompletableFuture().isDone());
   }
 
   @Test
   public void cancelAll() {
-    Assert.assertTrue(controllable.cancelAll().toCompletableFuture().isDone());
+    Assertions.assertTrue(controllable.cancelAll().toCompletableFuture().isDone());
   }
 
   @Test
   public void getJobs() {
-    Assert.assertTrue(controllable.getJobStatus().isEmpty());
+    Assertions.assertTrue(controllable.getJobStatus().isEmpty());
   }
 
   @Test
   public void getJobStatus() {
-    Assert.assertTrue(controllable.getJobs().isEmpty());
+    Assertions.assertTrue(controllable.getJobs().isEmpty());
   }
 }

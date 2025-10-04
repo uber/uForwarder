@@ -1,11 +1,10 @@
 package com.uber.data.kafka.datatransfer.worker.dispatchers.kafka;
 
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 import org.springframework.util.Assert;
 
-public class KafkaDispatcherFactoryTest extends FievelTestBase {
+public class KafkaDispatcherFactoryTest {
 
   @Test
   public void testCreate() throws Exception {

@@ -1,19 +1,20 @@
 package com.uber.data.kafka.datatransfer.controller.storage;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.common.VersionedProto;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.NoSuchElementException;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class LocalStoreTest extends FievelTestBase {
+public class LocalStoreTest {
   private IdProvider<Long, StoredWorker> idProvider;
   private LocalStore<Long, StoredWorker> store;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     idProvider = Mockito.mock(IdProvider.class);
     store = new LocalStore<>(idProvider);
@@ -22,46 +23,50 @@ public class LocalStoreTest extends FievelTestBase {
 
   @Test
   public void initialized() throws Exception {
-    Assert.assertEquals(1, store.initialized().get().size());
+    Assertions.assertEquals(1, store.initialized().get().size());
   }
 
   @Test
   public void getAll() throws Exception {
-    Assert.assertEquals(1, store.getAll().size());
-    Assert.assertEquals(1, store.getAll(w -> true).size());
+    Assertions.assertEquals(1, store.getAll().size());
+    Assertions.assertEquals(1, store.getAll(w -> true).size());
   }
 
   @Test
   public void get() throws Exception {
-    Assert.assertNotNull(store.get(1L));
+    Assertions.assertNotNull(store.get(1L));
   }
 
-  @Test(expected = NoSuchElementException.class)
+  @Test
   public void getFailure() throws Exception {
-    Assert.assertNotNull(store.get(2L));
+    assertThrows(NoSuchElementException.class, () -> Assertions.assertNotNull(store.get(2L)));
   }
 
   @Test
   public void getThrough() throws Exception {
-    Assert.assertNotNull(store.getThrough(1L));
+    Assertions.assertNotNull(store.getThrough(1L));
   }
 
   @Test
   public void create() throws Exception {
     Mockito.when(idProvider.getId(Mockito.any())).thenReturn(2L);
-    Assert.assertNotNull(store.create(StoredWorker.newBuilder().build(), (k, v) -> v));
+    Assertions.assertNotNull(store.create(StoredWorker.newBuilder().build(), (k, v) -> v));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void createFailure() throws Exception {
-    Mockito.when(idProvider.getId(Mockito.any())).thenReturn(1L);
-    store.create(StoredWorker.newBuilder().build(), (k, v) -> v);
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> {
+          Mockito.when(idProvider.getId(Mockito.any())).thenReturn(1L);
+          store.create(StoredWorker.newBuilder().build(), (k, v) -> v);
+        });
   }
 
   @Test
   public void put() throws Exception {
     store.put(2L, VersionedProto.from(StoredWorker.newBuilder().build()));
-    Assert.assertEquals(2, store.getAll().size());
+    Assertions.assertEquals(2, store.getAll().size());
   }
 
   @Test
@@ -70,19 +75,19 @@ public class LocalStoreTest extends FievelTestBase {
         .putAsync(2L, VersionedProto.from(StoredWorker.newBuilder().build()))
         .toCompletableFuture()
         .get();
-    Assert.assertEquals(2, store.getAll().size());
+    Assertions.assertEquals(2, store.getAll().size());
   }
 
   @Test
   public void putThrough() throws Exception {
     store.putThrough(2L, VersionedProto.from(StoredWorker.newBuilder().build()));
-    Assert.assertEquals(2, store.getAll().size());
+    Assertions.assertEquals(2, store.getAll().size());
   }
 
   @Test
   public void remove() throws Exception {
     store.remove(1L);
-    Assert.assertEquals(0, store.getAll().size());
+    Assertions.assertEquals(0, store.getAll().size());
   }
 
   @Test
@@ -97,6 +102,6 @@ public class LocalStoreTest extends FievelTestBase {
 
   @Test
   public void isRunning() {
-    Assert.assertTrue(store.isRunning());
+    Assertions.assertTrue(store.isRunning());
   }
 }

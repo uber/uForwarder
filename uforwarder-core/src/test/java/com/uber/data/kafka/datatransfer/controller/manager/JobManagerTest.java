@@ -21,21 +21,20 @@ import com.uber.data.kafka.datatransfer.controller.storage.IdProvider;
 import com.uber.data.kafka.datatransfer.controller.storage.LocalSequencer;
 import com.uber.data.kafka.datatransfer.controller.storage.LocalStore;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import java.util.Collections;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Collectors;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class JobManagerTest extends FievelTestBase {
+public class JobManagerTest {
   private JobManager jobManager;
   private Store<String, StoredJobGroup> jobGroupStore;
   private Store<Long, StoredWorker> workerStore;
@@ -68,7 +67,7 @@ public class JobManagerTest extends FievelTestBase {
     return builder.build();
   }
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     jobGroupKey = "jobGroup";
     expectedJobGroup =
@@ -121,7 +120,7 @@ public class JobManagerTest extends FievelTestBase {
     ArgumentCaptor<String> idCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<Versioned<StoredJobGroup>> itemCaptor = ArgumentCaptor.forClass(Versioned.class);
     Mockito.verify(jobGroupStore, Mockito.times(1)).put(idCaptor.capture(), itemCaptor.capture());
-    Assert.assertEquals(jobGroupKey, idCaptor.getValue());
+    Assertions.assertEquals(jobGroupKey, idCaptor.getValue());
     StoredJobGroup.Builder expectedJobGroupBuilder = StoredJobGroup.newBuilder();
     expectedJobGroupBuilder.getJobGroupBuilder().setJobGroupId(jobGroupKey);
     expectedJobGroupBuilder
@@ -199,7 +198,7 @@ public class JobManagerTest extends FievelTestBase {
     // Verify that there is no write to the data store.
     Mockito.verify(jobGroupStore, Mockito.never())
         .put(ArgumentMatchers.anyString(), ArgumentMatchers.any());
-    Assert.assertEquals(0, computeJobConfigCounter.get());
+    Assertions.assertEquals(0, computeJobConfigCounter.get());
   }
 
   @Test
@@ -282,7 +281,7 @@ public class JobManagerTest extends FievelTestBase {
     ArgumentCaptor<String> idCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<Versioned<StoredJobGroup>> itemCaptor = ArgumentCaptor.forClass(Versioned.class);
     Mockito.verify(jobGroupStore, Mockito.times(1)).put(idCaptor.capture(), itemCaptor.capture());
-    Assert.assertEquals(jobGroupKey, idCaptor.getValue());
+    Assertions.assertEquals(jobGroupKey, idCaptor.getValue());
     StoredJobGroup.Builder expectedJobGroupBuilder =
         StoredJobGroup.newBuilder().setJobGroup(expectedJobGroup);
     expectedJobGroupBuilder.addJobs(buildJob(1, 1, JobState.JOB_STATE_RUNNING, 0d));
@@ -313,7 +312,7 @@ public class JobManagerTest extends FievelTestBase {
     ArgumentCaptor<String> idCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<Versioned<StoredJobGroup>> itemCaptor = ArgumentCaptor.forClass(Versioned.class);
     Mockito.verify(jobGroupStore, Mockito.times(1)).put(idCaptor.capture(), itemCaptor.capture());
-    Assert.assertEquals(jobGroupKey, idCaptor.getValue());
+    Assertions.assertEquals(jobGroupKey, idCaptor.getValue());
     StoredJobGroup.Builder expectedJobGroupBuilder = jobGroup.toBuilder();
     expectedJobGroupBuilder.clearJobs();
     expectedJobGroupBuilder.addJobs(buildJob(1L, 1L, JobState.JOB_STATE_RUNNING, 0d));
@@ -347,7 +346,7 @@ public class JobManagerTest extends FievelTestBase {
     ArgumentCaptor<String> idCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<Versioned<StoredJobGroup>> itemCaptor = ArgumentCaptor.forClass(Versioned.class);
     Mockito.verify(jobGroupStore, Mockito.times(1)).put(idCaptor.capture(), itemCaptor.capture());
-    Assert.assertEquals(jobGroupKey, idCaptor.getValue());
+    Assertions.assertEquals(jobGroupKey, idCaptor.getValue());
     StoredJobGroup.Builder expectedJobGroupBuilder =
         StoredJobGroup.newBuilder().setJobGroup(expectedJobGroup);
     expectedJobGroupBuilder.addJobs(buildJob(1, 1, JobState.JOB_STATE_RUNNING, 0d));
@@ -377,7 +376,7 @@ public class JobManagerTest extends FievelTestBase {
     ArgumentCaptor<String> idCaptor = ArgumentCaptor.forClass(String.class);
     ArgumentCaptor<Versioned<StoredJobGroup>> itemCaptor = ArgumentCaptor.forClass(Versioned.class);
     Mockito.verify(jobGroupStore, Mockito.times(1)).put(idCaptor.capture(), itemCaptor.capture());
-    Assert.assertEquals(jobGroupKey, idCaptor.getValue());
+    Assertions.assertEquals(jobGroupKey, idCaptor.getValue());
     StoredJobGroup.Builder expectedJobGroupBuilder =
         StoredJobGroup.newBuilder().setJobGroup(expectedJobGroup);
     expectedJobGroupBuilder.addJobs(buildJob(1, 1, JobState.JOB_STATE_RUNNING, 0));
@@ -456,8 +455,8 @@ public class JobManagerTest extends FievelTestBase {
     jobStatusStore.put(statusId, VersionedProto.from(status));
 
     jobManager.maybeClearJobStatuses(rebalancingJobGroup);
-    Assert.assertEquals(1, jobStatusStore.getAll().size());
-    Assert.assertEquals(status, jobStatusStore.get(statusId).model());
+    Assertions.assertEquals(1, jobStatusStore.getAll().size());
+    Assertions.assertEquals(status, jobStatusStore.get(statusId).model());
   }
 
   @Test
@@ -495,7 +494,7 @@ public class JobManagerTest extends FievelTestBase {
     StoredJobStatus status = StoredJobStatus.newBuilder().build();
     Long statusId = jobStatusIdProvider.getId(status);
     jobStatusStore.put(statusId, VersionedProto.from(status));
-    Assert.assertEquals(1, jobStatusStore.getAll().size());
+    Assertions.assertEquals(1, jobStatusStore.getAll().size());
 
     // Update any one job
     final StoredJob job = rebalancingJobGroup.get("test_topic_1").getJobs().get(1L);
@@ -503,7 +502,7 @@ public class JobManagerTest extends FievelTestBase {
     rebalancingJobGroup.get("test_topic_1").updateJob(job.getJob().getJobId(), updatedJob);
 
     jobManager.maybeClearJobStatuses(rebalancingJobGroup);
-    Assert.assertTrue(jobStatusStore.getAll().isEmpty());
+    Assertions.assertTrue(jobStatusStore.getAll().isEmpty());
   }
 
   /** Assert that the two stored job groups are the same except for the last updated timestamp. */
@@ -516,6 +515,6 @@ public class JobManagerTest extends FievelTestBase {
     actualBuilder.clearLastUpdated();
     actualBuilder.getJobsBuilderList().forEach(j -> j.clearLastUpdated());
 
-    Assert.assertEquals(expectedBuilder.build(), actualBuilder.build());
+    Assertions.assertEquals(expectedBuilder.build(), actualBuilder.build());
   }
 }

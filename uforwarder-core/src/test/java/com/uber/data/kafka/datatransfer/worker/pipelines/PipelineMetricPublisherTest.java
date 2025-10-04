@@ -1,15 +1,14 @@
 package com.uber.data.kafka.datatransfer.worker.pipelines;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class PipelineMetricPublisherTest extends FievelTestBase {
+public class PipelineMetricPublisherTest {
   private PipelineMetricPublisher metricPublisher;
   private PipelineManager pipelineManager;
 
-  @Before
+  @BeforeEach
   public void setup() {
     pipelineManager = Mockito.mock(PipelineManager.class);
     metricPublisher = new PipelineMetricPublisher(pipelineManager);

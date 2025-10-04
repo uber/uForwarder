@@ -8,11 +8,10 @@ import com.uber.data.kafka.datatransfer.KafkaConsumerTaskGroup;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.common.JobUtils;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class JobCreatorTest extends FievelTestBase {
+public class JobCreatorTest {
   @Test
   public void test() {
     JobCreator jobCreator = new JobCreator() {};
@@ -32,13 +31,13 @@ public class JobCreatorTest extends FievelTestBase {
 
     // TODO: Assert Job.IsLosslessTopic once it is propagate to StoredJob.Job
     StoredJob storedJob = jobCreator.newJob(storedJobGroup, 1, 2);
-    Assert.assertEquals(1, storedJob.getJob().getJobId());
-    Assert.assertEquals(2, JobUtils.getJobKey(storedJob));
-    Assert.assertEquals(-1, storedJob.getJob().getKafkaConsumerTask().getStartOffset());
-    Assert.assertEquals(0, storedJob.getJob().getKafkaConsumerTask().getEndOffset());
-    Assert.assertEquals(
+    Assertions.assertEquals(1, storedJob.getJob().getJobId());
+    Assertions.assertEquals(2, JobUtils.getJobKey(storedJob));
+    Assertions.assertEquals(-1, storedJob.getJob().getKafkaConsumerTask().getStartOffset());
+    Assertions.assertEquals(0, storedJob.getJob().getKafkaConsumerTask().getEndOffset());
+    Assertions.assertEquals(
         IsolationLevel.ISOLATION_LEVEL_READ_COMMITTED,
         storedJob.getJob().getKafkaConsumerTask().getIsolationLevel());
-    Assert.assertEquals(JobState.JOB_STATE_RUNNING, storedJob.getState());
+    Assertions.assertEquals(JobState.JOB_STATE_RUNNING, storedJob.getState());
   }
 }

@@ -1,14 +1,13 @@
 package com.uber.data.kafka.datatransfer.controller.storage;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class TypeRegistryAutoConfigurationTest extends FievelTestBase {
+public class TypeRegistryAutoConfigurationTest {
   TypeRegistryAutoConfiguration typeRegistryAutoConfiguration = new TypeRegistryAutoConfiguration();
 
   @Test
   public void testTypeRegistry() {
-    Assert.assertNotNull(typeRegistryAutoConfiguration.typeRegistry());
+    Assertions.assertNotNull(typeRegistryAutoConfiguration.typeRegistry());
   }
 }

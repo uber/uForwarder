@@ -1,14 +1,13 @@
 package com.uber.data.kafka.datatransfer.management;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class AbstractHtmlTest extends FievelTestBase {
+public class AbstractHtmlTest {
   @Test
   public void testRead() throws Exception {
     AbstractHtml html = new SimpleHtml();
-    Assert.assertNotNull(html.read());
+    Assertions.assertNotNull(html.read());
   }
 
   private static class SimpleHtml extends AbstractHtml {

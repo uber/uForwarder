@@ -27,18 +27,17 @@ import com.uber.data.kafka.datatransfer.common.VersionedProto;
 import com.uber.data.kafka.datatransfer.controller.autoscalar.AutoScalarConfiguration;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
-import com.uber.fievel.testing.base.FievelTestBase;
 import io.grpc.stub.StreamObserver;
 import java.util.NoSuchElementException;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class ControllerAdminServiceTest extends FievelTestBase {
+public class ControllerAdminServiceTest {
   private Store<String, StoredJobGroup> jobGroupStore;
   private Store<Long, StoredJobStatus> jobStatusStore;
   private Store<Long, StoredWorker> workerStore;
@@ -46,7 +45,7 @@ public class ControllerAdminServiceTest extends FievelTestBase {
   private ControllerAdminService controllerAdminService;
   private LeaderSelector leaderSelector;
 
-  @Before
+  @BeforeEach
   public void setup() {
     jobGroupStore = Mockito.mock(Store.class);
     jobStatusStore = Mockito.mock(Store.class);
@@ -102,7 +101,7 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     ArgumentCaptor<AddJobGroupResponse> responseCaptor =
         ArgumentCaptor.forClass(AddJobGroupResponse.class);
     Mockito.verify(streamObserver).onNext(responseCaptor.capture());
-    Assert.assertEquals(jobGroupToCreate, responseCaptor.getValue().getGroup().getJobGroup());
+    Assertions.assertEquals(jobGroupToCreate, responseCaptor.getValue().getGroup().getJobGroup());
     Mockito.verify(streamObserver).onCompleted();
   }
 
@@ -136,12 +135,12 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     Mockito.verify(jobGroupStore, Mockito.times(1)).create(Mockito.any(), Mockito.any());
     Mockito.verify(jobGroupStore, Mockito.times(1)).get(Mockito.any());
     Mockito.verify(jobGroupStore).put(groupIdCaptor.capture(), jobGroupCaptor.capture());
-    Assert.assertEquals(jobGroupToCreate, jobGroupCaptor.getValue().model().getJobGroup());
+    Assertions.assertEquals(jobGroupToCreate, jobGroupCaptor.getValue().model().getJobGroup());
     ArgumentCaptor<AddJobGroupResponse> responseCaptor =
         ArgumentCaptor.forClass(AddJobGroupResponse.class);
     Mockito.verify(streamObserver).onNext(responseCaptor.capture());
-    Assert.assertEquals(jobGroupToCreate, responseCaptor.getValue().getGroup().getJobGroup());
-    Assert.assertEquals(
+    Assertions.assertEquals(jobGroupToCreate, responseCaptor.getValue().getGroup().getJobGroup());
+    Assertions.assertEquals(
         0.25, jobGroupCaptor.getValue().model().getScaleStatus().getScale(), 0.0001);
     Mockito.verify(streamObserver).onCompleted();
   }
@@ -168,12 +167,12 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     Mockito.verify(jobGroupStore, Mockito.times(1)).create(Mockito.any(), Mockito.any());
     Mockito.verify(jobGroupStore, Mockito.times(1)).get(Mockito.any());
     Mockito.verify(jobGroupStore).put(groupIdCaptor.capture(), jobGroupCaptor.capture());
-    Assert.assertEquals(jobGroupToCreate, jobGroupCaptor.getValue().model().getJobGroup());
+    Assertions.assertEquals(jobGroupToCreate, jobGroupCaptor.getValue().model().getJobGroup());
     ArgumentCaptor<AddJobGroupResponse> responseCaptor =
         ArgumentCaptor.forClass(AddJobGroupResponse.class);
     Mockito.verify(streamObserver).onNext(responseCaptor.capture());
-    Assert.assertEquals(jobGroupToCreate, responseCaptor.getValue().getGroup().getJobGroup());
-    Assert.assertFalse(jobGroupCaptor.getValue().model().hasScaleStatus());
+    Assertions.assertEquals(jobGroupToCreate, responseCaptor.getValue().getGroup().getJobGroup());
+    Assertions.assertFalse(jobGroupCaptor.getValue().model().hasScaleStatus());
     Mockito.verify(streamObserver).onCompleted();
   }
 
@@ -209,11 +208,12 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     ArgumentCaptor<Versioned<StoredJobGroup>> jobGroupCaptor =
         ArgumentCaptor.forClass(Versioned.class);
     Mockito.verify(jobGroupStore).put(groupIdCaptor.capture(), jobGroupCaptor.capture());
-    Assert.assertEquals(newJobGroup.getJobGroup(), jobGroupCaptor.getValue().model().getJobGroup());
+    Assertions.assertEquals(
+        newJobGroup.getJobGroup(), jobGroupCaptor.getValue().model().getJobGroup());
     ArgumentCaptor<UpdateJobGroupResponse> responseCaptor =
         ArgumentCaptor.forClass(UpdateJobGroupResponse.class);
     Mockito.verify(streamObserver).onNext(responseCaptor.capture());
-    Assert.assertEquals(
+    Assertions.assertEquals(
         newJobGroup.getJobGroup(), responseCaptor.getValue().getGroup().getJobGroup());
     Mockito.verify(streamObserver).onCompleted();
   }
@@ -247,11 +247,11 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     ArgumentCaptor<Versioned<StoredJobGroup>> jobGroupCaptor =
         ArgumentCaptor.forClass(Versioned.class);
     Mockito.verify(jobGroupStore).put(groupIdCaptor.capture(), jobGroupCaptor.capture());
-    Assert.assertEquals(newJobState, jobGroupCaptor.getValue().model().getState());
+    Assertions.assertEquals(newJobState, jobGroupCaptor.getValue().model().getState());
     ArgumentCaptor<UpdateJobGroupStateResponse> responseCaptor =
         ArgumentCaptor.forClass(UpdateJobGroupStateResponse.class);
     Mockito.verify(streamObserver).onNext(responseCaptor.capture());
-    Assert.assertEquals(newJobState, responseCaptor.getValue().getGroup().getState());
+    Assertions.assertEquals(newJobState, responseCaptor.getValue().getGroup().getState());
     Mockito.verify(streamObserver).onCompleted();
   }
 
@@ -272,11 +272,11 @@ public class ControllerAdminServiceTest extends FievelTestBase {
         DeleteJobGroupRequest.newBuilder().setId(jobId).build(), streamObserver);
     ArgumentCaptor<String> groupIdCaptor = ArgumentCaptor.forClass(String.class);
     Mockito.verify(jobGroupStore).remove(groupIdCaptor.capture());
-    Assert.assertEquals(jobId, groupIdCaptor.getValue());
+    Assertions.assertEquals(jobId, groupIdCaptor.getValue());
     ArgumentCaptor<DeleteJobGroupResponse> responseCaptor =
         ArgumentCaptor.forClass(DeleteJobGroupResponse.class);
     Mockito.verify(streamObserver).onNext(responseCaptor.capture());
-    Assert.assertEquals(DeleteJobGroupResponse.newBuilder().build(), responseCaptor.getValue());
+    Assertions.assertEquals(DeleteJobGroupResponse.newBuilder().build(), responseCaptor.getValue());
     Mockito.verify(streamObserver).onCompleted();
   }
 
@@ -393,11 +393,11 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     Mockito.verify(streamObserver).onNext(responseCaptor.capture());
     com.uber.data.kafka.datatransfer.GetClusterScaleStatusResponse response =
         responseCaptor.getValue();
-    Assert.assertEquals(1, response.getTotalWorkerCount());
-    Assert.assertEquals(1, response.getTotalJobgroupCount());
-    Assert.assertEquals(4000.0, response.getTotalAllowedMessagesPerSec(), 0.0001);
-    Assert.assertEquals(123.0, response.getTotalUsedBytesPerSec(), 0.0001);
-    Assert.assertEquals(456.0, response.getTotalUsedMessagesPerSec(), 0.0001);
+    Assertions.assertEquals(1, response.getTotalWorkerCount());
+    Assertions.assertEquals(1, response.getTotalJobgroupCount());
+    Assertions.assertEquals(4000.0, response.getTotalAllowedMessagesPerSec(), 0.0001);
+    Assertions.assertEquals(123.0, response.getTotalUsedBytesPerSec(), 0.0001);
+    Assertions.assertEquals(456.0, response.getTotalUsedMessagesPerSec(), 0.0001);
     Mockito.verify(streamObserver).onCompleted();
     Mockito.verify(streamObserver, Mockito.never()).onError(Mockito.any());
 
@@ -414,7 +414,8 @@ public class ControllerAdminServiceTest extends FievelTestBase {
         streamObserver);
     Mockito.verify(streamObserver, Mockito.times(2)).onNext(responseCaptor.capture());
     response = responseCaptor.getValue();
-    Assert.assertEquals(1.8446744073709552E19, response.getTotalAllowedMessagesPerSec(), 0.0001);
+    Assertions.assertEquals(
+        1.8446744073709552E19, response.getTotalAllowedMessagesPerSec(), 0.0001);
   }
 
   @Test
@@ -479,9 +480,9 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     ScaleStatus resultScaleStatus = capturedJobGroup.getScaleStatus();
 
     double expectedScale = Math.max(2000.0 / 1000.0, 75000.0 / 50000.0);
-    Assert.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
-    Assert.assertEquals(2000.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
-    Assert.assertEquals(75000.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
+    Assertions.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
+    Assertions.assertEquals(2000.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
+    Assertions.assertEquals(75000.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
   }
 
   @Test
@@ -521,9 +522,9 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     ScaleStatus resultScaleStatus = capturedJobGroup.getScaleStatus();
 
     double expectedScale = Math.max(1000.0 / 2000.0, 50000.0 / 10000.0);
-    Assert.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
-    Assert.assertEquals(1000.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
-    Assert.assertEquals(50000.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
+    Assertions.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
+    Assertions.assertEquals(1000.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
+    Assertions.assertEquals(50000.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
   }
 
   @Test
@@ -563,9 +564,9 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     ScaleStatus resultScaleStatus = capturedJobGroup.getScaleStatus();
 
     double expectedScale = Math.max(2000.0 / 1000.0, 40000.0 / 20000.0);
-    Assert.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
-    Assert.assertEquals(2000.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
-    Assert.assertEquals(40000.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
+    Assertions.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
+    Assertions.assertEquals(2000.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
+    Assertions.assertEquals(40000.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
   }
 
   @Test
@@ -602,8 +603,8 @@ public class ControllerAdminServiceTest extends FievelTestBase {
     ScaleStatus resultScaleStatus = capturedJobGroup.getScaleStatus();
 
     double expectedScale = Math.max(0.0 / 1000.0, 0.0 / 20000.0);
-    Assert.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
-    Assert.assertEquals(0.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
-    Assert.assertEquals(0.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
+    Assertions.assertEquals(expectedScale, resultScaleStatus.getScale(), 0.0001);
+    Assertions.assertEquals(0.0, resultScaleStatus.getTotalMessagesPerSec(), 0.0001);
+    Assertions.assertEquals(0.0, resultScaleStatus.getTotalBytesPerSec(), 0.0001);
   }
 }

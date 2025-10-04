@@ -9,13 +9,12 @@ import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
 import com.uber.data.kafka.datatransfer.worker.pipelines.Pipeline;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineManager;
-import com.uber.fievel.testing.base.FievelTestBase;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class JobsJsonTest extends FievelTestBase {
+public class JobsJsonTest {
   @Test
   public void testMasterJobJsonRead() throws Exception {
     Store<String, StoredJobGroup> jobGroupStore = Mockito.mock(Store.class);
@@ -33,7 +32,7 @@ public class JobsJsonTest extends FievelTestBase {
             "hostname",
             "https://%s:5328/",
             JsonFormat.TypeRegistry.getEmptyTypeRegistry());
-    Assert.assertNotNull(jobsJson.read());
+    Assertions.assertNotNull(jobsJson.read());
   }
 
   @Test
@@ -48,6 +47,6 @@ public class JobsJsonTest extends FievelTestBase {
             "hostname",
             "https://%s:5328/",
             JsonFormat.TypeRegistry.getEmptyTypeRegistry());
-    Assert.assertNotNull(jobsJson.read());
+    Assertions.assertNotNull(jobsJson.read());
   }
 }

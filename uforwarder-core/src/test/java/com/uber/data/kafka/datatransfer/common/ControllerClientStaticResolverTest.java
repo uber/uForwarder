@@ -1,16 +1,15 @@
 package com.uber.data.kafka.datatransfer.common;
 
 import com.google.common.net.HostAndPort;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ControllerClientStaticResolverTest extends FievelTestBase {
+public class ControllerClientStaticResolverTest {
   private HostAndPort hostPort;
   private StaticResolver resolver;
 
-  @Before
+  @BeforeEach
   public void setup() {
     hostPort = HostAndPort.fromParts("localhost", 8000);
     resolver = new StaticResolver(hostPort);
@@ -18,6 +17,6 @@ public class ControllerClientStaticResolverTest extends FievelTestBase {
 
   @Test
   public void testGetHostPort() throws Exception {
-    Assert.assertEquals(hostPort, resolver.getHostPort());
+    Assertions.assertEquals(hostPort, resolver.getHostPort());
   }
 }

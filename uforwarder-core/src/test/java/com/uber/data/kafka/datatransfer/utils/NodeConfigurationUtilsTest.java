@@ -2,28 +2,30 @@ package com.uber.data.kafka.datatransfer.utils;
 
 import static com.uber.data.kafka.datatransfer.utils.NodeConfigurationUtils.HOSTNAME_KEY;
 
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
-import org.junit.Assert;
-import org.junit.Rule;
-import org.junit.Test;
-import org.junit.contrib.java.lang.system.EnvironmentVariables;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import uk.org.webcompere.systemstubs.environment.EnvironmentVariables;
+import uk.org.webcompere.systemstubs.jupiter.SystemStub;
+import uk.org.webcompere.systemstubs.jupiter.SystemStubsExtension;
 
-public class NodeConfigurationUtilsTest extends FievelTestBase {
-  @Rule public final EnvironmentVariables environmentVariables = new EnvironmentVariables();
+@ExtendWith(SystemStubsExtension.class)
+public class NodeConfigurationUtilsTest {
+  @SystemStub public final EnvironmentVariables environmentVariables = new EnvironmentVariables();
 
   @Test
   public void testDynamicNode() {
     String hostname = "testhost";
     environmentVariables.set(HOSTNAME_KEY, hostname);
 
-    Assert.assertEquals(hostname, NodeConfigurationUtils.getHost());
+    Assertions.assertEquals(hostname, NodeConfigurationUtils.getHost());
   }
 
   @Test
   public void testStaticNode() throws UnknownHostException {
     String hostName = InetAddress.getLocalHost().getHostName();
-    Assert.assertEquals(hostName, NodeConfigurationUtils.getHost());
+    Assertions.assertEquals(hostName, NodeConfigurationUtils.getHost());
   }
 }

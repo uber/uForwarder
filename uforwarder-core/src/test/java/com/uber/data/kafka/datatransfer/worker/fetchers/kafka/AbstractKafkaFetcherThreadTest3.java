@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.worker.fetchers.kafka;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 
 import com.google.common.collect.ImmutableMap;
@@ -13,7 +14,6 @@ import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadTracker;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Histogram;
@@ -28,19 +28,21 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
+import java.util.concurrent.TimeUnit;
 import javax.annotation.Nullable;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 // this test class uses for testing delay processing feature.
-public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
+public class AbstractKafkaFetcherThreadTest3 {
 
   private static final String THREAD_NAME = "AbstractKafkaFetcherThreadTest";
   private AbstractKafkaFetcherThread fetcherThread;
@@ -57,7 +59,7 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
   private final String CONSUMER_GROUP = "testgroup1";
   private final int PROCESSING_DELAY_MS = 10000;
 
-  @Before
+  @BeforeEach
   public void setup() {
     checkpointManager = new KafkaCheckpointManager(Mockito.mock(Scope.class));
     throughputTracker = Mockito.mock(ThroughputTracker.class);
@@ -132,20 +134,24 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
     fetcherThread.setNextStage(processor);
   }
 
-  @Test(expected = NullPointerException.class)
+  @Test
   public void testStartWithoutDelayProcessManage() {
-    fetcherThread =
-        new KafkaFetcherThread(
-            THREAD_NAME,
-            kafkaFetcherConfiguration,
-            checkpointManager,
-            throughputTracker,
-            null,
-            mockConsumer,
-            coreInfra,
-            true,
-            true);
-    fetcherThread.start();
+    assertThrows(
+        NullPointerException.class,
+        () -> {
+          fetcherThread =
+              new KafkaFetcherThread(
+                  THREAD_NAME,
+                  kafkaFetcherConfiguration,
+                  checkpointManager,
+                  throughputTracker,
+                  null,
+                  mockConsumer,
+                  coreInfra,
+                  true,
+                  true);
+          fetcherThread.start();
+        });
   }
 
   @Test
@@ -188,18 +194,19 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
     fetcherThread.processFetchedData(consumerRecords, taskMap);
 
     Mockito.verify(processor, Mockito.times(1)).submit(any(ItemAndJob.class));
-    Assert.assertEquals(1, delayProcessManager.getAll().size());
-    Assert.assertTrue(delayProcessManager.getAll().contains(topicPartition2));
+    Assertions.assertEquals(1, delayProcessManager.getAll().size());
+    Assertions.assertTrue(delayProcessManager.getAll().contains(topicPartition2));
     List<ConsumerRecord> records =
         ((KafkaDelayProcessManager) delayProcessManager).getRecords(topicPartition2);
-    Assert.assertEquals(1, records.size());
-    Assert.assertEquals(consumerRecord2, records.get(0));
-    Assert.assertEquals(1000002, checkpointManager.getCheckpointInfo(job1).getFetchOffset());
-    Assert.assertEquals(2000001, checkpointManager.getCheckpointInfo(job2).getFetchOffset());
+    Assertions.assertEquals(1, records.size());
+    Assertions.assertEquals(consumerRecord2, records.get(0));
+    Assertions.assertEquals(1000002, checkpointManager.getCheckpointInfo(job1).getFetchOffset());
+    Assertions.assertEquals(2000001, checkpointManager.getCheckpointInfo(job2).getFetchOffset());
   }
 
   @SuppressWarnings("ForbidTimedWaitInTests") // Initial enrollment
-  @Test(timeout = 60000)
+  @Test
+  @Timeout(value = 60000, unit = TimeUnit.MILLISECONDS)
   public void testProcessFetchedDataDelayComplete()
       throws InterruptedException, ExecutionException {
     TopicPartition topicPartition1 = new TopicPartition(TOPIC_NAME, 1);
@@ -242,9 +249,9 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
     fetcherThread.processFetchedData(consumerRecords, taskMap);
 
     Mockito.verify(processor, Mockito.times(2)).submit(any(ItemAndJob.class));
-    Assert.assertEquals(0, delayProcessManager.getAll().size());
-    Assert.assertEquals(1000002, checkpointManager.getCheckpointInfo(job1).getFetchOffset());
-    Assert.assertEquals(2000002, checkpointManager.getCheckpointInfo(job2).getFetchOffset());
+    Assertions.assertEquals(0, delayProcessManager.getAll().size());
+    Assertions.assertEquals(1000002, checkpointManager.getCheckpointInfo(job1).getFetchOffset());
+    Assertions.assertEquals(2000002, checkpointManager.getCheckpointInfo(job2).getFetchOffset());
   }
 
   @Test
@@ -276,17 +283,17 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
         ImmutableMap.of(topicPartition4, unprocessedRecords4);
     ConsumerRecords consumerRecords = fetcherThread.mergeRecords(records, resumedRecords);
 
-    Assert.assertEquals(5, consumerRecords.count());
+    Assertions.assertEquals(5, consumerRecords.count());
     Set<TopicPartition> tps = consumerRecords.partitions();
-    Assert.assertEquals(4, tps.size());
-    Assert.assertTrue(tps.contains(topicPartition1));
-    Assert.assertTrue(tps.contains(topicPartition2));
-    Assert.assertTrue(tps.contains(topicPartition3));
-    Assert.assertTrue(tps.contains(topicPartition4));
-    Assert.assertEquals(2, consumerRecords.records(topicPartition1).size());
-    Assert.assertEquals(1, consumerRecords.records(topicPartition2).size());
-    Assert.assertEquals(1, consumerRecords.records(topicPartition3).size());
-    Assert.assertEquals(1, consumerRecords.records(topicPartition4).size());
+    Assertions.assertEquals(4, tps.size());
+    Assertions.assertTrue(tps.contains(topicPartition1));
+    Assertions.assertTrue(tps.contains(topicPartition2));
+    Assertions.assertTrue(tps.contains(topicPartition3));
+    Assertions.assertTrue(tps.contains(topicPartition4));
+    Assertions.assertEquals(2, consumerRecords.records(topicPartition1).size());
+    Assertions.assertEquals(1, consumerRecords.records(topicPartition2).size());
+    Assertions.assertEquals(1, consumerRecords.records(topicPartition3).size());
+    Assertions.assertEquals(1, consumerRecords.records(topicPartition4).size());
   }
 
   @Test
@@ -300,11 +307,11 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
         ImmutableMap.of(topicPartition4, unprocessedRecords4);
     ConsumerRecords consumerRecords = fetcherThread.mergeRecords(null, resumedRecords);
 
-    Assert.assertEquals(2, consumerRecords.count());
+    Assertions.assertEquals(2, consumerRecords.count());
     Set<TopicPartition> tps = consumerRecords.partitions();
-    Assert.assertEquals(1, tps.size());
-    Assert.assertTrue(tps.contains(topicPartition4));
-    Assert.assertEquals(2, consumerRecords.records(topicPartition4).size());
+    Assertions.assertEquals(1, tps.size());
+    Assertions.assertTrue(tps.contains(topicPartition4));
+    Assertions.assertEquals(2, consumerRecords.records(topicPartition4).size());
   }
 
   @Test
@@ -332,15 +339,15 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
     Map<TopicPartition, List<ConsumerRecord>> resumedRecords = Collections.emptyMap();
     ConsumerRecords consumerRecords = fetcherThread.mergeRecords(records, resumedRecords);
 
-    Assert.assertEquals(4, consumerRecords.count());
+    Assertions.assertEquals(4, consumerRecords.count());
     Set<TopicPartition> tps = consumerRecords.partitions();
-    Assert.assertEquals(3, tps.size());
-    Assert.assertTrue(tps.contains(topicPartition1));
-    Assert.assertTrue(tps.contains(topicPartition2));
-    Assert.assertTrue(tps.contains(topicPartition3));
-    Assert.assertEquals(2, consumerRecords.records(topicPartition1).size());
-    Assert.assertEquals(1, consumerRecords.records(topicPartition2).size());
-    Assert.assertEquals(1, consumerRecords.records(topicPartition3).size());
+    Assertions.assertEquals(3, tps.size());
+    Assertions.assertTrue(tps.contains(topicPartition1));
+    Assertions.assertTrue(tps.contains(topicPartition2));
+    Assertions.assertTrue(tps.contains(topicPartition3));
+    Assertions.assertEquals(2, consumerRecords.records(topicPartition1).size());
+    Assertions.assertEquals(1, consumerRecords.records(topicPartition2).size());
+    Assertions.assertEquals(1, consumerRecords.records(topicPartition3).size());
   }
 
   @Test
@@ -375,16 +382,16 @@ public class AbstractKafkaFetcherThreadTest3 extends FievelTestBase {
         ImmutableMap.of(topicPartition2, unprocessedRecords4); // duplication
     ConsumerRecords consumerRecords = fetcherThread.mergeRecords(records, resumedRecords);
 
-    Assert.assertEquals(7, consumerRecords.count());
+    Assertions.assertEquals(7, consumerRecords.count());
     Set<TopicPartition> tps = consumerRecords.partitions();
-    Assert.assertEquals(3, tps.size());
-    Assert.assertTrue(tps.contains(topicPartition1));
-    Assert.assertTrue(tps.contains(topicPartition2));
-    Assert.assertTrue(tps.contains(topicPartition3));
+    Assertions.assertEquals(3, tps.size());
+    Assertions.assertTrue(tps.contains(topicPartition1));
+    Assertions.assertTrue(tps.contains(topicPartition2));
+    Assertions.assertTrue(tps.contains(topicPartition3));
 
-    Assert.assertEquals(2, consumerRecords.records(topicPartition1).size());
-    Assert.assertEquals(4, consumerRecords.records(topicPartition2).size());
-    Assert.assertEquals(1, consumerRecords.records(topicPartition3).size());
+    Assertions.assertEquals(2, consumerRecords.records(topicPartition1).size());
+    Assertions.assertEquals(4, consumerRecords.records(topicPartition2).size());
+    Assertions.assertEquals(1, consumerRecords.records(topicPartition3).size());
   }
 
   private Job createConsumerJob(

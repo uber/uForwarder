@@ -1,28 +1,27 @@
 package com.uber.data.kafka.datatransfer.common;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class CoreInfraTest extends FievelTestBase {
+public class CoreInfraTest {
 
   @Test
   public void testGetDefaultRegion() {
-    Assert.assertEquals("_region", CoreInfra.NOOP.getPlacement().getRegion());
+    Assertions.assertEquals("_region", CoreInfra.NOOP.getPlacement().getRegion());
   }
 
   @Test
   public void testGetZone() {
-    Assert.assertEquals("_zone", CoreInfra.NOOP.getPlacement().getZone());
+    Assertions.assertEquals("_zone", CoreInfra.NOOP.getPlacement().getZone());
   }
 
   @Test
   public void testGetThreadMXBean() {
-    Assert.assertNotNull(CoreInfra.NOOP.getThreadMXBean());
+    Assertions.assertNotNull(CoreInfra.NOOP.getThreadMXBean());
   }
 
   @Test
   public void testGetOperatingSystemMXBean() {
-    Assert.assertNotNull(CoreInfra.NOOP.getOperatingSystemMXBean());
+    Assertions.assertNotNull(CoreInfra.NOOP.getOperatingSystemMXBean());
   }
 }

@@ -6,16 +6,15 @@ import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobStatus;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineHealthIssue;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadTracker;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class PipelineStateManagerTest extends FievelTestBase {
+public class PipelineStateManagerTest {
   private PipelineStateManager pipelineStateManager;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     pipelineStateManager = new PipelineStateManager() {};
   }
@@ -28,27 +27,28 @@ public class PipelineStateManagerTest extends FievelTestBase {
 
   @Test
   public void testGetExpectedRunningJobMap() {
-    Assert.assertTrue(pipelineStateManager.getExpectedRunningJobMap().isEmpty());
+    Assertions.assertTrue(pipelineStateManager.getExpectedRunningJobMap().isEmpty());
   }
 
   @Test
   public void testShouldJobBeRunning() {
-    Assert.assertFalse(pipelineStateManager.shouldJobBeRunning(Job.getDefaultInstance()));
+    Assertions.assertFalse(pipelineStateManager.shouldJobBeRunning(Job.getDefaultInstance()));
   }
 
   @Test
   public void testGetExpectedJob() {
-    Assert.assertFalse(pipelineStateManager.getExpectedJob(1).isPresent());
+    Assertions.assertFalse(pipelineStateManager.getExpectedJob(1).isPresent());
   }
 
   @Test
   public void testGetQuota() {
-    Assert.assertEquals(FlowControl.newBuilder().build(), pipelineStateManager.getFlowControl());
+    Assertions.assertEquals(
+        FlowControl.newBuilder().build(), pipelineStateManager.getFlowControl());
   }
 
   @Test
   public void testGetJobDefinitionTemplate() {
-    Assert.assertEquals(Job.newBuilder().build(), pipelineStateManager.getJobTemplate());
+    Assertions.assertEquals(Job.newBuilder().build(), pipelineStateManager.getJobTemplate());
   }
 
   @Test
@@ -58,7 +58,7 @@ public class PipelineStateManagerTest extends FievelTestBase {
 
   @Test
   public void testGetJobs() {
-    Assert.assertEquals(0, pipelineStateManager.getJobs().size());
+    Assertions.assertEquals(0, pipelineStateManager.getJobs().size());
   }
 
   @Test
@@ -69,6 +69,6 @@ public class PipelineStateManagerTest extends FievelTestBase {
 
   @Test
   public void testGetLoadTracker() {
-    Assert.assertEquals(PipelineLoadTracker.NOOP, pipelineStateManager.getLoadTracker());
+    Assertions.assertEquals(PipelineLoadTracker.NOOP, pipelineStateManager.getLoadTracker());
   }
 }

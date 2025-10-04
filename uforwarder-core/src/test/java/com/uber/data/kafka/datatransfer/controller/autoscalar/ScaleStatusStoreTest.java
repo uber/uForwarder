@@ -1,22 +1,21 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertSame;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.uber.data.kafka.datatransfer.common.TestUtils;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.Map;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ScaleStatusStoreTest extends FievelTestBase {
+public class ScaleStatusStoreTest {
   private ScaleStatusStore scaleStatusStore;
   private AutoScalarConfiguration autoScalarConfiguration;
   private TestUtils.TestTicker ticker;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     autoScalarConfiguration = new AutoScalarConfiguration();
     ticker = new TestUtils.TestTicker();
@@ -28,12 +27,12 @@ public class ScaleStatusStoreTest extends FievelTestBase {
     // Test the two-parameter constructor
     ScaleStatusStore store = new ScaleStatusStore(autoScalarConfiguration, ticker);
 
-    assertNotNull("ScaleStatusStore should not be null", store);
+    assertNotNull(store, "ScaleStatusStore should not be null");
 
     // Verify that we can access the underlying map
     Map<JobGroupKey, AutoScalar.JobGroupScaleStatus> map = store.asMap();
-    assertNotNull("Map should not be null", map);
-    assertTrue("Map should be empty initially", map.isEmpty());
+    assertNotNull(map, "Map should not be null");
+    assertTrue(map.isEmpty(), "Map should be empty initially");
   }
 
   @Test
@@ -41,12 +40,12 @@ public class ScaleStatusStoreTest extends FievelTestBase {
     // Test the single-parameter constructor
     ScaleStatusStore store = new ScaleStatusStore(autoScalarConfiguration);
 
-    assertNotNull("ScaleStatusStore should not be null", store);
+    assertNotNull(store, "ScaleStatusStore should not be null");
 
     // Verify that we can access the underlying map
     Map<JobGroupKey, AutoScalar.JobGroupScaleStatus> map = store.asMap();
-    assertNotNull("Map should not be null", map);
-    assertTrue("Map should be empty initially", map.isEmpty());
+    assertNotNull(map, "Map should not be null");
+    assertTrue(map.isEmpty(), "Map should be empty initially");
   }
 
   @Test
@@ -54,12 +53,12 @@ public class ScaleStatusStoreTest extends FievelTestBase {
     // Test that asMap() returns a valid map
     Map<JobGroupKey, AutoScalar.JobGroupScaleStatus> map = scaleStatusStore.asMap();
 
-    assertNotNull("Map should not be null", map);
-    assertTrue("Map should be empty initially", map.isEmpty());
+    assertNotNull(map, "Map should not be null");
+    assertTrue(map.isEmpty(), "Map should be empty initially");
 
     // Test that the same map instance is returned (view of the cache)
     Map<JobGroupKey, AutoScalar.JobGroupScaleStatus> map2 = scaleStatusStore.asMap();
-    assertSame("Should return the same map instance", map, map2);
+    assertSame(map, map2, "Should return the same map instance");
   }
 
   @Test
@@ -70,8 +69,8 @@ public class ScaleStatusStoreTest extends FievelTestBase {
 
     // Verify that the store is still functional after cleanup
     Map<JobGroupKey, AutoScalar.JobGroupScaleStatus> map = scaleStatusStore.asMap();
-    assertNotNull("Map should not be null after cleanup", map);
-    assertTrue("Map should still be empty after cleanup", map.isEmpty());
+    assertNotNull(map, "Map should not be null after cleanup");
+    assertTrue(map.isEmpty(), "Map should still be empty after cleanup");
   }
 
   @Test
@@ -81,24 +80,24 @@ public class ScaleStatusStoreTest extends FievelTestBase {
     Map<JobGroupKey, AutoScalar.JobGroupScaleStatus> map2 = scaleStatusStore.asMap();
 
     // Both should be the same instance (view of the cache)
-    assertSame("Map views should be the same instance", map1, map2);
+    assertSame(map1, map2, "Map views should be the same instance");
 
     // Both should reflect the same state
-    assertEquals("Map sizes should be equal", map1.size(), map2.size());
-    assertTrue("Both maps should be empty", map1.isEmpty() && map2.isEmpty());
+    assertEquals(map1.size(), map2.size(), "Map sizes should be equal");
+    assertTrue(map1.isEmpty() && map2.isEmpty(), "Both maps should be empty");
   }
 
   @Test
   public void testCleanUpAfterMapAccess() {
     // Test cleanup after accessing the map
     Map<JobGroupKey, AutoScalar.JobGroupScaleStatus> map = scaleStatusStore.asMap();
-    assertNotNull("Map should not be null", map);
+    assertNotNull(map, "Map should not be null");
 
     scaleStatusStore.cleanUp();
 
     // Map should still be accessible after cleanup
     Map<JobGroupKey, AutoScalar.JobGroupScaleStatus> mapAfterCleanup = scaleStatusStore.asMap();
-    assertNotNull("Map should not be null after cleanup", mapAfterCleanup);
-    assertSame("Should return the same map instance", map, mapAfterCleanup);
+    assertNotNull(mapAfterCleanup, "Map should not be null after cleanup");
+    assertSame(map, mapAfterCleanup, "Should return the same map instance");
   }
 }

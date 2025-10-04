@@ -4,13 +4,12 @@ import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.controller.storage.Store;
-import com.uber.fievel.testing.base.FievelTestBase;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class WorkersJsonTest extends FievelTestBase {
+public class WorkersJsonTest {
   @Test
   public void testRead() throws Exception {
     Store<Long, StoredWorker> workerStore = Mockito.mock(Store.class);
@@ -30,6 +29,6 @@ public class WorkersJsonTest extends FievelTestBase {
         .when(jobGroupStore)
         .getAll();
     NodeUrlResolver resolver = new NodeUrlResolver();
-    Assert.assertNotNull(new WorkersJson(workerStore, jobGroupStore, resolver).read());
+    Assertions.assertNotNull(new WorkersJson(workerStore, jobGroupStore, resolver).read());
   }
 }

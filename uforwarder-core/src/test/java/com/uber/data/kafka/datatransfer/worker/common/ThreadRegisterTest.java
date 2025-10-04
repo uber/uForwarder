@@ -1,25 +1,24 @@
 package com.uber.data.kafka.datatransfer.worker.common;
 
 import com.uber.data.kafka.datatransfer.common.TestUtils;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.lang.management.ThreadMXBean;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.TimeUnit;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class ThreadRegisterTest extends FievelTestBase {
+public class ThreadRegisterTest {
   private ThreadRegister threadRegister;
   private ThreadMXBean threadMXBean;
   private CpuUsageMeter cpuUsageMeter;
   private TestUtils.TestTicker testTicker;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     threadMXBean = Mockito.mock(ThreadMXBean.class);
     testTicker = new TestUtils.TestTicker();
@@ -33,17 +32,17 @@ public class ThreadRegisterTest extends FievelTestBase {
     ThreadFactory factory = threadRegister.asThreadFactory();
     Thread thread = factory.newThread(() -> {});
     Set<Thread> registered = new HashSet(threadRegister.getRegistered());
-    Assert.assertTrue(registered.contains(thread));
+    Assertions.assertTrue(registered.contains(thread));
   }
 
   @Test
   public void testRegisterThread() {
     Thread t = Mockito.mock(Thread.class);
     Thread ret = threadRegister.register(t);
-    Assert.assertEquals(t, ret);
+    Assertions.assertEquals(t, ret);
 
     Set<Thread> registered = new HashSet(threadRegister.getRegistered());
-    Assert.assertTrue(registered.contains(t));
+    Assertions.assertTrue(registered.contains(t));
   }
 
   @Test
@@ -62,7 +61,7 @@ public class ThreadRegisterTest extends FievelTestBase {
     double usage = threadRegister.getUsage();
 
     // Then: Usage should be greater than 0 (1000ns = 1 microsecond)
-    Assert.assertTrue("CPU usage should be greater than 0", usage > 0.0);
+    Assertions.assertTrue(usage > 0.0, "CPU usage should be greater than 0");
   }
 
   @Test
@@ -74,7 +73,7 @@ public class ThreadRegisterTest extends FievelTestBase {
     double usage = new ThreadRegister(threadMXBean).getUsage();
 
     // Then: Should return 0.0 when CPU time is disabled
-    Assert.assertTrue(usage == 0.0);
+    Assertions.assertTrue(usage == 0.0);
   }
 
   @Test

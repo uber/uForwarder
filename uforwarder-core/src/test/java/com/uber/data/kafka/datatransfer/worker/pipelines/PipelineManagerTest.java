@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.worker.pipelines;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.times;
@@ -11,7 +12,6 @@ import com.google.common.collect.ImmutableSet;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.JobStatus;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
@@ -21,13 +21,13 @@ import java.util.Arrays;
 import java.util.Collection;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CompletionStage;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
-public class PipelineManagerTest extends FievelTestBase {
+public class PipelineManagerTest {
   private static final String PIPELINE_ID = "pipelineId";
 
   private PipelineManager pipelineManager;
@@ -39,7 +39,7 @@ public class PipelineManagerTest extends FievelTestBase {
   private Scope scope;
   private Gauge gauge;
 
-  @Before
+  @BeforeEach
   public void setup() {
     pipelineFactory = mock(PipelineFactory.class);
     job = Job.newBuilder().build();
@@ -65,7 +65,7 @@ public class PipelineManagerTest extends FievelTestBase {
 
   @Test
   public void testGetOrCreatePipeline() {
-    Assert.assertTrue(pipeline.isRunning());
+    Assertions.assertTrue(pipeline.isRunning());
     // the first time we create the pipeline, it will be created.
     pipelineManager.getOrCreatePipeline(PIPELINE_ID, job);
     Mockito.verify(pipelineFactory, Mockito.times(1)).createPipeline(PIPELINE_ID, job);
@@ -79,97 +79,101 @@ public class PipelineManagerTest extends FievelTestBase {
     CompletableFuture mockFuture = CompletableFuture.completedFuture(null);
     when(pipeline.run(job)).thenReturn(mockFuture);
     CompletionStage<Void> completedFuture = pipelineManager.run(job);
-    Assert.assertTrue(completedFuture.toCompletableFuture().isDone());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCancelled());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCompletedExceptionally());
-    Assert.assertEquals(1, pipelineManager.getPipelines().size());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isDone());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCancelled());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCompletedExceptionally());
+    Assertions.assertEquals(1, pipelineManager.getPipelines().size());
 
     // Rerun should be idempotent.
     completedFuture = pipelineManager.run(job);
-    Assert.assertTrue(completedFuture.toCompletableFuture().isDone());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCancelled());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCompletedExceptionally());
-    Assert.assertEquals(1, pipelineManager.getPipelines().size());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isDone());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCancelled());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCompletedExceptionally());
+    Assertions.assertEquals(1, pipelineManager.getPipelines().size());
 
     // Run that completes exceptionally should be propagated back.
     mockFuture = new CompletableFuture();
     mockFuture.completeExceptionally(new Throwable());
     when(pipeline.run(job)).thenReturn(mockFuture);
     completedFuture = pipelineManager.run(job);
-    Assert.assertTrue(completedFuture.toCompletableFuture().isDone());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCancelled());
-    Assert.assertTrue(completedFuture.toCompletableFuture().isCompletedExceptionally());
-    Assert.assertEquals(1, pipelineManager.getPipelines().size());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isDone());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCancelled());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isCompletedExceptionally());
+    Assertions.assertEquals(1, pipelineManager.getPipelines().size());
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testRunWithException() {
-    Mockito.doThrow(new RuntimeException())
-        .when(pipelineFactory)
-        .createPipeline(Mockito.anyString(), Mockito.any());
-    pipelineManager.run(job);
+    assertThrows(
+        RuntimeException.class,
+        () -> {
+          Mockito.doThrow(new RuntimeException())
+              .when(pipelineFactory)
+              .createPipeline(Mockito.anyString(), Mockito.any());
+          pipelineManager.run(job);
+        });
   }
 
   @Test
   public void testCancel() {
     CompletionStage<Void> completedFuture = pipelineManager.cancel(job);
-    Assert.assertTrue(completedFuture.toCompletableFuture().isDone());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCancelled());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCompletedExceptionally());
-    Assert.assertEquals(0, pipelineManager.getPipelines().size());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isDone());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCancelled());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCompletedExceptionally());
+    Assertions.assertEquals(0, pipelineManager.getPipelines().size());
 
     CompletableFuture mockFuture = CompletableFuture.completedFuture(null);
     when(pipeline.cancel(job)).thenReturn(mockFuture);
     pipelineManager.getOrCreatePipeline(pipelineFactory.getPipelineId(job), job);
     completedFuture = pipelineManager.cancel(job);
-    Assert.assertTrue(completedFuture.toCompletableFuture().isDone());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCancelled());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCompletedExceptionally());
-    Assert.assertEquals(1, pipelineManager.getPipelines().size());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isDone());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCancelled());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCompletedExceptionally());
+    Assertions.assertEquals(1, pipelineManager.getPipelines().size());
 
     mockFuture = new CompletableFuture();
     mockFuture.completeExceptionally(new Throwable());
     when(pipeline.cancel(job)).thenReturn(mockFuture);
     pipelineManager.getOrCreatePipeline(pipelineFactory.getPipelineId(job), job);
     completedFuture = pipelineManager.cancel(job);
-    Assert.assertTrue(completedFuture.toCompletableFuture().isDone());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCancelled());
-    Assert.assertTrue(completedFuture.toCompletableFuture().isCompletedExceptionally());
-    Assert.assertEquals(1, pipelineManager.getPipelines().size());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isDone());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCancelled());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isCompletedExceptionally());
+    Assertions.assertEquals(1, pipelineManager.getPipelines().size());
   }
 
   @Test
   public void testUpdate() {
     CompletionStage<Void> completedFuture = pipelineManager.update(job);
-    Assert.assertTrue(completedFuture.toCompletableFuture().isDone());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCancelled());
-    Assert.assertTrue(completedFuture.toCompletableFuture().isCompletedExceptionally());
-    Assert.assertEquals(0, pipelineManager.getPipelines().size());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isDone());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCancelled());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isCompletedExceptionally());
+    Assertions.assertEquals(0, pipelineManager.getPipelines().size());
 
     CompletableFuture mockFuture = CompletableFuture.completedFuture(null);
     when(pipeline.update(job)).thenReturn(mockFuture);
     pipelineManager.getOrCreatePipeline(pipelineFactory.getPipelineId(job), job);
     completedFuture = pipelineManager.update(job);
-    Assert.assertTrue(completedFuture.toCompletableFuture().isDone());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCancelled());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCompletedExceptionally());
-    Assert.assertEquals(1, pipelineManager.getPipelines().size());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isDone());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCancelled());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCompletedExceptionally());
+    Assertions.assertEquals(1, pipelineManager.getPipelines().size());
 
     mockFuture = new CompletableFuture();
     mockFuture.completeExceptionally(new Throwable());
     when(pipeline.update(job)).thenReturn(mockFuture);
     pipelineManager.getOrCreatePipeline(pipelineFactory.getPipelineId(job), job);
     completedFuture = pipelineManager.update(job);
-    Assert.assertTrue(completedFuture.toCompletableFuture().isDone());
-    Assert.assertFalse(completedFuture.toCompletableFuture().isCancelled());
-    Assert.assertTrue(completedFuture.toCompletableFuture().isCompletedExceptionally());
-    Assert.assertEquals(1, pipelineManager.getPipelines().size());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isDone());
+    Assertions.assertFalse(completedFuture.toCompletableFuture().isCancelled());
+    Assertions.assertTrue(completedFuture.toCompletableFuture().isCompletedExceptionally());
+    Assertions.assertEquals(1, pipelineManager.getPipelines().size());
   }
 
   @Test
   public void testCancelAll() {
     prepareTwoPipelines();
-    Assert.assertEquals(2, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(2, pipelineManager.getPipelines().size());
 
     when(pipeline.cancelAll()).thenReturn(CompletableFuture.completedFuture(null));
     when(otherPipeline.cancelAll()).thenReturn(CompletableFuture.completedFuture(null));
@@ -181,7 +185,7 @@ public class PipelineManagerTest extends FievelTestBase {
   @Test
   public void testCancelAllWithException() {
     prepareTwoPipelines();
-    Assert.assertEquals(2, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(2, pipelineManager.getPipelines().size());
     CompletableFuture future = new CompletableFuture();
     future.completeExceptionally(new RuntimeException());
     when(pipeline.cancelAll()).thenReturn(future);
@@ -194,14 +198,14 @@ public class PipelineManagerTest extends FievelTestBase {
   @Test
   public void testGetAll() {
     prepareTwoPipelines();
-    Assert.assertEquals(2, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(2, pipelineManager.getPipelines().size());
 
     when(pipeline.getJobStatus())
         .thenReturn(ImmutableList.of(JobStatus.newBuilder().setJob(job).build()));
     when(otherPipeline.getJobStatus())
         .thenReturn(ImmutableList.of(JobStatus.newBuilder().setJob(otherJob).build()));
     Collection<JobStatus> jobStatusList = pipelineManager.getJobStatus();
-    Assert.assertEquals(2, jobStatusList.size());
+    Assertions.assertEquals(2, jobStatusList.size());
     verify(pipeline, times(1)).getJobStatus();
     verify(otherPipeline, times(1)).getJobStatus();
   }
@@ -209,13 +213,13 @@ public class PipelineManagerTest extends FievelTestBase {
   @Test
   public void testGetAllWithException() {
     prepareTwoPipelines();
-    Assert.assertEquals(2, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(2, pipelineManager.getPipelines().size());
 
     Mockito.doThrow(new RuntimeException()).when(pipeline).getJobStatus();
     Mockito.when(otherPipeline.getJobStatus())
         .thenReturn(ImmutableList.of(JobStatus.newBuilder().setJob(otherJob).build()));
     Collection<JobStatus> jobStatusList = pipelineManager.getJobStatus();
-    Assert.assertEquals(1, jobStatusList.size());
+    Assertions.assertEquals(1, jobStatusList.size());
     verify(pipeline, times(1)).getJobStatus();
     verify(otherPipeline, times(1)).getJobStatus();
   }
@@ -223,7 +227,7 @@ public class PipelineManagerTest extends FievelTestBase {
   @Test
   public void testGetAllMap() throws Exception {
     prepareTwoPipelines();
-    Assert.assertEquals(2, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(2, pipelineManager.getPipelines().size());
 
     when(pipeline.getJobStatus())
         .thenReturn(ImmutableList.of(JobStatus.newBuilder().setJob(job).build()));
@@ -236,7 +240,7 @@ public class PipelineManagerTest extends FievelTestBase {
   @Test
   public void testGcPipelines1() throws Exception {
     prepareTwoPipelines();
-    Assert.assertEquals(2, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(2, pipelineManager.getPipelines().size());
     when(pipeline.getJobStatus())
         .thenReturn(
             ImmutableList.of(
@@ -251,7 +255,7 @@ public class PipelineManagerTest extends FievelTestBase {
     when(pipeline.isRunning()).thenReturn(false);
     when(otherPipeline.isRunning()).thenReturn(true);
     pipelineManager.gcPipelines();
-    Assert.assertTrue(pipelineManager.getPipelines().isEmpty());
+    Assertions.assertTrue(pipelineManager.getPipelines().isEmpty());
     verify(pipeline, Mockito.never()).stop();
     verify(otherPipeline, Mockito.times(1)).stop();
   }
@@ -261,7 +265,7 @@ public class PipelineManagerTest extends FievelTestBase {
   @Test
   public void testGcPipelines2() throws Exception {
     prepareTwoPipelines();
-    Assert.assertEquals(2, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(2, pipelineManager.getPipelines().size());
     when(pipeline.getJobStatus())
         .thenReturn(
             ImmutableList.of(
@@ -278,7 +282,7 @@ public class PipelineManagerTest extends FievelTestBase {
     when(pipeline.getJobs()).thenReturn(ImmutableSet.of(Job.getDefaultInstance()));
     when(otherPipeline.getJobs()).thenReturn(ImmutableSet.of(Job.getDefaultInstance()));
     pipelineManager.gcPipelines();
-    Assert.assertEquals(1, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(1, pipelineManager.getPipelines().size());
     verify(pipeline, Mockito.never()).stop();
     verify(otherPipeline, Mockito.never()).stop();
   }
@@ -288,7 +292,7 @@ public class PipelineManagerTest extends FievelTestBase {
   @Test
   public void testGcPipelines3() throws Exception {
     prepareTwoPipelines();
-    Assert.assertEquals(2, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(2, pipelineManager.getPipelines().size());
     when(pipeline.getJobStatus())
         .thenReturn(
             ImmutableList.of(
@@ -303,7 +307,7 @@ public class PipelineManagerTest extends FievelTestBase {
     when(pipeline.isRunning()).thenReturn(true);
     when(otherPipeline.isRunning()).thenReturn(false);
     pipelineManager.gcPipelines();
-    Assert.assertEquals(0, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(0, pipelineManager.getPipelines().size());
     verify(pipeline, Mockito.times(1)).stop();
     verify(otherPipeline, Mockito.never()).stop();
   }
@@ -311,7 +315,7 @@ public class PipelineManagerTest extends FievelTestBase {
   @Test
   public void testGcPipelinesWithException1() throws Exception {
     prepareTwoPipelines();
-    Assert.assertEquals(2, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(2, pipelineManager.getPipelines().size());
 
     doThrow(new RuntimeException()).when(pipeline).stop(); // gc should gracefully handle exception.
     when(pipeline.getJobStatus())
@@ -329,7 +333,7 @@ public class PipelineManagerTest extends FievelTestBase {
     when(otherPipeline.isRunning()).thenReturn(true);
 
     pipelineManager.gcPipelines();
-    Assert.assertTrue(pipelineManager.getPipelines().isEmpty());
+    Assertions.assertTrue(pipelineManager.getPipelines().isEmpty());
     verify(pipeline, times(1)).stop();
     verify(otherPipeline, Mockito.times(1)).stop();
   }
@@ -337,7 +341,7 @@ public class PipelineManagerTest extends FievelTestBase {
   @Test
   public void testGcPipelinesWithException2() throws Exception {
     prepareTwoPipelines();
-    Assert.assertEquals(2, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(2, pipelineManager.getPipelines().size());
 
     doThrow(new RuntimeException()).when(pipeline).stop(); // gc should gracefully handle exception.
     when(pipeline.getJobStatus())
@@ -356,7 +360,7 @@ public class PipelineManagerTest extends FievelTestBase {
     when(pipeline.getJobs()).thenReturn(ImmutableSet.of(Job.getDefaultInstance()));
     when(otherPipeline.getJobs()).thenReturn(ImmutableSet.of(Job.getDefaultInstance()));
     pipelineManager.gcPipelines();
-    Assert.assertEquals(1, pipelineManager.getPipelines().size());
+    Assertions.assertEquals(1, pipelineManager.getPipelines().size());
     verify(pipeline, times(1)).stop();
     verify(otherPipeline, Mockito.never()).stop();
   }

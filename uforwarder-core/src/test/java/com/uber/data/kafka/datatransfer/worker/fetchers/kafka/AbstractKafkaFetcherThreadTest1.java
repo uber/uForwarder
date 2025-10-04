@@ -10,7 +10,6 @@ import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.common.Sink;
 import com.uber.data.kafka.datatransfer.worker.pipelines.KafkaPipelineStateManager;
 import com.uber.data.kafka.datatransfer.worker.pipelines.PipelineLoadTracker;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
@@ -29,13 +28,13 @@ import org.apache.kafka.clients.consumer.ConsumerRecords;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.clients.consumer.OffsetAndMetadata;
 import org.apache.kafka.common.TopicPartition;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentMatchers;
 import org.mockito.Mockito;
 
 // this class is for testing those two abstract methods
-public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
+public class AbstractKafkaFetcherThreadTest1 {
   private final String THREAD_NAME = "thread-name";
   private final String TOPIC = "topic";
   private final String GROUP = "group";
@@ -52,7 +51,7 @@ public class AbstractKafkaFetcherThreadTest1 extends FievelTestBase {
   private Job job;
   private AbstractKafkaFetcherThread fetcherThread;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     kafkaFetcherConfiguration = new KafkaFetcherConfiguration();
     checkpointManager = Mockito.mock(CheckpointManager.class);

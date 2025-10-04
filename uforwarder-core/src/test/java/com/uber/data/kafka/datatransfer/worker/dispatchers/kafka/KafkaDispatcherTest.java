@@ -1,5 +1,6 @@
 package com.uber.data.kafka.datatransfer.worker.dispatchers.kafka;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
@@ -12,7 +13,6 @@ import com.google.common.collect.ImmutableMap;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.ItemAndJob;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.Counter;
 import com.uber.m3.tally.Gauge;
 import com.uber.m3.tally.Scope;
@@ -26,12 +26,12 @@ import org.apache.kafka.clients.producer.ProducerRecord;
 import org.apache.kafka.common.Metric;
 import org.apache.kafka.common.MetricName;
 import org.apache.kafka.common.serialization.Serdes;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class KafkaDispatcherTest extends FievelTestBase {
+public class KafkaDispatcherTest {
   private KafkaDispatcher kafkaDispatcher;
   private MockProducer mockKafkaProducer;
   private Scope mockScope;
@@ -40,7 +40,7 @@ public class KafkaDispatcherTest extends FievelTestBase {
   private Timer mockTimer;
   private Stopwatch mockStopwatch;
 
-  @Before
+  @BeforeEach
   public void setup() {
     mockScope = mock(Scope.class);
     mockCounter = mock(Counter.class);
@@ -70,34 +70,38 @@ public class KafkaDispatcherTest extends FievelTestBase {
                     Job.newBuilder().build()))
             .toCompletableFuture();
     mockKafkaProducer.completeNext();
-    Assert.assertEquals(1, mockKafkaProducer.history().size());
+    Assertions.assertEquals(1, mockKafkaProducer.history().size());
     future.get(1, TimeUnit.SECONDS);
   }
 
-  @Test(expected = ExecutionException.class)
+  @Test
   public void testProduceFailure() throws Exception {
-    CompletableFuture future =
-        kafkaDispatcher
-            .submit(
-                ItemAndJob.of(
-                    new ProducerRecord("test-topic", "test-data".getBytes()),
-                    Job.newBuilder().build()))
-            .toCompletableFuture();
-    mockKafkaProducer.errorNext(new IllegalStateException());
-    Assert.assertEquals(1, mockKafkaProducer.history().size());
-    future.get(1, TimeUnit.SECONDS);
+    assertThrows(
+        ExecutionException.class,
+        () -> {
+          CompletableFuture future =
+              kafkaDispatcher
+                  .submit(
+                      ItemAndJob.of(
+                          new ProducerRecord("test-topic", "test-data".getBytes()),
+                          Job.newBuilder().build()))
+                  .toCompletableFuture();
+          mockKafkaProducer.errorNext(new IllegalStateException());
+          Assertions.assertEquals(1, mockKafkaProducer.history().size());
+          future.get(1, TimeUnit.SECONDS);
+        });
   }
 
   @Test
   public void testProducerFlushWhenForceToFlushIsFalse() throws Exception {
-    Assert.assertTrue(kafkaDispatcher.mayBeFlush(false));
-    Assert.assertFalse(kafkaDispatcher.mayBeFlush(false));
+    Assertions.assertTrue(kafkaDispatcher.mayBeFlush(false));
+    Assertions.assertFalse(kafkaDispatcher.mayBeFlush(false));
   }
 
   @Test
   public void testProducerFlushWhenForceToFlushIsTrue() throws Exception {
-    Assert.assertTrue(kafkaDispatcher.mayBeFlush(false));
-    Assert.assertTrue(kafkaDispatcher.mayBeFlush(true));
+    Assertions.assertTrue(kafkaDispatcher.mayBeFlush(false));
+    Assertions.assertTrue(kafkaDispatcher.mayBeFlush(true));
   }
 
   @Test
@@ -127,7 +131,7 @@ public class KafkaDispatcherTest extends FievelTestBase {
   @Test
   public void testLifecycle() {
     kafkaDispatcher.start();
-    Assert.assertTrue(kafkaDispatcher.isRunning());
+    Assertions.assertTrue(kafkaDispatcher.isRunning());
     kafkaDispatcher.stop();
   }
 }

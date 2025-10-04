@@ -2,18 +2,17 @@ package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
 import com.google.protobuf.MessageOrBuilder;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class ScalarTest extends FievelTestBase {
+public class ScalarTest {
 
   Scalar scalar = Scalar.DEFAULT;
   RebalancingJobGroup rebalancingJobGroup;
 
-  @Before
+  @BeforeEach
   public void setup() {
     rebalancingJobGroup = Mockito.mock(RebalancingJobGroup.class);
   }
@@ -27,7 +26,7 @@ public class ScalarTest extends FievelTestBase {
   @Test
   public void testSnapshot() {
     MessageOrBuilder msg = scalar.snapshot();
-    Assert.assertNotNull(msg);
+    Assertions.assertNotNull(msg);
   }
 
   @Test

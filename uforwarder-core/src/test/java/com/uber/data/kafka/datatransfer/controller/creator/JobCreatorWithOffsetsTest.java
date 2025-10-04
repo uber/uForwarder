@@ -3,23 +3,22 @@ package com.uber.data.kafka.datatransfer.controller.creator;
 import com.uber.data.kafka.datatransfer.JobState;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import com.uber.m3.tally.Scope;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.slf4j.Logger;
 import org.slf4j.helpers.NOPLogger;
 
-public class JobCreatorWithOffsetsTest extends FievelTestBase {
+public class JobCreatorWithOffsetsTest {
   private JobCreatorWithOffsets jobCreatorWithOffsets;
   private Scope scope;
   private Logger logger;
   private StoredJobGroup storedJobGroup;
   private String jobType;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     jobCreatorWithOffsets = new JobCreatorWithOffsets() {};
     scope = new NoopScope();
@@ -39,11 +38,11 @@ public class JobCreatorWithOffsetsTest extends FievelTestBase {
             10,
             20,
             new JobCreatorWithOffsets.OffsetRange(30, 40));
-    Assert.assertEquals(10, newJob.getJob().getJobId());
-    Assert.assertEquals(20, newJob.getJob().getKafkaConsumerTask().getPartition());
-    Assert.assertEquals(30, newJob.getJob().getKafkaConsumerTask().getStartOffset());
-    Assert.assertEquals(40, newJob.getJob().getKafkaConsumerTask().getEndOffset());
-    Assert.assertEquals(JobState.JOB_STATE_RUNNING, newJob.getState());
+    Assertions.assertEquals(10, newJob.getJob().getJobId());
+    Assertions.assertEquals(20, newJob.getJob().getKafkaConsumerTask().getPartition());
+    Assertions.assertEquals(30, newJob.getJob().getKafkaConsumerTask().getStartOffset());
+    Assertions.assertEquals(40, newJob.getJob().getKafkaConsumerTask().getEndOffset());
+    Assertions.assertEquals(JobState.JOB_STATE_RUNNING, newJob.getState());
   }
 
   @Test
@@ -57,11 +56,11 @@ public class JobCreatorWithOffsetsTest extends FievelTestBase {
             10,
             20,
             new JobCreatorWithOffsets.OffsetRange(40, 40));
-    Assert.assertEquals(10, newJob.getJob().getJobId());
-    Assert.assertEquals(20, newJob.getJob().getKafkaConsumerTask().getPartition());
-    Assert.assertEquals(40, newJob.getJob().getKafkaConsumerTask().getStartOffset());
-    Assert.assertEquals(40, newJob.getJob().getKafkaConsumerTask().getEndOffset());
-    Assert.assertEquals(JobState.JOB_STATE_CANCELED, newJob.getState());
+    Assertions.assertEquals(10, newJob.getJob().getJobId());
+    Assertions.assertEquals(20, newJob.getJob().getKafkaConsumerTask().getPartition());
+    Assertions.assertEquals(40, newJob.getJob().getKafkaConsumerTask().getStartOffset());
+    Assertions.assertEquals(40, newJob.getJob().getKafkaConsumerTask().getEndOffset());
+    Assertions.assertEquals(JobState.JOB_STATE_CANCELED, newJob.getState());
   }
 
   @Test
@@ -75,10 +74,10 @@ public class JobCreatorWithOffsetsTest extends FievelTestBase {
             10,
             20,
             new JobCreatorWithOffsets.OffsetRange(50, 40));
-    Assert.assertEquals(10, newJob.getJob().getJobId());
-    Assert.assertEquals(20, newJob.getJob().getKafkaConsumerTask().getPartition());
-    Assert.assertEquals(50, newJob.getJob().getKafkaConsumerTask().getStartOffset());
-    Assert.assertEquals(40, newJob.getJob().getKafkaConsumerTask().getEndOffset());
-    Assert.assertEquals(JobState.JOB_STATE_CANCELED, newJob.getState());
+    Assertions.assertEquals(10, newJob.getJob().getJobId());
+    Assertions.assertEquals(20, newJob.getJob().getKafkaConsumerTask().getPartition());
+    Assertions.assertEquals(50, newJob.getJob().getKafkaConsumerTask().getStartOffset());
+    Assertions.assertEquals(40, newJob.getJob().getKafkaConsumerTask().getEndOffset());
+    Assertions.assertEquals(JobState.JOB_STATE_CANCELED, newJob.getState());
   }
 }

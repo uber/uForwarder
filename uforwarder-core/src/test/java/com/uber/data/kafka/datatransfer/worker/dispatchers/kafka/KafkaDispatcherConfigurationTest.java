@@ -1,17 +1,16 @@
 package com.uber.data.kafka.datatransfer.worker.dispatchers.kafka;
 
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.Properties;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.config.SslConfigs;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class KafkaDispatcherConfigurationTest extends FievelTestBase {
+public class KafkaDispatcherConfigurationTest {
   private KafkaDispatcherConfiguration kafkaDispatcherConfiguration;
 
-  @Before
+  @BeforeEach
   public void setup() {
     kafkaDispatcherConfiguration = new KafkaDispatcherConfiguration();
   }
@@ -20,12 +19,12 @@ public class KafkaDispatcherConfigurationTest extends FievelTestBase {
   public void testGetProperties() throws Exception {
     Properties properties =
         kafkaDispatcherConfiguration.getProperties("test-cluster", "test-client", true, true);
-    Assert.assertTrue(properties.containsKey(SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG));
-    Assert.assertEquals("1", properties.getProperty(ProducerConfig.ACKS_CONFIG));
+    Assertions.assertTrue(properties.containsKey(SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG));
+    Assertions.assertEquals("1", properties.getProperty(ProducerConfig.ACKS_CONFIG));
 
     properties =
         kafkaDispatcherConfiguration.getProperties("test-cluster", "test-client", false, false);
-    Assert.assertFalse(properties.containsKey(SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG));
-    Assert.assertEquals("all", properties.getProperty(ProducerConfig.ACKS_CONFIG));
+    Assertions.assertFalse(properties.containsKey(SslConfigs.SSL_TRUSTMANAGER_ALGORITHM_CONFIG));
+    Assertions.assertEquals("all", properties.getProperty(ProducerConfig.ACKS_CONFIG));
   }
 }

@@ -14,16 +14,15 @@ import com.uber.data.kafka.datatransfer.common.TestUtils;
 import com.uber.data.kafka.datatransfer.controller.coordinator.LeaderSelector;
 import com.uber.data.kafka.datatransfer.controller.rebalancer.RebalancingJobGroup;
 import com.uber.data.kafka.datatransfer.controller.rpc.Workload;
-import com.uber.fievel.testing.base.FievelTestBase;
 import com.uber.m3.tally.NoopScope;
 import java.time.Duration;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class AutoScalarTest extends FievelTestBase {
+public class AutoScalarTest {
   private AutoScalar autoScalar;
   private AutoScalarConfiguration config;
   private ScaleStatusStore scaleStatusStore;
@@ -38,7 +37,7 @@ public class AutoScalarTest extends FievelTestBase {
   private RebalancingJobGroup rebalancingJobGroup;
   private ReactiveScaleWindowManager scaleWindowManager;
 
-  @Before
+  @BeforeEach
   public void setup() {
     testTicker = new TestUtils.TestTicker();
     config = new AutoScalarConfiguration();
@@ -110,10 +109,10 @@ public class AutoScalarTest extends FievelTestBase {
   @Test
   public void testScaleUpAboveMaxFactor() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -121,10 +120,10 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(2.792, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2.792, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         5584, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         139600, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
@@ -141,10 +140,10 @@ public class AutoScalarTest extends FievelTestBase {
             new NoopScope(),
             leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -152,20 +151,20 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(2.792, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2.792, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         5584, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         139600, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
   @Test
   public void testScaleUpBelowMinFactor() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -173,10 +172,10 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
@@ -193,10 +192,10 @@ public class AutoScalarTest extends FievelTestBase {
             new NoopScope(),
             leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -204,20 +203,20 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
   @Test
   public void testScaleUp20Percent() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -225,10 +224,10 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(2.4, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2.4, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4800, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         120000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
@@ -245,10 +244,10 @@ public class AutoScalarTest extends FievelTestBase {
             new NoopScope(),
             leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
@@ -256,20 +255,20 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(2.4, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2.4, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4800, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         120000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
   @Test
   public void testScaleDownBelowMin() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -278,10 +277,10 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(1.6, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(1.6, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         3200, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         80000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
@@ -289,10 +288,10 @@ public class AutoScalarTest extends FievelTestBase {
   public void testSmallScaleNotScaleDown() {
     rebalancingJobGroup.updateScale(1e-8, new Throughput(2e-5, 4.5e-4));
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(1e-8, rebalancingJobGroup.getScale().get(), 1e-9);
-    Assert.assertEquals(
+    Assertions.assertEquals(1e-8, rebalancingJobGroup.getScale().get(), 1e-9);
+    Assertions.assertEquals(
         2e-5, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 1e-9);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         4.5e-4, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 1e-9);
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -301,20 +300,20 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(1e-8, rebalancingJobGroup.getScale().get(), 1e-9);
-    Assert.assertEquals(
+    Assertions.assertEquals(1e-8, rebalancingJobGroup.getScale().get(), 1e-9);
+    Assertions.assertEquals(
         2e-5, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 1e-9);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         4.5e-4, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 1e-9);
   }
 
   @Test
   public void testScaleDownAboveMax() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -323,17 +322,17 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
   @Test
   public void testScaleDown15Percent() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     int samples = 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
       testTicker.add(Duration.ofSeconds(60));
@@ -341,20 +340,20 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(1.7, rebalancingJobGroup.getScale().get(), 0.01);
-    Assert.assertEquals(
+    Assertions.assertEquals(1.7, rebalancingJobGroup.getScale().get(), 0.01);
+    Assertions.assertEquals(
         3400, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         85000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
   @Test
   public void testHibernatingAndBootstrap() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     int samples = 3 * 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -363,19 +362,19 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getScale().get());
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getMessagesPerSecond());
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getScale().get());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getMessagesPerSecond());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
       jobWorkloadMonitor.consume(job, Workload.of(1000, 10000, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(0.5, rebalancingJobGroup.getScale().get(), 0.0001);
-    Assert.assertEquals(
+    Assertions.assertEquals(0.5, rebalancingJobGroup.getScale().get(), 0.0001);
+    Assertions.assertEquals(
         1000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         25000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
@@ -392,10 +391,10 @@ public class AutoScalarTest extends FievelTestBase {
             new NoopScope(),
             leaderSelector);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     int samples = 3 * 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -404,29 +403,29 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getScale().get());
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getMessagesPerSecond());
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getScale().get());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getMessagesPerSecond());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
       jobWorkloadMonitor.consume(job, Workload.of(1000, 10000, 1));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(0.5, rebalancingJobGroup.getScale().get(), 0.0001);
-    Assert.assertEquals(
+    Assertions.assertEquals(0.5, rebalancingJobGroup.getScale().get(), 0.0001);
+    Assertions.assertEquals(
         1000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         25000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
   @Test
   public void testHibernating() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     int samples = 3 * 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -435,19 +434,19 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getScale().get());
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getMessagesPerSecond());
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getScale().get());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getMessagesPerSecond());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
   }
 
   @Test
   public void testHibernatingSmallScale() {
     rebalancingJobGroup.updateScale(10e-8, new Throughput(2e-5, 4.5e-4));
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(10e-8, rebalancingJobGroup.getScale().get(), 10e-10);
-    Assert.assertEquals(
+    Assertions.assertEquals(10e-8, rebalancingJobGroup.getScale().get(), 10e-10);
+    Assertions.assertEquals(
         2e-5, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 1e-9);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         4.5e-4, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 1e-9);
     int samples = 3 * 24 * 60 + 1;
     for (int i = 0; i < samples; ++i) {
@@ -456,28 +455,28 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getScale().get());
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getMessagesPerSecond());
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getScale().get());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getMessagesPerSecond());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
   }
 
   @Test
   public void testBootstrap() {
     rebalancingJobGroup.updateScale(0.0d, Throughput.ZERO);
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getScale().get());
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getMessagesPerSecond());
-    Assert.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getScale().get());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getMessagesPerSecond());
+    Assertions.assertTrue(0.0 == rebalancingJobGroup.getThroughput().get().getBytesPerSecond());
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
       jobWorkloadMonitor.consume(job, Workload.of(1000, 10000, 0));
       autoScalar.runSample();
       autoScalar.apply(rebalancingJobGroup, 0.0d);
     }
-    Assert.assertEquals(0.5, rebalancingJobGroup.getScale().get(), 0.0001);
-    Assert.assertEquals(
+    Assertions.assertEquals(0.5, rebalancingJobGroup.getScale().get(), 0.0001);
+    Assertions.assertEquals(
         1000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         25000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
@@ -485,10 +484,10 @@ public class AutoScalarTest extends FievelTestBase {
   public void testStopReportThroughput() {
     // stop report throughout stops scaling
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     jobWorkloadMonitor.consume(job, Workload.of(3400, 800, 0));
     int samples = 24 * 60 + 1;
@@ -498,20 +497,20 @@ public class AutoScalarTest extends FievelTestBase {
       autoScalar.runSample();
     }
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2.0, rebalancingJobGroup.getScale().get(), 0.01);
-    Assert.assertEquals(
+    Assertions.assertEquals(2.0, rebalancingJobGroup.getScale().get(), 0.01);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
   @Test
   public void testUpdateQuotaResetScale() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         4000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         100000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
 
     testTicker.add(Duration.ofSeconds(60));
@@ -536,7 +535,7 @@ public class AutoScalarTest extends FievelTestBase {
                 1),
             ImmutableMap.of());
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
 
     // scale reset is enabled
     jobGroup =
@@ -553,10 +552,10 @@ public class AutoScalarTest extends FievelTestBase {
                 1),
             ImmutableMap.of());
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(3, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(3, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         6000, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         150000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
@@ -564,51 +563,51 @@ public class AutoScalarTest extends FievelTestBase {
   public void testCleanupNonRunningJobs() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
     autoScalar.runSample();
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertFalse(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
-    Assert.assertFalse(scaleStatusStore.asMap().isEmpty());
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertFalse(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
+    Assertions.assertFalse(scaleStatusStore.asMap().isEmpty());
     // not expired
     testTicker.add(Duration.ofHours(47));
     autoScalar.runSample();
     scaleStatusStore.cleanUp();
-    Assert.assertFalse(scaleStatusStore.asMap().isEmpty());
+    Assertions.assertFalse(scaleStatusStore.asMap().isEmpty());
 
     // expired
     testTicker.add(Duration.ofHours(2));
     autoScalar.runSample(); // refresh last access time of  jobThroughputMonitor
     scaleStatusStore.cleanUp();
-    Assert.assertTrue(scaleStatusStore.asMap().isEmpty());
+    Assertions.assertTrue(scaleStatusStore.asMap().isEmpty());
 
     // once scale status expired, throughput info will be expired in 48 hours
     jobWorkloadMonitor.cleanUp();
-    Assert.assertFalse(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
+    Assertions.assertFalse(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
     testTicker.add(Duration.ofHours(49));
     autoScalar.runSample();
     jobWorkloadMonitor.cleanUp();
-    Assert.assertTrue(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
+    Assertions.assertTrue(jobWorkloadMonitor.getJobGroupWorkloadMap().isEmpty());
   }
 
   @Test
   public void testScaleWhenDryRun() {
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(2, rebalancingJobGroup.getScale().get(), 0.001);
     for (int i = 0; i < 61; ++i) {
       testTicker.add(Duration.ofSeconds(5));
       jobWorkloadMonitor.consume(job, Workload.of(8000, 10000, 0));
       autoScalar.runSample();
     }
     autoScalar.apply(rebalancingJobGroup, 0.0d);
-    Assert.assertEquals(2.792, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(2.792, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         5584, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         139600, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
     config.setDryRun(true);
     autoScalar.apply(rebalancingJobGroup, 1.6d);
-    Assert.assertEquals(1.6, rebalancingJobGroup.getScale().get(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(1.6, rebalancingJobGroup.getScale().get(), 0.001);
+    Assertions.assertEquals(
         3200, rebalancingJobGroup.getThroughput().get().getMessagesPerSecond(), 0.001);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         80000, rebalancingJobGroup.getThroughput().get().getBytesPerSecond(), 0.001);
   }
 
@@ -618,12 +617,12 @@ public class AutoScalarTest extends FievelTestBase {
     testTicker.add(Duration.ofSeconds(5));
     jobWorkloadMonitor.consume(job, Workload.of(4000, 10000, 0));
     ScaleStoreSnapshot snapshot = (ScaleStoreSnapshot) autoScalar.snapshot();
-    Assert.assertNotNull(snapshot);
-    Assert.assertEquals(1, snapshot.getJobGroupSnapshotList().size());
-    Assert.assertEquals(
+    Assertions.assertNotNull(snapshot);
+    Assertions.assertEquals(1, snapshot.getJobGroupSnapshotList().size());
+    Assertions.assertEquals(
         JobGroupKey.of(job).getGroup(),
         snapshot.getJobGroupSnapshotList().get(0).getConsumerGroup());
-    Assert.assertEquals(testTicker.read(), snapshot.getTimestampNanos());
+    Assertions.assertEquals(testTicker.read(), snapshot.getTimestampNanos());
   }
 
   @Test

@@ -34,21 +34,20 @@ import com.uber.data.kafka.datatransfer.SecurityConfig;
 import com.uber.data.kafka.datatransfer.StoredJob;
 import com.uber.data.kafka.datatransfer.StoredJobGroup;
 import com.uber.data.kafka.datatransfer.StoredWorker;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import org.apache.curator.x.async.modeled.versioned.Versioned;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class RebalancerTest extends FievelTestBase {
+public class RebalancerTest {
   private Rebalancer rebalancer;
   private Map<String, RebalancingJobGroup> jobGroupMap;
   private Map<Long, StoredWorker> workerMap;
 
-  @Before
+  @BeforeEach
   public void setup() {
     StoredJobGroup.Builder jobGroupBuilder = StoredJobGroup.newBuilder();
     jobGroupBuilder.setState(JobState.JOB_STATE_RUNNING);
@@ -91,10 +90,10 @@ public class RebalancerTest extends FievelTestBase {
   public void computeWorkerId() throws Exception {
     rebalancer.computeWorkerId(jobGroupMap, workerMap);
     Versioned<StoredJobGroup> got = jobGroupMap.get("test_topic").toStoredJobGroup();
-    Assert.assertEquals(1, got.version());
-    Assert.assertNotEquals(0L, got.model().getJobs(0).getWorkerId());
-    Assert.assertNotEquals(1L, got.model().getJobs(0).getWorkerId());
-    Assert.assertEquals(2L, got.model().getJobs(1).getWorkerId());
+    Assertions.assertEquals(1, got.version());
+    Assertions.assertNotEquals(0L, got.model().getJobs(0).getWorkerId());
+    Assertions.assertNotEquals(1L, got.model().getJobs(0).getWorkerId());
+    Assertions.assertEquals(2L, got.model().getJobs(1).getWorkerId());
   }
 
   @Test
@@ -108,7 +107,7 @@ public class RebalancerTest extends FievelTestBase {
     rebalancer.computeJobConfiguration(jobGroupMap, workerMap);
 
     Versioned<StoredJobGroup> got = jobGroupMap.get("test_topic").toStoredJobGroup();
-    Assert.assertEquals(1, got.version());
+    Assertions.assertEquals(1, got.version());
 
     FlowControl expected =
         FlowControl.newBuilder()
@@ -116,10 +115,10 @@ public class RebalancerTest extends FievelTestBase {
             .setMessagesPerSec(2)
             .setBytesPerSec(4)
             .build();
-    Assert.assertEquals(expected, got.model().getJobs(0).getJob().getFlowControl());
-    Assert.assertEquals(expected, got.model().getJobs(1).getJob().getFlowControl());
-    Assert.assertEquals(1.0, got.model().getJobs(0).getScale(), 0.0001);
-    Assert.assertEquals(1.0, got.model().getJobs(1).getScale(), 0.0001);
+    Assertions.assertEquals(expected, got.model().getJobs(0).getJob().getFlowControl());
+    Assertions.assertEquals(expected, got.model().getJobs(1).getJob().getFlowControl());
+    Assertions.assertEquals(1.0, got.model().getJobs(0).getScale(), 0.0001);
+    Assertions.assertEquals(1.0, got.model().getJobs(1).getScale(), 0.0001);
   }
 
   @Test
@@ -127,10 +126,10 @@ public class RebalancerTest extends FievelTestBase {
     rebalancer.computeJobState(jobGroupMap, workerMap);
 
     Versioned<StoredJobGroup> got = jobGroupMap.get("test_topic").toStoredJobGroup();
-    Assert.assertEquals(1, got.version());
+    Assertions.assertEquals(1, got.version());
 
-    Assert.assertEquals(JobState.JOB_STATE_RUNNING, got.model().getJobs(0).getState());
-    Assert.assertEquals(JobState.JOB_STATE_RUNNING, got.model().getJobs(1).getState());
+    Assertions.assertEquals(JobState.JOB_STATE_RUNNING, got.model().getJobs(0).getState());
+    Assertions.assertEquals(JobState.JOB_STATE_RUNNING, got.model().getJobs(1).getState());
   }
 
   @Test
@@ -291,7 +290,7 @@ public class RebalancerTest extends FievelTestBase {
     expectedBuilder.getMiscConfigBuilder().setOwnerServiceName("test-service").setEnableDebug(true);
     expectedBuilder.setExtension(
         Any.pack(MiscConfig.newBuilder().setOwnerServiceName("abc").build()));
-    Assert.assertEquals(expectedBuilder.build(), newJob);
+    Assertions.assertEquals(expectedBuilder.build(), newJob);
   }
 
   @Test
@@ -349,7 +348,7 @@ public class RebalancerTest extends FievelTestBase {
             .build();
 
     Job actualJob = Rebalancer.mergeJobGroupAndJob(jobGroup, job).build();
-    Assert.assertEquals(expectedJob, actualJob);
+    Assertions.assertEquals(expectedJob, actualJob);
   }
 
   @Test
@@ -417,7 +416,7 @@ public class RebalancerTest extends FievelTestBase {
             .build();
 
     Job actualJob = Rebalancer.mergeJobGroupAndJob(jobGroup, job).build();
-    Assert.assertEquals(expectedJob, actualJob);
+    Assertions.assertEquals(expectedJob, actualJob);
   }
 
   @Test
@@ -477,7 +476,7 @@ public class RebalancerTest extends FievelTestBase {
             .build();
 
     Job actualJob = Rebalancer.mergeJobGroupAndJob(jobGroup, job).build();
-    Assert.assertEquals(expectedJob, actualJob);
+    Assertions.assertEquals(expectedJob, actualJob);
   }
 
   @Test
@@ -552,7 +551,7 @@ public class RebalancerTest extends FievelTestBase {
             .build();
 
     Job actualJob = Rebalancer.mergeJobGroupAndJob(jobGroup, job).build();
-    Assert.assertEquals(expectedJob, actualJob);
+    Assertions.assertEquals(expectedJob, actualJob);
   }
 
   @Test
@@ -639,6 +638,6 @@ public class RebalancerTest extends FievelTestBase {
             .build();
 
     Job actualJob = Rebalancer.mergeJobGroupAndJob(jobGroup, job).build();
-    Assert.assertEquals(expectedJob, actualJob);
+    Assertions.assertEquals(expectedJob, actualJob);
   }
 }

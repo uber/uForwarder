@@ -5,17 +5,16 @@ import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.common.HostResolver;
 import com.uber.data.kafka.datatransfer.common.ManagedChannelFactory;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class ControllerClientFactoryTest extends FievelTestBase {
+public class ControllerClientFactoryTest {
   private HostResolver resolver;
   private ControllerClient.Factory factory;
 
-  @Before
+  @BeforeEach
   public void setup() throws Exception {
     resolver = Mockito.mock(HostResolver.class);
     factory =
@@ -28,8 +27,8 @@ public class ControllerClientFactoryTest extends FievelTestBase {
   @Test
   public void testConnect() throws Exception {
     ControllerClient controllerClient = factory.connect();
-    Assert.assertEquals("localhost", controllerClient.getNode().getHost());
-    Assert.assertEquals(1234, controllerClient.getNode().getPort());
+    Assertions.assertEquals("localhost", controllerClient.getNode().getHost());
+    Assertions.assertEquals(1234, controllerClient.getNode().getPort());
   }
 
   @Test
@@ -40,28 +39,28 @@ public class ControllerClientFactoryTest extends FievelTestBase {
     Mockito.when(oldClient.getNode()).thenReturn(oldNode);
 
     ControllerClient controllerClient = factory.reconnectOnChange(oldClient, oldNode);
-    Assert.assertEquals(oldClient, controllerClient);
+    Assertions.assertEquals(oldClient, controllerClient);
 
     controllerClient = factory.reconnectOnChange(oldClient, newOld);
-    Assert.assertNotEquals(oldClient, controllerClient);
+    Assertions.assertNotEquals(oldClient, controllerClient);
   }
 
   @Test
   public void testConnectWithDefault() throws Exception {
     ControllerClient defaultClient = Mockito.mock(ControllerClient.class);
     ControllerClient newClient = factory.connectOrDefault(defaultClient);
-    Assert.assertNotEquals(newClient, defaultClient);
+    Assertions.assertNotEquals(newClient, defaultClient);
 
     Mockito.doThrow(new RuntimeException()).when(resolver).getHostPort();
     newClient = factory.connectOrDefault(defaultClient);
-    Assert.assertEquals(newClient, defaultClient);
+    Assertions.assertEquals(newClient, defaultClient);
   }
 
   @Test
   public void testReconnect() throws Exception {
     ControllerClient oldClient = Mockito.mock(ControllerClient.class);
     ControllerClient newClient = factory.reconnect(oldClient);
-    Assert.assertEquals("localhost", newClient.getNode().getHost());
-    Assert.assertEquals(1234, newClient.getNode().getPort());
+    Assertions.assertEquals("localhost", newClient.getNode().getHost());
+    Assertions.assertEquals(1234, newClient.getNode().getPort());
   }
 }

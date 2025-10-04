@@ -1,8 +1,9 @@
 package com.uber.data.kafka.datatransfer.controller.coordinator;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.common.collect.ImmutableList;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.io.IOException;
 import org.apache.curator.framework.CuratorFramework;
 import org.apache.curator.framework.api.CreateBuilder;
@@ -12,19 +13,19 @@ import org.apache.curator.framework.recipes.leader.LeaderLatch;
 import org.apache.curator.framework.recipes.leader.LeaderLatchListener;
 import org.apache.curator.framework.recipes.leader.Participant;
 import org.apache.zookeeper.data.Stat;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mockito;
 
-public class LeaderSelectorTest extends FievelTestBase {
+public class LeaderSelectorTest {
 
   private LeaderSelector leaderSelector;
   private CuratorFramework curatorFramework;
   private LeaderLatch leaderLatch;
 
-  @Before
+  @BeforeEach
   public void setup() {
     curatorFramework = Mockito.mock(CuratorFramework.class);
     leaderLatch = Mockito.mock(LeaderLatch.class);
@@ -54,9 +55,9 @@ public class LeaderSelectorTest extends FievelTestBase {
 
     try {
       leaderSelector.registerListener(listener);
-      Assert.fail("registerListener should fail b/c leaderSelector is not started yet");
+      Assertions.fail("registerListener should fail b/c leaderSelector is not started yet");
     } catch (IllegalStateException e) {
-      Assert.assertEquals(
+      Assertions.assertEquals(
           "registerListener can't run before LeaderSelector started", e.getMessage());
     }
 
@@ -114,9 +115,9 @@ public class LeaderSelectorTest extends FievelTestBase {
 
     try {
       leaderSelector.registerListener(listener);
-      Assert.fail("registerListener should fail b/c leaderSelector is not started yet");
+      Assertions.fail("registerListener should fail b/c leaderSelector is not started yet");
     } catch (IllegalStateException e) {
-      Assert.assertEquals(
+      Assertions.assertEquals(
           "registerListener can't run before LeaderSelector started", e.getMessage());
     }
 
@@ -155,45 +156,57 @@ public class LeaderSelectorTest extends FievelTestBase {
     Mockito.verify(leaderLatch, Mockito.times(1)).close();
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testLeaderPathCreationException() throws Exception {
-    Mockito.when(curatorFramework.getState())
-        .thenReturn(CuratorFrameworkState.LATENT)
-        .thenReturn(CuratorFrameworkState.STARTED);
-    Mockito.when(leaderLatch.getState())
-        .thenReturn(LeaderLatch.State.LATENT)
-        .thenReturn(LeaderLatch.State.STARTED);
-    ExistsBuilder existsBuilder = Mockito.mock(ExistsBuilder.class);
-    CreateBuilder createBuilder = Mockito.mock(CreateBuilder.class);
-    Mockito.when(curatorFramework.checkExists()).thenReturn(existsBuilder);
-    Mockito.when(curatorFramework.create()).thenReturn(createBuilder);
-    Mockito.doThrow(new RuntimeException()).when(existsBuilder).forPath("/leader");
-    leaderSelector.start();
+    assertThrows(
+        RuntimeException.class,
+        () -> {
+          Mockito.when(curatorFramework.getState())
+              .thenReturn(CuratorFrameworkState.LATENT)
+              .thenReturn(CuratorFrameworkState.STARTED);
+          Mockito.when(leaderLatch.getState())
+              .thenReturn(LeaderLatch.State.LATENT)
+              .thenReturn(LeaderLatch.State.STARTED);
+          ExistsBuilder existsBuilder = Mockito.mock(ExistsBuilder.class);
+          CreateBuilder createBuilder = Mockito.mock(CreateBuilder.class);
+          Mockito.when(curatorFramework.checkExists()).thenReturn(existsBuilder);
+          Mockito.when(curatorFramework.create()).thenReturn(createBuilder);
+          Mockito.doThrow(new RuntimeException()).when(existsBuilder).forPath("/leader");
+          leaderSelector.start();
+        });
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testLeaderSelectorStartException() throws Exception {
-    Mockito.when(curatorFramework.getState())
-        .thenReturn(CuratorFrameworkState.LATENT)
-        .thenReturn(CuratorFrameworkState.STARTED);
-    Mockito.when(leaderLatch.getState())
-        .thenReturn(LeaderLatch.State.LATENT)
-        .thenReturn(LeaderLatch.State.STARTED);
-    ExistsBuilder existsBuilder = Mockito.mock(ExistsBuilder.class);
-    CreateBuilder createBuilder = Mockito.mock(CreateBuilder.class);
-    Mockito.when(curatorFramework.checkExists()).thenReturn(existsBuilder);
-    Mockito.when(curatorFramework.create()).thenReturn(createBuilder);
-    Mockito.when(curatorFramework.checkExists()).thenReturn(existsBuilder);
-    Mockito.when(existsBuilder.forPath("/leader")).thenReturn(new Stat());
-    Mockito.doThrow(new RuntimeException()).when(leaderLatch).start();
-    leaderSelector.start();
+    assertThrows(
+        RuntimeException.class,
+        () -> {
+          Mockito.when(curatorFramework.getState())
+              .thenReturn(CuratorFrameworkState.LATENT)
+              .thenReturn(CuratorFrameworkState.STARTED);
+          Mockito.when(leaderLatch.getState())
+              .thenReturn(LeaderLatch.State.LATENT)
+              .thenReturn(LeaderLatch.State.STARTED);
+          ExistsBuilder existsBuilder = Mockito.mock(ExistsBuilder.class);
+          CreateBuilder createBuilder = Mockito.mock(CreateBuilder.class);
+          Mockito.when(curatorFramework.checkExists()).thenReturn(existsBuilder);
+          Mockito.when(curatorFramework.create()).thenReturn(createBuilder);
+          Mockito.when(curatorFramework.checkExists()).thenReturn(existsBuilder);
+          Mockito.when(existsBuilder.forPath("/leader")).thenReturn(new Stat());
+          Mockito.doThrow(new RuntimeException()).when(leaderLatch).start();
+          leaderSelector.start();
+        });
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testLeaderSelectorStopException() throws Exception {
-    Mockito.when(leaderLatch.getState()).thenReturn(LeaderLatch.State.STARTED);
-    Mockito.doThrow(new IOException()).when(leaderLatch).close();
-    leaderSelector.stop();
+    assertThrows(
+        RuntimeException.class,
+        () -> {
+          Mockito.when(leaderLatch.getState()).thenReturn(LeaderLatch.State.STARTED);
+          Mockito.doThrow(new IOException()).when(leaderLatch).close();
+          leaderSelector.stop();
+        });
   }
 
   @Test
@@ -229,6 +242,6 @@ public class LeaderSelectorTest extends FievelTestBase {
         .thenReturn(
             ImmutableList.of(
                 new Participant("hostname:1234", true), new Participant("hostname:5678", false)));
-    Assert.assertEquals(ImmutableList.of("hostname:5678"), leaderSelector.getFollowers());
+    Assertions.assertEquals(ImmutableList.of("hostname:5678"), leaderSelector.getFollowers());
   }
 }

@@ -1,19 +1,18 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertFalse;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.uber.data.kafka.datatransfer.JobGroupScaleStatusSnapshot;
 import com.uber.data.kafka.datatransfer.ScaleComputerSnapshot;
 import com.uber.data.kafka.datatransfer.ScaleStateSnapshot;
 import com.uber.data.kafka.datatransfer.WindowSnapshot;
 import com.uber.data.kafka.datatransfer.WindowedComputerSnapshot;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.Optional;
-import org.junit.Test;
+import org.junit.jupiter.api.Test;
 
-public class ScalePredictionUtilsTest extends FievelTestBase {
+public class ScalePredictionUtilsTest {
 
   @Test
   public void testFindFirstSmallerWithNormalCase() {
@@ -23,7 +22,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should find index 2 (value 6.0) as first smaller than 7.0", 2, result);
+    assertEquals(2, result, "Should find index 2 (value 6.0) as first smaller than 7.0");
   }
 
   @Test
@@ -34,7 +33,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should find index 0 (value 10.0) as first smaller than 12.0", 0, result);
+    assertEquals(0, result, "Should find index 0 (value 10.0) as first smaller than 12.0");
   }
 
   @Test
@@ -45,7 +44,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should return -1 when no element is smaller than target", -1, result);
+    assertEquals(-1, result, "Should return -1 when no element is smaller than target");
   }
 
   @Test
@@ -56,7 +55,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should find index 3 (value 4.0) as first smaller than 6.0", 3, result);
+    assertEquals(3, result, "Should find index 3 (value 4.0) as first smaller than 6.0");
   }
 
   @Test
@@ -67,7 +66,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should find index 0 (value 5.0) as smaller than 6.0", 0, result);
+    assertEquals(0, result, "Should find index 0 (value 5.0) as smaller than 6.0");
   }
 
   @Test
@@ -78,7 +77,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should return -1 when single element is not smaller than target", -1, result);
+    assertEquals(-1, result, "Should return -1 when single element is not smaller than target");
   }
 
   @Test
@@ -89,7 +88,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should find index 3 (value -1.0) as first smaller than 0.0", 3, result);
+    assertEquals(3, result, "Should find index 3 (value -1.0) as first smaller than 0.0");
   }
 
   @Test
@@ -100,7 +99,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should find index 2 (value 6.1) as first smaller than 7.0", 2, result);
+    assertEquals(2, result, "Should find index 2 (value 6.1) as first smaller than 7.0");
   }
 
   @Test
@@ -111,7 +110,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should find index 3 (value 4.0) as first smaller than 5.0", 3, result);
+    assertEquals(3, result, "Should find index 3 (value 4.0) as first smaller than 5.0");
   }
 
   @Test
@@ -122,7 +121,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should find index 1 (value 8.0) as first smaller than 10.0", 1, result);
+    assertEquals(1, result, "Should find index 1 (value 8.0) as first smaller than 10.0");
   }
 
   @Test
@@ -133,7 +132,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should return -1 when target equals last element", -1, result);
+    assertEquals(-1, result, "Should return -1 when target equals last element");
   }
 
   @Test
@@ -144,7 +143,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should return -1 when target is much smaller than all elements", -1, result);
+    assertEquals(-1, result, "Should return -1 when target is much smaller than all elements");
   }
 
   @Test
@@ -155,7 +154,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should find index 0 (value 10.0) when target is much larger", 0, result);
+    assertEquals(0, result, "Should find index 0 (value 10.0) when target is much larger");
   }
 
   @Test
@@ -166,7 +165,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     int result = ScalePredictionUtils.findFirstSmaller(arr, target);
 
-    assertEquals("Should find index 4 (value 4.0) as first smaller than 5.0", 4, result);
+    assertEquals(4, result, "Should find index 4 (value 4.0) as first smaller than 5.0");
   }
 
   @Test
@@ -186,7 +185,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     boolean result = ScalePredictionUtils.isDownScale(prediction);
 
-    assertTrue("Should return true for valid down-scale (future=5.0 > 0, diff=-5.0 < 0)", result);
+    assertTrue(result, "Should return true for valid down-scale (future=5.0 > 0, diff=-5.0 < 0)");
   }
 
   @Test
@@ -196,7 +195,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     boolean result = ScalePredictionUtils.isDownScale(prediction);
 
-    assertFalse("Should return false for up-scale (future=10.0 > 0, diff=5.0 > 0)", result);
+    assertFalse(result, "Should return false for up-scale (future=10.0 > 0, diff=5.0 > 0)");
   }
 
   @Test
@@ -206,7 +205,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     boolean result = ScalePredictionUtils.isDownScale(prediction);
 
-    assertFalse("Should return false for no change (future=5.0 > 0, diff=0.0 >= 0)", result);
+    assertFalse(result, "Should return false for no change (future=5.0 > 0, diff=0.0 >= 0)");
   }
 
   @Test
@@ -216,7 +215,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     boolean result = ScalePredictionUtils.isDownScale(prediction);
 
-    assertFalse("Should return false when future scale is zero (future=0.0 <= 0)", result);
+    assertFalse(result, "Should return false when future scale is zero (future=0.0 <= 0)");
   }
 
   @Test
@@ -226,7 +225,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     boolean result = ScalePredictionUtils.isDownScale(prediction);
 
-    assertFalse("Should return false when future scale is negative (future=-1.0 <= 0)", result);
+    assertFalse(result, "Should return false when future scale is negative (future=-1.0 <= 0)");
   }
 
   // Tests for predict function with WindowedComputerSnapshot
@@ -248,15 +247,15 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot, currentScale);
 
-    assertTrue("Should return a valid prediction", result.isPresent());
+    assertTrue(result.isPresent(), "Should return a valid prediction");
     ScalePrediction prediction = result.get();
     assertEquals(
-        "Countdown should be 200 seconds in nanos",
         200_000_000_000L,
-        prediction.getCountdownNanos());
-    assertEquals("Current scale should match", currentScale, prediction.getCurrentScale(), 0.001);
+        prediction.getCountdownNanos(),
+        "Countdown should be 200 seconds in nanos");
+    assertEquals(currentScale, prediction.getCurrentScale(), 0.001, "Current scale should match");
     assertEquals(
-        "Future scale should match percentile scale", 3.5, prediction.getFutureScale(), 0.001);
+        3.5, prediction.getFutureScale(), 0.001, "Future scale should match percentile scale");
   }
 
   @Test
@@ -276,7 +275,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot, currentScale);
 
-    assertFalse("Should return empty when insufficient samples", result.isPresent());
+    assertFalse(result.isPresent(), "Should return empty when insufficient samples");
   }
 
   @Test
@@ -296,7 +295,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot, currentScale);
 
-    assertTrue("Should return a valid prediction when samples equal minimum", result.isPresent());
+    assertTrue(result.isPresent(), "Should return a valid prediction when samples equal minimum");
   }
 
   @Test
@@ -316,7 +315,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot, currentScale);
 
-    assertFalse("Should return empty when proposal below lower boundary", result.isPresent());
+    assertFalse(result.isPresent(), "Should return empty when proposal below lower boundary");
   }
 
   @Test
@@ -336,7 +335,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot, currentScale);
 
-    assertFalse("Should return empty when proposal above upper boundary", result.isPresent());
+    assertFalse(result.isPresent(), "Should return empty when proposal above upper boundary");
   }
 
   // Tests for predict function with ScaleComputerSnapshot
@@ -361,9 +360,9 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot, currentScale);
 
-    assertTrue("Should return a valid prediction", result.isPresent());
+    assertTrue(result.isPresent(), "Should return a valid prediction");
     assertEquals(
-        "Future scale should match percentile scale", 3.5, result.get().getFutureScale(), 0.001);
+        3.5, result.get().getFutureScale(), 0.001, "Future scale should match percentile scale");
   }
 
   @Test
@@ -374,7 +373,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot, currentScale);
 
-    assertFalse("Should return empty when no WindowedComputerSnapshot", result.isPresent());
+    assertFalse(result.isPresent(), "Should return empty when no WindowedComputerSnapshot");
   }
 
   @Test
@@ -385,7 +384,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot, currentScale);
 
-    assertFalse("Should return empty for default instance", result.isPresent());
+    assertFalse(result.isPresent(), "Should return empty for default instance");
   }
 
   // Tests for predict function with ScaleStateSnapshot
@@ -413,8 +412,8 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot);
 
-    assertTrue("Should return a valid prediction", result.isPresent());
-    assertEquals("Current scale should match", 5.0, result.get().getCurrentScale(), 0.001);
+    assertTrue(result.isPresent(), "Should return a valid prediction");
+    assertEquals(5.0, result.get().getCurrentScale(), 0.001, "Current scale should match");
   }
 
   @Test
@@ -424,7 +423,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot);
 
-    assertFalse("Should return empty when no computer snapshots", result.isPresent());
+    assertFalse(result.isPresent(), "Should return empty when no computer snapshots");
   }
 
   @Test
@@ -451,7 +450,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot);
 
-    assertFalse("Should return empty when all computer snapshots are invalid", result.isPresent());
+    assertFalse(result.isPresent(), "Should return empty when all computer snapshots are invalid");
   }
 
   @Test
@@ -491,11 +490,11 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot);
 
-    assertTrue("Should return a valid prediction", result.isPresent());
+    assertTrue(result.isPresent(), "Should return a valid prediction");
     assertEquals(
-        "Should return prediction with smallest countdown",
         50_000_000_000L,
-        result.get().getCountdownNanos());
+        result.get().getCountdownNanos(),
+        "Should return prediction with smallest countdown");
   }
 
   // Tests for predict function with JobGroupScaleStatusSnapshot
@@ -529,8 +528,8 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
 
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot);
 
-    assertTrue("Should return a valid prediction", result.isPresent());
-    assertEquals("Current scale should match", 5.0, result.get().getCurrentScale(), 0.001);
+    assertTrue(result.isPresent(), "Should return a valid prediction");
+    assertEquals(5.0, result.get().getCurrentScale(), 0.001, "Current scale should match");
   }
 
   @Test
@@ -547,7 +546,7 @@ public class ScalePredictionUtilsTest extends FievelTestBase {
     Optional<ScalePrediction> result = ScalePredictionUtils.predict(snapshot);
 
     assertFalse(
-        "Should return empty when scale state has no computer snapshots", result.isPresent());
+        result.isPresent(), "Should return empty when scale state has no computer snapshots");
   }
 
   // Helper method to create WindowedComputerSnapshot for testing

@@ -1,20 +1,21 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.uber.data.kafka.datatransfer.WindowSnapshot;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.time.Duration;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class ScaleWindowTest extends FievelTestBase {
+public class ScaleWindowTest {
   private ScaleWindow scaleWindow;
   private TestUtils.TestTicker ticker;
 
-  @Before
+  @BeforeEach
   public void setup() {
     ticker = new TestUtils.TestTicker();
     scaleWindow =
@@ -39,9 +40,9 @@ public class ScaleWindowTest extends FievelTestBase {
     boolean isMature = scaleWindow.isMature();
     double p50 = scaleWindow.getByPercentile(0.5);
     double p90 = scaleWindow.getByPercentile(0.9);
-    Assert.assertTrue(isMature);
-    Assert.assertEquals(sum / count, p50, 1);
-    Assert.assertEquals(95, p90, 1);
+    Assertions.assertTrue(isMature);
+    Assertions.assertEquals(sum / count, p50, 1);
+    Assertions.assertEquals(95, p90, 1);
   }
 
   @Test
@@ -51,7 +52,7 @@ public class ScaleWindowTest extends FievelTestBase {
       scaleWindow.add(1);
     }
     boolean isMature = scaleWindow.isMature();
-    Assert.assertFalse(isMature);
+    Assertions.assertFalse(isMature);
   }
 
   @Test
@@ -61,7 +62,7 @@ public class ScaleWindowTest extends FievelTestBase {
       scaleWindow.add(1);
     }
     boolean isMature = scaleWindow.isMature();
-    Assert.assertFalse(isMature);
+    Assertions.assertFalse(isMature);
   }
 
   @Test
@@ -78,19 +79,19 @@ public class ScaleWindowTest extends FievelTestBase {
       scaleWindow.add(0.0);
     }
     boolean isMature = scaleWindow.isMature();
-    Assert.assertTrue(isMature);
+    Assertions.assertTrue(isMature);
     double result = scaleWindow.getByPercentile(0.99);
-    Assert.assertTrue(result == 0.0);
+    Assertions.assertTrue(result == 0.0);
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testInvalidSamples() {
-    ScaleWindow.newBuilder().withMinSamples(-1);
+    assertThrows(IllegalArgumentException.class, () -> ScaleWindow.newBuilder().withMinSamples(-1));
   }
 
-  @Test(expected = IllegalArgumentException.class)
+  @Test
   public void testInvalidBuckets() {
-    ScaleWindow.newBuilder().withNBuckets(-1);
+    assertThrows(IllegalArgumentException.class, () -> ScaleWindow.newBuilder().withNBuckets(-1));
   }
 
   @Test
@@ -106,7 +107,7 @@ public class ScaleWindowTest extends FievelTestBase {
       ticker.add(Duration.ofSeconds(30));
       scaleWindow.add(i);
     }
-    Assert.assertTrue(scaleWindow.isMature());
+    Assertions.assertTrue(scaleWindow.isMature());
   }
 
   @Test
@@ -122,13 +123,13 @@ public class ScaleWindowTest extends FievelTestBase {
             .build(70, 100, jitter);
     WindowSnapshot snapshot = scaleWindow.snapshot();
     long minSizeInSeconds = snapshot.getMinSizeInSeconds();
-    Assert.assertEquals((int) (5 * 60 * (1 - jitter)), minSizeInSeconds);
+    Assertions.assertEquals((int) (5 * 60 * (1 - jitter)), minSizeInSeconds);
     // ensure jitter doesn't impact linear model of window size limit
     long offsetSeconds = 60;
     long offsetNano = TimeUnit.SECONDS.toNanos(offsetSeconds);
     supplier.durationNano = supplier.durationNano - offsetNano;
     snapshot = scaleWindow.snapshot();
-    Assert.assertEquals(minSizeInSeconds - offsetSeconds, snapshot.getMinSizeInSeconds());
+    Assertions.assertEquals(minSizeInSeconds - offsetSeconds, snapshot.getMinSizeInSeconds());
   }
 
   private static class WindowDurationSupplier implements Supplier<Long> {

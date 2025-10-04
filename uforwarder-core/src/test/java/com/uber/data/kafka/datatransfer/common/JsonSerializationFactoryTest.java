@@ -1,5 +1,7 @@
 package com.uber.data.kafka.datatransfer.common;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
 import com.google.protobuf.Any;
 import com.google.protobuf.InvalidProtocolBufferException;
 import com.google.protobuf.util.JsonFormat;
@@ -7,15 +9,14 @@ import com.uber.data.kafka.datatransfer.JobGroup;
 import com.uber.data.kafka.datatransfer.Node;
 import com.uber.data.kafka.datatransfer.StoredWorker;
 import com.uber.data.kafka.datatransfer.WorkerState;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
-public class JsonSerializationFactoryTest extends FievelTestBase {
+public class JsonSerializationFactoryTest {
   private JsonSerializationFactory<StoredWorker> factory;
 
-  @Before
+  @BeforeEach
   public void setup() {
     factory =
         new JsonSerializationFactory<>(
@@ -31,7 +32,7 @@ public class JsonSerializationFactoryTest extends FievelTestBase {
             .setState(WorkerState.WORKER_STATE_WORKING)
             .build();
     byte[] workerBytes1 = factory.serialize(worker1);
-    Assert.assertEquals(worker1, factory.deserialize(workerBytes1));
+    Assertions.assertEquals(worker1, factory.deserialize(workerBytes1));
 
     // test that the prototype pattern for JsonSerializationFactory does not affect output
     // that is, the prototype is used for its types and no data is stored there
@@ -43,12 +44,12 @@ public class JsonSerializationFactoryTest extends FievelTestBase {
             .build();
     byte[] workerBytes2 = factory.serialize(worker2);
     // workerBytes1 and workerBytes2 should be different since the data is different
-    Assert.assertNotEquals(workerBytes1, workerBytes2);
+    Assertions.assertNotEquals(workerBytes1, workerBytes2);
   }
 
-  @Test(expected = RuntimeException.class)
+  @Test
   public void testInvalidJsonBytes() {
-    factory.deserialize(new byte[] {1, 2, 3, 4});
+    assertThrows(RuntimeException.class, () -> factory.deserialize(new byte[] {1, 2, 3, 4}));
   }
 
   @Test
@@ -67,7 +68,7 @@ public class JsonSerializationFactoryTest extends FievelTestBase {
                             .build()))
                 .build());
     JobGroup group = factory.deserialize(json);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         WorkerState.WORKER_STATE_WORKING,
         group.getExtension().unpack(StoredWorker.class).getState());
   }

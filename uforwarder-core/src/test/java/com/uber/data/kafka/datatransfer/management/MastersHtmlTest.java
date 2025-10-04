@@ -1,12 +1,11 @@
 package com.uber.data.kafka.datatransfer.management;
 
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class MastersHtmlTest extends FievelTestBase {
+public class MastersHtmlTest {
   @Test
   public void testRead() throws Exception {
-    Assert.assertNotNull(new MastersHtml().read());
+    Assertions.assertNotNull(new MastersHtml().read());
   }
 }

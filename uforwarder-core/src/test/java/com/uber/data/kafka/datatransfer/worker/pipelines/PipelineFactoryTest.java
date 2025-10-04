@@ -1,12 +1,11 @@
 package com.uber.data.kafka.datatransfer.worker.pipelines;
 
 import com.uber.data.kafka.datatransfer.Job;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class PipelineFactoryTest extends FievelTestBase {
+public class PipelineFactoryTest {
 
   private static class PipelineFactoryTestImpl implements PipelineFactory {
     @Override
@@ -24,7 +23,7 @@ public class PipelineFactoryTest extends FievelTestBase {
   public void testGetThreadName() {
     PipelineFactory factory = new PipelineFactoryTestImpl();
     Job job = Mockito.mock(Job.class);
-    Assert.assertEquals(
+    Assertions.assertEquals(
         "serviceName__pipelineId__role", factory.getThreadName(job, "role", "serviceName"));
   }
 }

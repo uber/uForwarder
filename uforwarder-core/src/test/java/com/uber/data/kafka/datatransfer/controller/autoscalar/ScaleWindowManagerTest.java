@@ -1,21 +1,20 @@
 package com.uber.data.kafka.datatransfer.controller.autoscalar;
 
-import static org.junit.Assert.assertEquals;
-import static org.junit.Assert.assertNotNull;
-import static org.junit.Assert.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.when;
 
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.time.Duration;
-import org.junit.Before;
-import org.junit.Test;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
 
-public class ScaleWindowManagerTest extends FievelTestBase {
+public class ScaleWindowManagerTest {
   private ScaleWindowManager scaleWindowManager;
   private AutoScalarConfiguration mockConfig;
 
-  @Before
+  @BeforeEach
   public void setUp() {
     mockConfig = Mockito.mock(AutoScalarConfiguration.class);
   }
@@ -25,16 +24,16 @@ public class ScaleWindowManagerTest extends FievelTestBase {
     // Test the default constructor
     scaleWindowManager = new ScaleWindowManager();
 
-    assertNotNull("ScaleWindowManager should not be null", scaleWindowManager);
+    assertNotNull(scaleWindowManager, "ScaleWindowManager should not be null");
 
     // Verify that default values are set (these should be non-null)
     Duration downScaleWindow = scaleWindowManager.getDownScaleWindowDuration();
     Duration upScaleWindow = scaleWindowManager.getUpScaleWindowDuration();
     Duration hibernateWindow = scaleWindowManager.getHibernateWindowDuration();
 
-    assertNotNull("Down-scale window should not be null", downScaleWindow);
-    assertNotNull("Up-scale window should not be null", upScaleWindow);
-    assertNotNull("Hibernate window should not be null", hibernateWindow);
+    assertNotNull(downScaleWindow, "Down-scale window should not be null");
+    assertNotNull(upScaleWindow, "Up-scale window should not be null");
+    assertNotNull(hibernateWindow, "Hibernate window should not be null");
   }
 
   @Test
@@ -51,21 +50,21 @@ public class ScaleWindowManagerTest extends FievelTestBase {
     // Test constructor with configuration
     scaleWindowManager = new ScaleWindowManager(mockConfig);
 
-    assertNotNull("ScaleWindowManager should not be null", scaleWindowManager);
+    assertNotNull(scaleWindowManager, "ScaleWindowManager should not be null");
 
     // Verify that the durations match the configuration
     assertEquals(
-        "Down-scale window should match configuration",
         expectedDownScale,
-        scaleWindowManager.getDownScaleWindowDuration());
+        scaleWindowManager.getDownScaleWindowDuration(),
+        "Down-scale window should match configuration");
     assertEquals(
-        "Up-scale window should match configuration",
         expectedUpScale,
-        scaleWindowManager.getUpScaleWindowDuration());
+        scaleWindowManager.getUpScaleWindowDuration(),
+        "Up-scale window should match configuration");
     assertEquals(
-        "Hibernate window should match configuration",
         expectedHibernate,
-        scaleWindowManager.getHibernateWindowDuration());
+        scaleWindowManager.getHibernateWindowDuration(),
+        "Hibernate window should match configuration");
   }
 
   @Test
@@ -80,9 +79,9 @@ public class ScaleWindowManagerTest extends FievelTestBase {
 
     Duration actualDownScale = scaleWindowManager.getDownScaleWindowDuration();
 
-    assertNotNull("Down-scale window should not be null", actualDownScale);
+    assertNotNull(actualDownScale, "Down-scale window should not be null");
     assertEquals(
-        "Down-scale window should match expected value", expectedDownScale, actualDownScale);
+        expectedDownScale, actualDownScale, "Down-scale window should match expected value");
   }
 
   @Test
@@ -97,8 +96,8 @@ public class ScaleWindowManagerTest extends FievelTestBase {
 
     Duration actualUpScale = scaleWindowManager.getUpScaleWindowDuration();
 
-    assertNotNull("Up-scale window should not be null", actualUpScale);
-    assertEquals("Up-scale window should match expected value", expectedUpScale, actualUpScale);
+    assertNotNull(actualUpScale, "Up-scale window should not be null");
+    assertEquals(expectedUpScale, actualUpScale, "Up-scale window should match expected value");
   }
 
   @Test
@@ -113,9 +112,9 @@ public class ScaleWindowManagerTest extends FievelTestBase {
 
     Duration actualHibernate = scaleWindowManager.getHibernateWindowDuration();
 
-    assertNotNull("Hibernate window should not be null", actualHibernate);
+    assertNotNull(actualHibernate, "Hibernate window should not be null");
     assertEquals(
-        "Hibernate window should match expected value", expectedHibernate, actualHibernate);
+        expectedHibernate, actualHibernate, "Hibernate window should match expected value");
   }
 
   @Test
@@ -126,7 +125,7 @@ public class ScaleWindowManagerTest extends FievelTestBase {
       // If no exception is thrown, the method should handle null gracefully
     } catch (Exception e) {
       // If an exception is thrown, it should be documented
-      assertTrue("Exception should be documented", e instanceof NullPointerException);
+      assertTrue(e instanceof NullPointerException, "Exception should be documented");
     }
   }
 }

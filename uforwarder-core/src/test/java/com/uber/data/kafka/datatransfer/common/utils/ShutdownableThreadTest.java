@@ -1,8 +1,7 @@
 package com.uber.data.kafka.datatransfer.common.utils;
 
-import static org.junit.Assert.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
-import com.uber.fievel.testing.base.FievelTestBase;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -10,14 +9,14 @@ import java.util.concurrent.atomic.AtomicReference;
 import org.apache.kafka.common.internals.FatalExitError;
 import org.apache.kafka.common.utils.Exit;
 import org.awaitility.Awaitility;
-import org.junit.After;
-import org.junit.Test;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
 
 // This class is mimic from
 // https://github.com/apache/kafka/blob/3.6/core/src/test/scala/unit/kafka/utils/ShutdownableThreadTest.scala
-public class ShutdownableThreadTest extends FievelTestBase {
+public class ShutdownableThreadTest {
 
-  @After
+  @AfterEach
   public void tearDown() {
     Exit.resetExitProcedure();
   }

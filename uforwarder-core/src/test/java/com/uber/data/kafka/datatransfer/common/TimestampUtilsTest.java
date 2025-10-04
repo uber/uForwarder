@@ -2,18 +2,17 @@ package com.uber.data.kafka.datatransfer.common;
 
 import com.google.protobuf.Timestamp;
 import com.google.protobuf.util.JsonFormat;
-import com.uber.fievel.testing.base.FievelTestBase;
-import org.junit.Assert;
-import org.junit.Test;
+import org.junit.jupiter.api.Assertions;
+import org.junit.jupiter.api.Test;
 
-public class TimestampUtilsTest extends FievelTestBase {
+public class TimestampUtilsTest {
 
   @Test
   public void testCurrentTimeMilliseconds() {
-    Assert.assertNotEquals(0, TimestampUtils.currentTimeMilliseconds().getSeconds());
-    Assert.assertEquals(0, TimestampUtils.currentTimeMilliseconds().getNanos() % 1000);
-    Assert.assertTrue(TimestampUtils.currentTimeMilliseconds().getSeconds() >= 0);
-    Assert.assertTrue(TimestampUtils.currentTimeMilliseconds().getNanos() >= 0);
+    Assertions.assertNotEquals(0, TimestampUtils.currentTimeMilliseconds().getSeconds());
+    Assertions.assertEquals(0, TimestampUtils.currentTimeMilliseconds().getNanos() % 1000);
+    Assertions.assertTrue(TimestampUtils.currentTimeMilliseconds().getSeconds() >= 0);
+    Assertions.assertTrue(TimestampUtils.currentTimeMilliseconds().getNanos() >= 0);
   }
 
   @Test
