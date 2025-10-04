@@ -294,6 +294,11 @@ public class AutoScalar implements Scalar {
       if (signature != quota.signature && scaleResetEnabled) {
         synchronized (this) {
           if (signature != quota.signature) {
+            logger.info(
+                String.format("Reset job group scale state with quota"),
+                StructuredLogging.kafkaTopic(jobGroupKey.getTopic()),
+                StructuredLogging.kafkaCluster(jobGroupKey.getCluster()),
+                StructuredLogging.kafkaGroup(jobGroupKey.getGroup()));
             reset(quota);
           }
         }
