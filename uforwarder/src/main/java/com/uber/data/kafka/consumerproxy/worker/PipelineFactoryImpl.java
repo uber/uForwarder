@@ -11,6 +11,7 @@ import com.uber.data.kafka.consumerproxy.worker.processor.ProcessorImpl;
 import com.uber.data.kafka.datatransfer.Job;
 import com.uber.data.kafka.datatransfer.common.CoreInfra;
 import com.uber.data.kafka.datatransfer.worker.common.PipelineStateManager;
+import com.uber.data.kafka.datatransfer.worker.common.ThreadRegister;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcher;
 import com.uber.data.kafka.datatransfer.worker.dispatchers.kafka.KafkaDispatcherFactory;
 import com.uber.data.kafka.datatransfer.worker.fetchers.kafka.KafkaFetcher;
@@ -66,15 +67,18 @@ public class PipelineFactoryImpl implements PipelineFactory {
     Optional<DispatcherImpl> dispatcher = Optional.empty();
     Optional<GrpcDispatcher> grpcDispatcher = Optional.empty();
     Optional<PipelineStateManager> kafkaPipelineStateManager = Optional.empty();
+    ThreadRegister threadRegister = new ThreadRegister();
     try {
       kafkaPipelineStateManager = Optional.of(new KafkaPipelineStateManager(job, infra.scope()));
       boolean isSecure = job.hasSecurityConfig() && job.getSecurityConfig().getIsSecure();
       fetcher =
           Optional.of(
-              kafkaFetcherFactory.create(job, getThreadName(job, CONSUMER, serviceName), infra));
+              kafkaFetcherFactory.create(
+                  job, getThreadName(job, CONSUMER, serviceName), threadRegister, infra));
       String processorId = getThreadName(job, PROCESSOR, serviceName);
-      processor = Optional.of(processorFactory.create(job, processorId));
       final String dispatcherId = getThreadName(job, DISPATCHER, serviceName);
+      processor =
+          Optional.of(processorFactory.create(job, processorId, threadRegister.asThreadFactory()));
       grpcDispatcher =
           Optional.of(
               grpcDispatcherFactory.create(
