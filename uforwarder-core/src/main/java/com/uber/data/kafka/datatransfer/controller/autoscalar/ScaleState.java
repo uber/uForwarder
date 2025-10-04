@@ -174,7 +174,7 @@ abstract class ScaleState {
                   .withTicker(builder.ticker),
               scale,
               Scalar.ZERO,
-              EPSILON,
+              ONE,
               Scalar.ZERO,
               Scalar.ZERO,
               builder.config.getDownScalePercentile())
