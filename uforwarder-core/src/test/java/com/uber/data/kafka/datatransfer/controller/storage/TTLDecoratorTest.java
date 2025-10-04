@@ -151,6 +151,43 @@ public class TTLDecoratorTest extends FievelTestBase {
   }
 
   @Test
+  public void testExpirationTaskAddedLaterInGetAll() throws Exception {
+    Versioned<StoredWorker> itemTwo =
+        VersionedProto.from(
+            StoredWorker.newBuilder().setNode(Node.newBuilder().setId(2).build()).build());
+    Assert.assertEquals(0, expirationTaskMap.size());
+    Mockito.when(workerStore.getAll()).thenReturn(ImmutableMap.of(1L, itemOne, 2L, itemTwo));
+    Mockito.when(workerStore.get(1L)).thenReturn(itemOne);
+
+    // get() should updateTTL for the item retrieved
+    ttlWorkerStore.get(1L);
+    Assert.assertEquals(1, expirationTaskMap.size());
+    Assert.assertTrue(expirationTaskMap.containsKey(1L));
+    Mockito.verify(executorService, Mockito.times(1))
+        .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
+    Mockito.clearInvocations(executorService);
+
+    // Call getAll() - this should trigger updateTTL for items that don't have expiration tasks
+    Map<Long, Versioned<StoredWorker>> result = ttlWorkerStore.getAll();
+    Assert.assertEquals(2, result.size());
+    Assert.assertEquals(itemOne, result.get(1L));
+    Assert.assertEquals(itemTwo, result.get(2L));
+    Mockito.verify(executorService, Mockito.times(1))
+        .schedule(Mockito.any(Runnable.class), Mockito.anyLong(), Mockito.any());
+    Assert.assertEquals(2, expirationTaskMap.size());
+    Assert.assertTrue(expirationTaskMap.containsKey(1L));
+    Assert.assertTrue(expirationTaskMap.containsKey(2L));
+    Mockito.verify(workerStore, Mockito.times(1)).getAll();
+    Mockito.clearInvocations(executorService);
+
+    // Call getAll() again, this should not trigger updateTTL for items that already have expiration
+    // tasks
+    result = ttlWorkerStore.getAll();
+    Assert.assertEquals(2, result.size());
+    Mockito.verifyNoMoreInteractions(executorService);
+  }
+
+  @Test
   public void testGet() throws Exception {
     ScheduledFuture scheduledFuture = Mockito.mock(ScheduledFuture.class);
     Mockito.when(
