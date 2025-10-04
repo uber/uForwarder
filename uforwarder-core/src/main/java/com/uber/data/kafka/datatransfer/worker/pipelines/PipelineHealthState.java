@@ -84,7 +84,7 @@ class PipelineHealthState {
     protected void recordIssue(PipelineHealthIssue issue) {
       while (true) {
         int oldValue = value.get();
-        if (value.compareAndSet(oldValue, oldValue | issue.value())) {
+        if (value.compareAndSet(oldValue, oldValue | issue.getValue())) {
           break;
         }
       }

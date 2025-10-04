@@ -5,7 +5,6 @@ import com.uber.data.kafka.datatransfer.KafkaConsumerTask;
 import com.uber.data.kafka.datatransfer.common.TestUtils;
 import com.uber.fievel.testing.base.FievelTestBase;
 import java.time.Duration;
-import java.util.Set;
 import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Test;
@@ -15,6 +14,9 @@ public class PipelineHealthManagerTest extends FievelTestBase {
 
   private TestUtils.TestTicker ticker;
   private Job job;
+
+  private PipelineHealthIssue issue1 = new PipelineHealthIssue(0);
+  private PipelineHealthIssue issue2 = new PipelineHealthIssue(1);
 
   @Before
   public void setUp() {
@@ -38,37 +40,32 @@ public class PipelineHealthManagerTest extends FievelTestBase {
 
   @Test
   public void testReportIssue() {
-    pipelineHealthManager.reportIssue(job, PipelineHealthIssue.INFLIGHT_MESSAGE_LIMITED);
-    pipelineHealthManager.reportIssue(job, PipelineHealthIssue.PERMISSION_DENIED);
+    pipelineHealthManager.reportIssue(job, issue1);
+    pipelineHealthManager.reportIssue(job, issue2);
     int value = pipelineHealthManager.getPipelineHealthStateValue(job);
-    Assert.assertEquals(
-        Set.of(PipelineHealthIssue.INFLIGHT_MESSAGE_LIMITED, PipelineHealthIssue.PERMISSION_DENIED),
-        PipelineHealthIssue.decode(value));
+    Assert.assertEquals(value, issue1.getValue() + issue2.getValue());
     pipelineHealthManager.cancel(job);
     Assert.assertEquals(0, pipelineHealthManager.getPipelineHealthStateValue(job));
   }
 
   @Test
   public void testReportIssuesPartialExpire() {
-    pipelineHealthManager.reportIssue(job, PipelineHealthIssue.INFLIGHT_MESSAGE_LIMITED);
+    pipelineHealthManager.reportIssue(job, issue1);
     ticker.add(Duration.ofSeconds(15));
-    pipelineHealthManager.reportIssue(job, PipelineHealthIssue.PERMISSION_DENIED);
+    pipelineHealthManager.reportIssue(job, issue2);
     int value = pipelineHealthManager.getPipelineHealthStateValue(job);
-    Assert.assertEquals(
-        Set.of(PipelineHealthIssue.INFLIGHT_MESSAGE_LIMITED, PipelineHealthIssue.PERMISSION_DENIED),
-        PipelineHealthIssue.decode(value));
+    Assert.assertEquals(value, issue1.getValue() + issue2.getValue());
     ticker.add(Duration.ofSeconds(20));
     value = pipelineHealthManager.getPipelineHealthStateValue(job);
-    Assert.assertEquals(
-        Set.of(PipelineHealthIssue.PERMISSION_DENIED), PipelineHealthIssue.decode(value));
+    Assert.assertEquals(value, issue2.getValue());
     pipelineHealthManager.cancelAll();
     Assert.assertEquals(0, pipelineHealthManager.getPipelineHealthStateValue(job));
   }
 
   @Test
   public void testGetValueAfterExpiration() {
-    pipelineHealthManager.reportIssue(job, PipelineHealthIssue.INFLIGHT_MESSAGE_LIMITED);
-    pipelineHealthManager.reportIssue(job, PipelineHealthIssue.PERMISSION_DENIED);
+    pipelineHealthManager.reportIssue(job, issue1);
+    pipelineHealthManager.reportIssue(job, issue2);
     ticker.add(Duration.ofMinutes(1));
     int value = pipelineHealthManager.getPipelineHealthStateValue(job);
     Assert.assertEquals(0, value);

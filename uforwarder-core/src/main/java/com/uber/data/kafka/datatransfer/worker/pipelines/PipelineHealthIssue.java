@@ -1,57 +1,45 @@
 package com.uber.data.kafka.datatransfer.worker.pipelines;
 
-import java.util.HashSet;
-import java.util.Set;
+import com.google.common.base.Preconditions;
+import java.util.Objects;
 
-/**
- * All types consumer owned error that could cause delay of message delivery An issue comes with a
- * code, which is used to identify the issue type, start from 0
- */
-public enum PipelineHealthIssue {
-  /** Pipeline throttled by message rate limit */
-  MESSAGE_RATE_LIMITED(0),
-  /** Pipeline rate throttled by bytes rate limit */
-  BYTES_RATE_LIMITED(1),
-  /** Pipeline blocked by inflight message limit */
-  INFLIGHT_MESSAGE_LIMITED(2),
-  /** Authorization failed */
-  PERMISSION_DENIED(3),
-  /** Unexpected error response received, indicates network error */
-  INVALID_RESPONSE_RECEIVED(4),
-  /** Received retry response, but retry queue is not enabled */
-  RETRY_WITHOUT_RETRY_QUEUE(5),
-  /** RPC latency is unstable, p99 latency is much higher than p50 latency */
-  RPC_LATENCY_UNSTABLE(6);
+/** health issue of the pipeline */
+public class PipelineHealthIssue {
+  private final int value;
 
-  private final int code;
-
-  /** Pipeline health issue code */
-  PipelineHealthIssue(int code) {
-    this.code = code;
+  /**
+   * Instantiates a new Pipeline health issue.
+   *
+   * @param id the identity of the issue
+   */
+  public PipelineHealthIssue(int id) {
+    Preconditions.checkArgument(id >= 0 && id < 32, "id should be between 0 and 31");
+    this.value = 1 << id;
   }
 
   /**
-   * Gets issue value the value can be used in bit set
+   * Gets issue value that will be reported with metrics value will be 2 power of identity
    *
-   * @return the issue name
+   * @return the value
    */
-  public int value() {
-    return 1 << code;
+  public int getValue() {
+    return value;
   }
 
-  /**
-   * Converts a bit sets into issues
-   *
-   * @param value
-   * @return
-   */
-  public static Set<PipelineHealthIssue> decode(int value) {
-    Set<PipelineHealthIssue> ret = new HashSet<>();
-    for (PipelineHealthIssue issue : values()) {
-      if ((value & issue.value()) != 0) {
-        ret.add(issue);
-      }
+  @Override
+  public boolean equals(Object o) {
+    if (this == o) {
+      return true;
     }
-    return ret;
+    if (o == null || getClass() != o.getClass()) {
+      return false;
+    }
+    PipelineHealthIssue that = (PipelineHealthIssue) o;
+    return value == that.value;
+  }
+
+  @Override
+  public int hashCode() {
+    return Objects.hash(value);
   }
 }
