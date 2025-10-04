@@ -45,12 +45,14 @@ public class AutoScalar implements Scalar {
   private final LeaderSelector leaderSelector;
   private final ScaleConverter primaryScaleConverter;
   private final Optional<ScaleConverter> shadowScaleConverter;
+  private final ScaleWindowManager scaleWindowManager;
 
   /**
    * Instantiates a new Auto scalar.
    *
    * @param config the config
    * @param JobWorkloadMonitor the job activity monitor
+   * @param ScaleWindowManager the scale window manager
    * @param ticker the ticker
    * @param scope the scope
    * @param leaderSelector the leader selector
@@ -58,6 +60,7 @@ public class AutoScalar implements Scalar {
   public AutoScalar(
       AutoScalarConfiguration config,
       JobWorkloadMonitor JobWorkloadMonitor,
+      ScaleWindowManager scaleWindowManager,
       Ticker ticker,
       Scope scope,
       LeaderSelector leaderSelector) {
@@ -70,7 +73,12 @@ public class AutoScalar implements Scalar {
     this.config = config;
     this.scope = scope;
     this.leaderSelector = leaderSelector;
-    this.stateBuilder = ScaleState.newBuilder().withConfig(config).withTicker(ticker);
+    this.scaleWindowManager = scaleWindowManager;
+    this.stateBuilder =
+        ScaleState.newBuilder()
+            .withConfig(config)
+            .withWindowManager(scaleWindowManager)
+            .withTicker(ticker);
     this.primaryScaleConverter = createScaleConverter(config.getScaleConverterMode());
     this.shadowScaleConverter =
         config.getShadowScaleConverterMode().map(this::createScaleConverter);

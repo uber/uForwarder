@@ -3,6 +3,7 @@ package com.uber.data.kafka.datatransfer.controller.autoscalar;
 import com.google.common.base.Ticker;
 import com.uber.data.kafka.datatransfer.WindowSnapshot;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 /**
  * ThroughputWindow aggregates samples of throughput into bounded window
@@ -14,8 +15,7 @@ import java.util.concurrent.TimeUnit;
  * load indicator of job
  */
 public class ScaleWindow {
-  // minimal duration of the window to mature in nano
-  private final long minDurationNano;
+  private final Supplier<Long> windowDurationSupplier;
   // minimal samples of the window to mature
   private final int minSamples;
   // time the window started in nano
@@ -25,7 +25,7 @@ public class ScaleWindow {
   private int nSamples;
 
   private ScaleWindow(Builder builder) {
-    this.minDurationNano = builder.minDurationNano;
+    this.windowDurationSupplier = builder.windowDurationSupplier;
     this.minSamples = builder.minSamples;
     this.ticker = builder.ticker;
     this.startTimeNano = ticker.read();
@@ -58,13 +58,14 @@ public class ScaleWindow {
    * @return the boolean
    */
   public boolean isMature() {
-    return nSamples >= minSamples && (ticker.read() - startTimeNano) > minDurationNano;
+    long windowDurationNano = windowDurationSupplier.get();
+    return nSamples >= minSamples && (ticker.read() - startTimeNano) > windowDurationNano;
   }
 
   public WindowSnapshot snapshot() {
     return WindowSnapshot.newBuilder()
         .setSizeInSeconds(TimeUnit.NANOSECONDS.toSeconds(ticker.read() - startTimeNano))
-        .setMinSizeInSeconds(TimeUnit.NANOSECONDS.toSeconds(minDurationNano))
+        .setMinSizeInSeconds(TimeUnit.NANOSECONDS.toSeconds(windowDurationSupplier.get()))
         .setSizeInSamples(nSamples)
         .setMinSizeInSamples(minSamples)
         .build();
@@ -128,7 +129,7 @@ public class ScaleWindow {
   public static class Builder {
     private static final int DEFAULT_BUCKETS = 100;
     private static final int DEFAULT_MIN_SAMPLES = 10;
-    private long minDurationNano = TimeUnit.HOURS.toNanos(1);
+    private Supplier<Long> windowDurationSupplier = () -> TimeUnit.HOURS.toNanos(1);
     private int minSamples = DEFAULT_MIN_SAMPLES;
     private double minScale;
     private double maxScale;
@@ -164,17 +165,13 @@ public class ScaleWindow {
     }
 
     /**
-     * Sets minimal duration in nano of a matured window
+     * Sets window duration supplier
      *
-     * @param minDurationNano minimal duration in nano of a matured window
+     * @param windowDurationSupplier
      * @return the builder
      */
-    public Builder withMinDurationNano(long minDurationNano) {
-      if (minDurationNano <= 0) {
-        throw new IllegalArgumentException(
-            String.format("Invalid minDurationNano=%d", minDurationNano));
-      }
-      this.minDurationNano = minDurationNano;
+    public Builder withWindowDurationSupplier(Supplier<Long> windowDurationSupplier) {
+      this.windowDurationSupplier = windowDurationSupplier;
       return this;
     }
 
